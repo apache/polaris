@@ -1,0 +1,536 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.polaris.persistence.atomic.dynamodb;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
+import org.apache.polaris.core.entity.PolarisEntityId;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
+import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+
+class DynamoDbBasePersistenceIT extends AbstractDynamoDbTest {
+
+  private static final long CATALOG = 7L;
+  private static final long PARENT = 3L;
+  private static final int TYPE = 2;
+
+  private String table;
+  private DynamoDbBasePersistence persistence;
+  private PolarisCallContext callCtx;
+
+  @BeforeEach
+  void setUp() {
+    table = uniqueTableName();
+    DynamoDbSchema.createIfAbsent(client, table);
+    persistence = new DynamoDbBasePersistence(client, table, "realm1");
+    RealmContext realmContext = () -> "realm1";
+    callCtx = new PolarisCallContext(realmContext, persistence);
+  }
+
+  @AfterEach
+  void tearDown() {
+    DynamoDbSchema.deleteIfExists(client, table);
+  }
+
+  @Test
+  void createdEntityIsReadableByIdNameAndVersions() {
+    PolarisBaseEntity sales = entity(persistence.generateNewId(callCtx), PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, sales.getId(), TYPE)).isEqualTo(sales);
+    assertThat(persistence.lookupEntityByName(callCtx, CATALOG, PARENT, TYPE, "sales"))
+        .isEqualTo(sales);
+    assertThat(
+            persistence.lookupEntities(
+                callCtx,
+                List.of(
+                    new PolarisEntityId(CATALOG, sales.getId()),
+                    new PolarisEntityId(CATALOG, 424242L))))
+        .containsExactly(sales, null);
+    assertThat(
+            persistence.lookupEntityVersions(
+                callCtx, List.of(new PolarisEntityId(CATALOG, sales.getId()))))
+        .containsExactly(new PolarisChangeTrackingVersions(1, 1));
+  }
+
+  @Test
+  void batchLookupsSpanChunksAndKeepRequestOrder() {
+    // More ids than one BatchGetItem accepts, with repeats and absent ids mixed in.
+    List<PolarisEntityId> ids = new ArrayList<>();
+    List<PolarisBaseEntity> expected = new ArrayList<>();
+    for (long id = 1; id <= 150; id++) {
+      PolarisBaseEntity e = entity(id, PARENT, "t" + id, 1);
+      persistence.writeEntity(callCtx, e, false, null);
+      ids.add(new PolarisEntityId(CATALOG, id));
+      expected.add(e);
+    }
+    ids.add(new PolarisEntityId(CATALOG, 5L));
+    expected.add(expected.get(4));
+    ids.add(new PolarisEntityId(CATALOG, 999L));
+    expected.add(null);
+
+    assertThat(persistence.lookupEntities(callCtx, ids)).containsExactlyElementsOf(expected);
+    assertThat(persistence.lookupEntityVersions(callCtx, ids)).hasSize(ids.size()).last().isNull();
+  }
+
+  @Test
+  void lookupsRejectMismatchedCoordinates() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+
+    assertThat(persistence.lookupEntity(callCtx, CATALOG + 1, 10L, TYPE)).isNull();
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 10L, TYPE + 1)).isNull();
+    assertThat(persistence.lookupEntityByName(callCtx, CATALOG, PARENT, TYPE, "orders")).isNull();
+    assertThat(persistence.lookupEntities(callCtx, List.of(new PolarisEntityId(CATALOG + 1, 10L))))
+        .containsExactly((PolarisBaseEntity) null);
+  }
+
+  @Test
+  void updateRequiresMatchingVersions() {
+    PolarisBaseEntity v1 = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, v1, false, null);
+    PolarisBaseEntity v2 = withVersion(v1, 2, 2, Map.of("k", "v"));
+    persistence.writeEntity(callCtx, v2, false, v1);
+
+    // v1 is now stale: both a stale entityVersion and a stale grantRecordsVersion are rejected.
+    assertThatThrownBy(
+            () -> persistence.writeEntity(callCtx, withVersion(v1, 3, 1, Map.of()), false, v1))
+        .isInstanceOf(RetryOnConcurrencyException.class);
+    PolarisBaseEntity staleGrants = withVersion(v2, 2, 1, Map.of());
+    assertThatThrownBy(() ->
+            persistence.writeEntity(callCtx, withVersion(v2, 3, 2, Map.of()), false, staleGrants))
+        .isInstanceOf(RetryOnConcurrencyException.class);
+
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 10L, TYPE)).isEqualTo(v2);
+  }
+
+  @Test
+  void duplicateNameIsRejectedWithoutPartialWrites() {
+    PolarisBaseEntity first = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, first, false, null);
+
+    assertThatThrownBy(
+            () -> persistence.writeEntity(callCtx, entity(11L, PARENT, "sales", 1), false, null))
+        .isInstanceOfSatisfying(
+            EntityAlreadyExistsException.class,
+            e -> assertThat(e.getExistingEntity().getId()).isEqualTo(10L));
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 11L, TYPE)).isNull();
+    assertThat(childRecordExists(PARENT, 11L)).isFalse();
+  }
+
+  @Test
+  void repeatedCreateReportsTheSameId() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+
+    // The manager treats an existing entity with the same id as an idempotent retry.
+    assertThatThrownBy(() -> persistence.writeEntity(callCtx, sales, false, null))
+        .isInstanceOfSatisfying(
+            EntityAlreadyExistsException.class,
+            e -> assertThat(e.getExistingEntity().getId()).isEqualTo(10L));
+  }
+
+  @Test
+  void renameMovesTheName() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+    PolarisBaseEntity revenue = renamed(sales, PARENT, "revenue");
+    persistence.writeEntity(callCtx, revenue, true, sales);
+
+    assertThat(persistence.lookupEntityByName(callCtx, CATALOG, PARENT, TYPE, "sales")).isNull();
+    assertThat(persistence.lookupEntityByName(callCtx, CATALOG, PARENT, TYPE, "revenue"))
+        .isEqualTo(revenue);
+
+    // The old name is free again.
+    assertThatCode(
+            () -> persistence.writeEntity(callCtx, entity(11L, PARENT, "sales", 1), false, null))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void reParentMovesTheName() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+    PolarisBaseEntity moved = renamed(sales, PARENT + 1, "sales");
+    persistence.writeEntity(callCtx, moved, true, sales);
+
+    assertThat(persistence.lookupEntityByName(callCtx, CATALOG, PARENT, TYPE, "sales")).isNull();
+    assertThat(persistence.lookupEntityByName(callCtx, CATALOG, PARENT + 1, TYPE, "sales"))
+        .isEqualTo(moved);
+  }
+
+  @Test
+  void renameOntoATakenNameIsRejected() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    PolarisBaseEntity orders = entity(11L, PARENT, "orders", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+    persistence.writeEntity(callCtx, orders, false, null);
+
+    assertThatThrownBy(
+            () -> persistence.writeEntity(callCtx, renamed(sales, PARENT, "orders"), true, sales))
+        .isInstanceOfSatisfying(
+            EntityAlreadyExistsException.class,
+            e -> assertThat(e.getExistingEntity().getId()).isEqualTo(11L));
+    assertThat(persistence.lookupEntityByName(callCtx, CATALOG, PARENT, TYPE, "sales"))
+        .isEqualTo(sales);
+  }
+
+  @Test
+  void reParentOntoATakenNameLeavesTheChildRecordUnderTheOldParent() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    PolarisBaseEntity takenInNewParent = entity(11L, PARENT + 1, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+    persistence.writeEntity(callCtx, takenInNewParent, false, null);
+
+    // Re-parent sales into PARENT+1, where the name "sales" is already taken: rejected, nothing
+    // lands. The child record stays under the old parent and does not appear under the new one.
+    assertThatThrownBy(() ->
+            persistence.writeEntity(callCtx, renamed(sales, PARENT + 1, "sales"), true, sales))
+        .isInstanceOf(EntityAlreadyExistsException.class);
+    assertThat(childRecordExists(PARENT, 10L)).isTrue();
+    assertThat(childRecordExists(PARENT + 1, 10L)).isFalse();
+  }
+
+  @Test
+  void nameChangedFlagWithUnchangedNameIsAPlainUpdate() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+    PolarisBaseEntity updated = withVersion(sales, 2, 1, Map.of("k", "v"));
+
+    persistence.writeEntity(callCtx, updated, true, sales);
+
+    assertThat(persistence.lookupEntityByName(callCtx, CATALOG, PARENT, TYPE, "sales"))
+        .isEqualTo(updated);
+  }
+
+  @Test
+  void deleteFreesTheName() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+
+    persistence.deleteEntity(callCtx, sales);
+
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 10L, TYPE)).isNull();
+    assertThat(persistence.lookupEntityByName(callCtx, CATALOG, PARENT, TYPE, "sales")).isNull();
+    assertThatCode(() -> persistence.deleteEntity(callCtx, sales)).doesNotThrowAnyException();
+  }
+
+  @Test
+  void idClashWithAFreeNameIsNotReportedAsTheSameEntity() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+
+    // Same id, different name: not an idempotent retry, and nothing new is written.
+    assertThatThrownBy(
+            () -> persistence.writeEntity(callCtx, entity(10L, PARENT, "orders", 1), false, null))
+        .isInstanceOf(RetryOnConcurrencyException.class);
+    assertThat(persistence.lookupEntityByName(callCtx, CATALOG, PARENT, TYPE, "orders")).isNull();
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 10L, TYPE)).isEqualTo(sales);
+  }
+
+  @Test
+  void deleteSucceedsAfterAConcurrentUpdate() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+    persistence.writeEntity(callCtx, withVersion(sales, 2, 2, Map.of("k", "v")), false, sales);
+
+    // The caller's copy is now stale on both versions; the delete still goes through.
+    persistence.deleteEntity(callCtx, sales);
+
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 10L, TYPE)).isNull();
+    assertThat(persistence.lookupEntityByName(callCtx, CATALOG, PARENT, TYPE, "sales")).isNull();
+    assertThat(childRecordExists(PARENT, 10L)).isFalse();
+  }
+
+  @Test
+  void deleteWithAStaleNameKeepsTheNewOwnersSentinel() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+    persistence.writeEntity(callCtx, renamed(sales, PARENT, "revenue"), true, sales);
+    PolarisBaseEntity newSales = entity(11L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, newSales, false, null);
+
+    // The caller still holds the pre-rename copy, named "sales".
+    persistence.deleteEntity(callCtx, sales);
+
+    assertThat(persistence.lookupEntityByName(callCtx, CATALOG, PARENT, TYPE, "revenue")).isNull();
+    assertThat(persistence.lookupEntityByName(callCtx, CATALOG, PARENT, TYPE, "sales"))
+        .isEqualTo(newSales);
+  }
+
+  @Test
+  void createWritesAChildRecord() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+
+    assertThat(childRecordExists(PARENT, 10L)).isTrue();
+  }
+
+  @Test
+  void reParentMovesTheChildRecord() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+    PolarisBaseEntity moved = renamed(sales, PARENT + 1, "sales");
+    persistence.writeEntity(callCtx, moved, true, sales);
+
+    assertThat(childRecordExists(PARENT, 10L)).isFalse();
+    assertThat(childRecordExists(PARENT + 1, 10L)).isTrue();
+  }
+
+  @Test
+  void renameWithoutReParentKeepsTheChildRecord() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+    persistence.writeEntity(callCtx, renamed(sales, PARENT, "revenue"), true, sales);
+
+    // The child record is keyed by parent coordinates and id, not name, so it stays put.
+    assertThat(childRecordExists(PARENT, 10L)).isTrue();
+  }
+
+  @Test
+  void deleteRemovesTheChildRecord() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+
+    persistence.deleteEntity(callCtx, sales);
+
+    assertThat(childRecordExists(PARENT, 10L)).isFalse();
+  }
+
+  /** Strongly consistent read of a base-table child record, as a future listing would do. */
+  private boolean childRecordExists(long parentId, long id) {
+    int subType = PolarisEntitySubType.NULL_SUBTYPE.getCode();
+    Map<String, AttributeValue> key =
+        Map.of(
+            DynamoDbLayout.PK,
+                AttributeValue.fromS(
+                    DynamoDbLayout.childPk("realm1", CATALOG, parentId, TYPE, subType)),
+            DynamoDbLayout.SK, AttributeValue.fromS(DynamoDbLayout.childSk(id)));
+    return client.getItem(b -> b.tableName(table).key(key).consistentRead(true)).hasItem();
+  }
+
+  @Test
+  void writeEntitiesCreatesAllOrNothing() {
+    persistence.writeEntities(
+        callCtx, List.of(entity(10L, PARENT, "a", 1), entity(20L, PARENT, "b", 1)), null);
+
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 10L, TYPE)).isNotNull();
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 20L, TYPE)).isNotNull();
+    assertThat(persistence.lookupEntityByName(callCtx, CATALOG, PARENT, TYPE, "b")).isNotNull();
+    // Each created entity also gets its child record, so listing can find it.
+    assertThat(childRecordExists(PARENT, 10L)).isTrue();
+    assertThat(childRecordExists(PARENT, 20L)).isTrue();
+  }
+
+  @Test
+  void writeEntitiesCreateRejectsADuplicateNameWithoutPartialWrites() {
+    persistence.writeEntity(callCtx, entity(10L, PARENT, "taken", 1), false, null);
+
+    assertThatThrownBy(() ->
+            persistence.writeEntities(
+                callCtx,
+                List.of(entity(20L, PARENT, "fresh", 1), entity(30L, PARENT, "taken", 1)),
+                null))
+        .isInstanceOfSatisfying(
+            EntityAlreadyExistsException.class,
+            e -> assertThat(e.getExistingEntity().getId()).isEqualTo(10L));
+    // Nothing from the cancelled batch landed.
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 20L, TYPE)).isNull();
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 30L, TYPE)).isNull();
+  }
+
+  @Test
+  void writeEntitiesUpdatesAllOrNothing() {
+    PolarisBaseEntity a1 = entity(10L, PARENT, "a", 1);
+    PolarisBaseEntity b1 = entity(20L, PARENT, "b", 1);
+    persistence.writeEntity(callCtx, a1, false, null);
+    persistence.writeEntity(callCtx, b1, false, null);
+
+    persistence.writeEntities(
+        callCtx,
+        List.of(withVersion(a1, 2, 1, Map.of("k", "a2")), withVersion(b1, 2, 1, Map.of("k", "b2"))),
+        List.of(a1, b1));
+
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 10L, TYPE).getEntityVersion())
+        .isEqualTo(2);
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 20L, TYPE).getEntityVersion())
+        .isEqualTo(2);
+  }
+
+  @Test
+  void writeEntitiesUpdateRejectsAStaleVersionWithoutPartialWrites() {
+    PolarisBaseEntity a1 = entity(10L, PARENT, "a", 1);
+    PolarisBaseEntity b1 = entity(20L, PARENT, "b", 1);
+    persistence.writeEntity(callCtx, a1, false, null);
+    persistence.writeEntity(callCtx, b1, false, null);
+    // Bump b out from under the batch, so b's original (v1) is now stale.
+    persistence.writeEntity(callCtx, withVersion(b1, 2, 1, Map.of()), false, b1);
+
+    assertThatThrownBy(() ->
+            persistence.writeEntities(
+                callCtx,
+                List.of(
+                    withVersion(a1, 2, 1, Map.of("k", "a2")),
+                    withVersion(b1, 2, 1, Map.of("k", "b2"))),
+                List.of(a1, b1)))
+        .isInstanceOf(RetryOnConcurrencyException.class);
+    // a was not updated, because the whole transaction was cancelled.
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 10L, TYPE).getEntityVersion())
+        .isEqualTo(1);
+  }
+
+  @Test
+  void writeEntitiesRejectsADuplicateId() {
+    assertThatThrownBy(() ->
+            persistence.writeEntities(
+                callCtx, List.of(entity(10L, PARENT, "a", 1), entity(10L, PARENT, "b", 1)), null))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void writeEntitiesRejectsANameOrParentChangeInABatch() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+    PolarisBaseEntity renamed = new PolarisBaseEntity.Builder(sales).name("revenue").build();
+
+    assertThatThrownBy(() -> persistence.writeEntities(callCtx, List.of(renamed), List.of(sales)))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void writeEntitiesRejectsAnOversizeCreateBatch() {
+    List<PolarisBaseEntity> tooMany = new ArrayList<>();
+    for (long id = 1; id <= 34; id++) {
+      tooMany.add(entity(id, PARENT, "t" + id, 1));
+    }
+    // 34 entities * 3 actions = 102 > the 100-action transaction limit.
+    assertThatThrownBy(() -> persistence.writeEntities(callCtx, tooMany, null))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void writeEntitiesRejectsAnOversizeUpdateBatch() {
+    List<PolarisBaseEntity> entities = new ArrayList<>();
+    List<PolarisBaseEntity> originals = new ArrayList<>();
+    for (long id = 1; id <= 101; id++) {
+      PolarisBaseEntity e = entity(id, PARENT, "t" + id, 1);
+      entities.add(withVersion(e, 2, 1, Map.of()));
+      originals.add(e);
+    }
+    // 101 updates > the 100-action transaction limit.
+    assertThatThrownBy(() -> persistence.writeEntities(callCtx, entities, originals))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
+  void writeEntitiesCreateIsIdempotentOnRetry() {
+    List<PolarisBaseEntity> batch =
+        List.of(entity(10L, PARENT, "a", 1), entity(20L, PARENT, "b", 1));
+    persistence.writeEntities(callCtx, batch, null);
+
+    // The exact same create batch, replayed (a retry after it already landed): every entity
+    // already exists under its own id, so this is an idempotent success, not a collision.
+    assertThatCode(() -> persistence.writeEntities(callCtx, batch, null))
+        .doesNotThrowAnyException();
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 10L, TYPE)).isNotNull();
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 20L, TYPE)).isNotNull();
+  }
+
+  @Test
+  void writeEntitiesCreateReportsACollisionFromADifferentId() {
+    persistence.writeEntity(callCtx, entity(10L, PARENT, "taken", 1), false, null);
+
+    // A fresh entity plus one whose name is taken by a DIFFERENT id: a real collision, not an
+    // idempotent retry, so the batch fails and nothing new lands.
+    assertThatThrownBy(() ->
+            persistence.writeEntities(
+                callCtx,
+                List.of(entity(20L, PARENT, "fresh", 1), entity(30L, PARENT, "taken", 1)),
+                null))
+        .isInstanceOfSatisfying(
+            EntityAlreadyExistsException.class,
+            e -> assertThat(e.getExistingEntity().getId()).isEqualTo(10L));
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 20L, TYPE)).isNull();
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 30L, TYPE)).isNull();
+  }
+
+  @Test
+  void writeEntitiesCreateWithSomeAlreadyPresentFailsWithoutPartialWrites() {
+    // One entity already exists under its own id; the other is new. A prior batch could only have
+    // landed all or none, so a partially-present batch is a conflict: fail as a whole and do not
+    // write the new one, rather than completing the batch.
+    persistence.writeEntity(callCtx, entity(10L, PARENT, "a", 1), false, null);
+
+    assertThatThrownBy(() ->
+            persistence.writeEntities(
+                callCtx, List.of(entity(10L, PARENT, "a", 1), entity(20L, PARENT, "b", 1)), null))
+        .isInstanceOf(EntityAlreadyExistsException.class);
+    // The new entity did not land.
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 20L, TYPE)).isNull();
+  }
+
+  private static PolarisBaseEntity entity(long id, long parentId, String name, int version) {
+    return new PolarisBaseEntity.Builder()
+        .id(id)
+        .catalogId(CATALOG)
+        .parentId(parentId)
+        .typeCode(TYPE)
+        .subTypeCode(PolarisEntitySubType.NULL_SUBTYPE.getCode())
+        .name(name)
+        .entityVersion(version)
+        .grantRecordsVersion(1)
+        .propertiesAsMap(Map.of())
+        .internalPropertiesAsMap(Map.of())
+        .build();
+  }
+
+  private static PolarisBaseEntity withVersion(
+      PolarisBaseEntity base,
+      int entityVersion,
+      int grantRecordsVersion,
+      Map<String, String> props) {
+    return new PolarisBaseEntity.Builder(base)
+        .entityVersion(entityVersion)
+        .grantRecordsVersion(grantRecordsVersion)
+        .propertiesAsMap(props)
+        .build();
+  }
+
+  private static PolarisBaseEntity renamed(PolarisBaseEntity base, long parentId, String name) {
+    return new PolarisBaseEntity.Builder(base)
+        .parentId(parentId)
+        .name(name)
+        .entityVersion(base.getEntityVersion() + 1)
+        .build();
+  }
+}

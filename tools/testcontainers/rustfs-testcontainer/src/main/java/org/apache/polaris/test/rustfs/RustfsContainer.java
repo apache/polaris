@@ -19,6 +19,10 @@
 
 package org.apache.polaris.test.rustfs;
 
+import com.github.dockerjava.api.command.CreateContainerCmd;
+import com.github.dockerjava.api.model.ExposedPort;
+import com.github.dockerjava.api.model.PortBinding;
+import com.github.dockerjava.api.model.Ports;
 import com.google.common.base.Preconditions;
 import java.io.IOException;
 import java.net.InetAddress;
@@ -26,7 +30,9 @@ import java.net.ServerSocket;
 import java.net.URI;
 import java.net.UnknownHostException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -122,7 +128,7 @@ public final class RustfsContainer extends GenericContainer<RustfsContainer>
   private final String secretKey;
   private final String bucket;
 
-  private final int hostS3ApiPort = randomAvailablePort();
+  private int hostS3ApiPort;
 
   private String hostPort;
   private String s3endpoint;
@@ -137,9 +143,8 @@ public final class RustfsContainer extends GenericContainer<RustfsContainer>
             .dockerImageName(image));
     withNetworkAliases(randomString("rustfs"));
     withLogConsumer(new Slf4jLogConsumer(LoggerFactory.getLogger(RustfsContainer.class)));
-    // RustFS requires the externally visible host/port to be declared in RUSTFS_SERVER_DOMAINS.
-    addFixedExposedPort(hostS3ApiPort, S3_API_PORT);
-    addExposedPort(CONSOLE_PORT);
+    addExposedPorts(S3_API_PORT, CONSOLE_PORT);
+    withCreateContainerCmdModifier(this::assignHostS3ApiPort);
     this.accessKey = accessKey != null ? accessKey : randomString("access");
     this.secretKey = secretKey != null ? secretKey : randomString("secret");
     this.bucket =
@@ -149,8 +154,6 @@ public final class RustfsContainer extends GenericContainer<RustfsContainer>
     this.region = Optional.ofNullable(region);
     withEnv(RUSTFS_ACCESS_KEY, this.accessKey);
     withEnv(RUSTFS_SECRET_KEY, this.secretKey);
-    // S3 SDK encodes bucket names in host names - need to tell Rustfs which domain to use
-    withEnv(RUSTFS_DOMAIN, RUSTFS_DOMAIN_NAME + ":" + hostS3ApiPort);
     setWaitStrategy(
         new HttpWaitStrategy()
             .forPort(CONSOLE_PORT)
@@ -165,6 +168,23 @@ public final class RustfsContainer extends GenericContainer<RustfsContainer>
 
   private static String randomString(String prefix) {
     return prefix + "-" + Base58.randomString(6).toLowerCase(Locale.ROOT);
+  }
+
+  /**
+   * RustFS requires the externally visible host/port to be declared in RUSTFS_SERVER_DOMAINS, so
+   * Docker can't choose the port. A port that is free here can be taken before Docker binds it.
+   * This runs for every startup attempt, so that a retry gets a new port.
+   */
+  private void assignHostS3ApiPort(CreateContainerCmd cmd) {
+    hostS3ApiPort = randomAvailablePort();
+    cmd.getHostConfig()
+        .withPortBindings(
+            new PortBinding(Ports.Binding.bindPort(hostS3ApiPort), ExposedPort.tcp(S3_API_PORT)),
+            new PortBinding(Ports.Binding.empty(), ExposedPort.tcp(CONSOLE_PORT)));
+    // S3 SDK encodes bucket names in host names - need to tell Rustfs which domain to use
+    List<String> env = new ArrayList<>(List.of(cmd.getEnv()));
+    env.add(RUSTFS_DOMAIN + "=" + RUSTFS_DOMAIN_NAME + ":" + hostS3ApiPort);
+    cmd.withEnv(env);
   }
 
   private static int randomAvailablePort() {

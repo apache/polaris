@@ -23,15 +23,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import jakarta.ws.rs.core.Response;
+import java.io.IOException;
+import java.net.URI;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
+import org.apache.iceberg.rest.requests.ImmutableRegisterTableRequest;
+import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
@@ -40,6 +46,8 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.TestServices;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * End-to-end coverage of entity-property (single-transaction) idempotency for {@code createTable},
@@ -75,6 +83,99 @@ public class EntityIdempotencyCreateTableTest {
     try (Response replay = createTable(services, request, IDEMPOTENCY_KEY)) {
       assertThat(replay.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void retryAfterSameTableRegistrationReplays(boolean missingOldMetadata, @TempDir Path tmpDir)
+      throws IOException {
+    TestServices services = newServicesWithIdempotency();
+    setUpCatalogAndNamespace(services, tmpDir);
+    CreateTableRequest request =
+        CreateTableRequest.builder().withName("registered-table").withSchema(SCHEMA).build();
+    LoadTableResponse created;
+    try (Response response = createTable(services, request, IDEMPOTENCY_KEY)) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      created = (LoadTableResponse) response.getEntity();
+    }
+    String metadataLocation = created.metadataLocation();
+    if (missingOldMetadata) {
+      Path oldMetadata = Path.of(URI.create(metadataLocation));
+      Path replacementMetadata = oldMetadata.resolveSibling("repair.metadata.json");
+      Files.writeString(replacementMetadata, TableMetadataParser.toJson(created.tableMetadata()));
+      Files.delete(oldMetadata);
+      metadataLocation = replacementMetadata.toUri().toString();
+    }
+    services.idempotencyRequestContext().clearPending();
+    try (Response response =
+        services
+            .restApi()
+            .registerTable(
+                CATALOG,
+                NAMESPACE,
+                ImmutableRegisterTableRequest.builder()
+                    .name(request.name())
+                    .metadataLocation(metadataLocation)
+                    .overwrite(true)
+                    .build(),
+                null,
+                null,
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      LoadTableResponse registered = (LoadTableResponse) response.getEntity();
+      assertThat(registered.metadataLocation()).isEqualTo(metadataLocation);
+      assertThat(registered.tableMetadata().uuid()).isEqualTo(created.tableMetadata().uuid());
+    }
+    try (Response response = createTable(services, request, IDEMPOTENCY_KEY)) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      LoadTableResponse replay = (LoadTableResponse) response.getEntity();
+      assertThat(replay.metadataLocation()).isEqualTo(metadataLocation);
+      assertThat(replay.tableMetadata().uuid()).isEqualTo(created.tableMetadata().uuid());
+    }
+  }
+
+  @Test
+  void differentTableRegistrationDoesNotReplayPreviousCreate(@TempDir Path tmpDir)
+      throws IOException {
+    TestServices services = newServicesWithIdempotency();
+    setUpCatalogAndNamespace(services, tmpDir);
+    CreateTableRequest request =
+        CreateTableRequest.builder().withName("replaced-table").withSchema(SCHEMA).build();
+    LoadTableResponse created;
+    try (Response response = createTable(services, request, IDEMPOTENCY_KEY)) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      created = (LoadTableResponse) response.getEntity();
+    }
+    String replacementUuid = UUID.randomUUID().toString();
+    Path replacementMetadata =
+        Path.of(URI.create(created.metadataLocation())).resolveSibling("replacement.metadata.json");
+    Files.writeString(
+        replacementMetadata,
+        TableMetadataParser.toJson(created.tableMetadata())
+            .replace(created.tableMetadata().uuid(), replacementUuid));
+    services.idempotencyRequestContext().clearPending();
+    try (Response response =
+        services
+            .restApi()
+            .registerTable(
+                CATALOG,
+                NAMESPACE,
+                ImmutableRegisterTableRequest.builder()
+                    .name(request.name())
+                    .metadataLocation(replacementMetadata.toUri().toString())
+                    .overwrite(true)
+                    .build(),
+                null,
+                null,
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      assertThat(((LoadTableResponse) response.getEntity()).tableMetadata().uuid())
+          .isEqualTo(replacementUuid);
+    }
+    assertThatThrownBy(() -> createTable(services, request, IDEMPOTENCY_KEY))
+        .isInstanceOf(AlreadyExistsException.class);
   }
 
   @Test

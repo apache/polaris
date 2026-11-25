@@ -36,6 +36,7 @@ import org.apache.polaris.persistence.nosql.api.Persistence;
 import org.apache.polaris.persistence.nosql.api.commit.CommitException;
 import org.apache.polaris.persistence.nosql.api.commit.CommitRetryable;
 import org.apache.polaris.persistence.nosql.api.commit.CommitterState;
+import org.apache.polaris.persistence.nosql.api.commit.FairRetriesType;
 import org.apache.polaris.persistence.nosql.api.commit.RetryTimeoutException;
 import org.apache.polaris.persistence.nosql.api.exceptions.UnknownOperationResultException;
 import org.apache.polaris.persistence.nosql.api.obj.BaseCommitObj;
@@ -112,26 +113,30 @@ class CommitterImpl<REF_OBJ extends BaseCommitObj, RESULT>
     Exception failure = null;
     try {
       var retryConfig = persistence.params().retryConfig();
-      var loop = RetryLoop.<RESULT>newRetryLoop(retryConfig, persistence.monotonicClock());
+      // The local semaphore provides FIFO admission without retry-count priority or fairness
+      // sleeps.
+      // After a remote conflict, attempts back off and rejoin the local queue.
+      var fairRetries = synchronizingLocally ? FairRetriesType.UNFAIR : retryConfig.fairRetries();
+      var loop =
+          RetryLoop.<RESULT>newRetryLoop(retryConfig, persistence.monotonicClock(), fairRetries);
       if (retryStatsConsumer != null) {
         loop.setRetryStatsConsumer(retryStatsConsumer);
       }
       var result =
-          loop.retryLoop(
-              nanosRemaining -> {
-                var acquired = false;
-                try {
-                  acquired = sync.before(nanosRemaining);
-                  if (!acquired) {
-                    return Optional.empty();
-                  }
-                  return commitAttempt(committerState, commitRetryable);
-                } finally {
-                  if (acquired) {
-                    sync.after();
-                  }
-                }
-              });
+          loop.retryLoop(nanosRemaining -> {
+            var acquired = false;
+            try {
+              acquired = sync.before(nanosRemaining);
+              if (!acquired) {
+                return Optional.empty();
+              }
+              return commitAttempt(committerState, commitRetryable);
+            } finally {
+              if (acquired) {
+                sync.after();
+              }
+            }
+          });
       if (result == noResultSentinel()) {
         LOGGER.debug("commit() yielding no result");
         return Optional.ofNullable(committerState.result);
@@ -531,20 +536,19 @@ class CommitterImpl<REF_OBJ extends BaseCommitObj, RESULT>
     } else {
       state.allPersistedIds.add(resultObjRef);
     }
-    return newReference.map(
-        newRef -> {
-          LOGGER.debug("Successfully committed change from {} to {}", reference, newRef);
-          if (state.result != null) {
-            return state.result;
-          }
-          if (resultType.isAssignableFrom(referenceType)) {
-            return resultType.cast(persistedResultObj);
-          }
-          throw new IllegalStateException(
-              "CommitRetryable.attempt() did not set a non-null result via CommitterState.commitResult and the result type "
-                  + resultType.getName()
-                  + " cannot be casted to the reference obj type "
-                  + referenceType.getName());
-        });
+    return newReference.map(newRef -> {
+      LOGGER.debug("Successfully committed change from {} to {}", reference, newRef);
+      if (state.result != null) {
+        return state.result;
+      }
+      if (resultType.isAssignableFrom(referenceType)) {
+        return resultType.cast(persistedResultObj);
+      }
+      throw new IllegalStateException(
+          "CommitRetryable.attempt() did not set a non-null result via CommitterState.commitResult and the result type "
+              + resultType.getName()
+              + " cannot be casted to the reference obj type "
+              + referenceType.getName());
+    });
   }
 }

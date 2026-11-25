@@ -78,11 +78,9 @@ class PrivilegesRepositoryImpl implements PrivilegesRepository {
             .build();
 
     return existing
-        .map(
-            privilegesMappingObj ->
-                persistence.conditionalUpdate(
-                        privilegesMappingObj, newObj, PrivilegesMappingObj.class)
-                    != null)
+        .map(privilegesMappingObj ->
+            persistence.conditionalUpdate(privilegesMappingObj, newObj, PrivilegesMappingObj.class)
+                != null)
         .orElseGet(() -> persistence.conditionalInsert(newObj, PrivilegesMappingObj.class) != null);
   }
 

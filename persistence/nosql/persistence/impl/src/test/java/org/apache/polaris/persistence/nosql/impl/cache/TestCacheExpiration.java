@@ -20,7 +20,7 @@ package org.apache.polaris.persistence.nosql.impl.cache;
 
 import static java.util.concurrent.TimeUnit.MICROSECONDS;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
-import static org.apache.polaris.persistence.nosql.impl.cache.CaffeineCacheBackend.cacheKeyValueObjRead;
+import static org.apache.polaris.persistence.nosql.impl.cache.CaffeineCacheBackend.cacheKeyObjRead;
 
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
@@ -74,10 +74,10 @@ public class TestCacheExpiration {
     var cacheMap = backend.cache.asMap();
 
     soft.assertThat(cacheMap)
-        .doesNotContainKey(cacheKeyValueObjRead(realmId, objRef(nonCachingObj)))
-        .containsKey(cacheKeyValueObjRead(realmId, objRef(dynamicCachingObj)))
-        .containsKey(cacheKeyValueObjRead(realmId, objRef(defaultCachingObj)))
-        .containsKey(cacheKeyValueObjRead(realmId, objRef(stdObj)))
+        .doesNotContainKey(cacheKeyObjRead(realmId, objRef(nonCachingObj)))
+        .containsKey(cacheKeyObjRead(realmId, objRef(dynamicCachingObj)))
+        .containsKey(cacheKeyObjRead(realmId, objRef(defaultCachingObj)))
+        .containsKey(cacheKeyObjRead(realmId, objRef(stdObj)))
         .hasSize(3);
 
     soft.assertThat(backend.get(realmId, objRef(nonCachingObj))).isNull();
@@ -86,10 +86,10 @@ public class TestCacheExpiration {
     soft.assertThat(backend.get(realmId, objRef(stdObj))).isEqualTo(stdObj);
 
     soft.assertThat(cacheMap)
-        .doesNotContainKey(cacheKeyValueObjRead(realmId, objRef(nonCachingObj)))
-        .containsKey(cacheKeyValueObjRead(realmId, objRef(dynamicCachingObj)))
-        .containsKey(cacheKeyValueObjRead(realmId, objRef(defaultCachingObj)))
-        .containsKey(cacheKeyValueObjRead(realmId, objRef(stdObj)))
+        .doesNotContainKey(cacheKeyObjRead(realmId, objRef(nonCachingObj)))
+        .containsKey(cacheKeyObjRead(realmId, objRef(dynamicCachingObj)))
+        .containsKey(cacheKeyObjRead(realmId, objRef(defaultCachingObj)))
+        .containsKey(cacheKeyObjRead(realmId, objRef(stdObj)))
         .hasSize(3);
 
     // increment clock by one - "dynamic" object should still be present
@@ -102,10 +102,10 @@ public class TestCacheExpiration {
     soft.assertThat(backend.get(realmId, objRef(stdObj))).isEqualTo(stdObj);
 
     soft.assertThat(cacheMap)
-        .doesNotContainKey(cacheKeyValueObjRead(realmId, objRef(nonCachingObj)))
-        .containsKey(cacheKeyValueObjRead(realmId, objRef(dynamicCachingObj)))
-        .containsKey(cacheKeyValueObjRead(realmId, objRef(defaultCachingObj)))
-        .containsKey(cacheKeyValueObjRead(realmId, objRef(stdObj)))
+        .doesNotContainKey(cacheKeyObjRead(realmId, objRef(nonCachingObj)))
+        .containsKey(cacheKeyObjRead(realmId, objRef(dynamicCachingObj)))
+        .containsKey(cacheKeyObjRead(realmId, objRef(defaultCachingObj)))
+        .containsKey(cacheKeyObjRead(realmId, objRef(stdObj)))
         .hasSize(3);
 
     // increment clock by one again - "dynamic" object should go away
@@ -118,10 +118,10 @@ public class TestCacheExpiration {
     soft.assertThat(backend.get(realmId, objRef(stdObj))).isEqualTo(stdObj);
 
     soft.assertThat(cacheMap)
-        .doesNotContainKey(cacheKeyValueObjRead(realmId, objRef(nonCachingObj)))
-        .doesNotContainKey(cacheKeyValueObjRead(realmId, objRef(dynamicCachingObj)))
-        .containsKey(cacheKeyValueObjRead(realmId, objRef(defaultCachingObj)))
-        .containsKey(cacheKeyValueObjRead(realmId, objRef(stdObj)));
+        .doesNotContainKey(cacheKeyObjRead(realmId, objRef(nonCachingObj)))
+        .doesNotContainKey(cacheKeyObjRead(realmId, objRef(dynamicCachingObj)))
+        .containsKey(cacheKeyObjRead(realmId, objRef(defaultCachingObj)))
+        .containsKey(cacheKeyObjRead(realmId, objRef(stdObj)));
     // note: Caffeine's cache-map incorrectly reports a size of 3 here, although the map itself only
     // returns the only left object
   }

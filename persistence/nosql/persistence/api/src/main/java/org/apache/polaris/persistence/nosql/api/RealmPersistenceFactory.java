@@ -19,6 +19,8 @@
 package org.apache.polaris.persistence.nosql.api;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import java.util.function.Function;
+import org.apache.polaris.persistence.nosql.api.backend.Backend;
 import org.jspecify.annotations.NonNull;
 
 /**
@@ -38,6 +40,15 @@ public interface RealmPersistenceFactory {
     RealmPersistenceBuilder realmId(@NonNull String realmId);
 
     RealmPersistenceBuilder skipDecorators();
+
+    /**
+     * Wraps the injected backend for this persistence instance, preserving backend observation. The
+     * wrapper is applied once during {@link #build()}, before persistence decorators. This option
+     * is independent of {@link #skipDecorators()} and may only be set once.
+     *
+     * <p>The wrapper must not close the shared backend.
+     */
+    RealmPersistenceBuilder backendWrapper(@NonNull Function<Backend, Backend> backendWrapper);
 
     Persistence build();
   }

@@ -20,8 +20,10 @@ package org.apache.polaris.core.persistence.cache;
 
 import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -34,6 +36,9 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.config.BehaviorChangeConfiguration;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -226,9 +231,8 @@ public class InMemoryEntityCacheTest {
     assertThat(cacheEntry_R1.getGrantRecordsAsGrantee()).hasSize(4);
     List<PolarisGrantRecord> matchPriv =
         cacheEntry_R1.getGrantRecordsAsGrantee().stream()
-            .filter(
-                grantRecord ->
-                    grantRecord.getPrivilegeCode() == PolarisPrivilege.TABLE_READ_DATA.getCode())
+            .filter(grantRecord ->
+                grantRecord.getPrivilegeCode() == PolarisPrivilege.TABLE_READ_DATA.getCode())
             .collect(Collectors.toList());
     assertThat(matchPriv).hasSize(1);
     gr = matchPriv.get(0);
@@ -479,8 +483,8 @@ public class InMemoryEntityCacheTest {
 
   /* Helper for `testEntityWeigher` */
   private int getEntityWeight(PolarisEntity entity) {
-    return EntityWeigher.getInstance()
-        .weigh(-1L, new ResolvedPolarisEntity(diagServices, entity, List.of(), 1));
+    return EntityWeigher.INSTANCE.weigh(
+        -1L, new ResolvedPolarisEntity(diagServices, entity, List.of(), 1));
   }
 
   @Test
@@ -840,10 +844,8 @@ public class InMemoryEntityCacheTest {
     // Create entity ID list
     List<PolarisEntityId> entityIds =
         List.of(getPolarisEntityId(catalog), getPolarisEntityId(N1), getPolarisEntityId(N2));
-    Assertions.assertThatThrownBy(
-            () ->
-                cache.getOrLoadResolvedEntities(
-                    this.callCtx, PolarisEntityType.NAMESPACE, entityIds))
+    Assertions.assertThatThrownBy(() ->
+            cache.getOrLoadResolvedEntities(this.callCtx, PolarisEntityType.NAMESPACE, entityIds))
         .isInstanceOf(RuntimeException.class);
   }
 
@@ -922,18 +924,17 @@ public class InMemoryEntityCacheTest {
                       changeTrackingFor(N5),
                       changeTrackingFor(N5_N6)));
             })
-        .doAnswer(
-            invocation -> {
-              // Second call (client2) - returns newer version for N2
-              LOGGER.debug("Returning change tracking for client2");
-              return new ChangeTrackingResult(
-                  List.of(
-                      changeTrackingFor(N1),
-                      changeTrackingFor(N2v3), // newer version
-                      changeTrackingFor(N3),
-                      changeTrackingFor(N5),
-                      changeTrackingFor(N5_N6)));
-            })
+        .doAnswer(invocation -> {
+          // Second call (client2) - returns newer version for N2
+          LOGGER.debug("Returning change tracking for client2");
+          return new ChangeTrackingResult(
+              List.of(
+                  changeTrackingFor(N1),
+                  changeTrackingFor(N2v3), // newer version
+                  changeTrackingFor(N3),
+                  changeTrackingFor(N5),
+                  changeTrackingFor(N5_N6)));
+        })
         .when(mockedMetaStoreManager)
         .loadEntitiesChangeTracking(Mockito.any(), Mockito.any());
 
@@ -992,37 +993,35 @@ public class InMemoryEntityCacheTest {
     try {
       // Client 1 task - should get older version and be blocked during loadResolvedEntities
       Future<List<EntityCacheLookupResult>> client1Task =
-          executorService.submit(
-              () -> {
-                try {
-                  // Client1 calls getOrLoadResolvedEntities
-                  // - loadEntitiesChangeTracking returns older version for N2
-                  // - loadResolvedEntities will block until client2 completes
-                  return cache.getOrLoadResolvedEntities(
-                      this.callCtx, PolarisEntityType.NAMESPACE, entityIds);
-                } catch (Exception e) {
-                  client1Exception.set(e);
-                  return null;
-                }
-              });
+          executorService.submit(() -> {
+            try {
+              // Client1 calls getOrLoadResolvedEntities
+              // - loadEntitiesChangeTracking returns older version for N2
+              // - loadResolvedEntities will block until client2 completes
+              return cache.getOrLoadResolvedEntities(
+                  this.callCtx, PolarisEntityType.NAMESPACE, entityIds);
+            } catch (Exception e) {
+              client1Exception.set(e);
+              return null;
+            }
+          });
 
       // Client 2 task - should get newer version and complete first
       Future<List<EntityCacheLookupResult>> client2Task =
-          executorService.submit(
-              () -> {
-                try {
-                  // Client2 calls getOrLoadResolvedEntities
-                  // - loadEntitiesChangeTracking returns newer version for N2
-                  // - loadResolvedEntities executes normally and signals client1 when done
-                  client1ChangeTrackingResult.await();
-                  return cache.getOrLoadResolvedEntities(
-                      this.callCtx, PolarisEntityType.NAMESPACE, entityIds);
-                } catch (Exception e) {
-                  client2Exception.set(e);
-                  client1ResolvedEntitiesBlocker.release(); // Release in case of error
-                  return null;
-                }
-              });
+          executorService.submit(() -> {
+            try {
+              // Client2 calls getOrLoadResolvedEntities
+              // - loadEntitiesChangeTracking returns newer version for N2
+              // - loadResolvedEntities executes normally and signals client1 when done
+              client1ChangeTrackingResult.await();
+              return cache.getOrLoadResolvedEntities(
+                  this.callCtx, PolarisEntityType.NAMESPACE, entityIds);
+            } catch (Exception e) {
+              client2Exception.set(e);
+              client1ResolvedEntitiesBlocker.release(); // Release in case of error
+              return null;
+            }
+          });
 
       // Wait for both tasks to complete
       List<EntityCacheLookupResult> client1Results = client1Task.get();
@@ -1070,6 +1069,38 @@ public class InMemoryEntityCacheTest {
     } finally {
       executorService.shutdown();
     }
+  }
+
+  /** Regression test for the unbounded {@code byName} map issue reported in #5386. */
+  @Test
+  public void testNameEntriesAreReclaimedUnderWeightBound() {
+    PolarisBaseEntity catalog = this.tm.ensureExistsByName(null, PolarisEntityType.CATALOG, "test");
+    EntityCacheByNameKey nameKey =
+        new EntityCacheByNameKey(
+            this.tm.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N1"));
+
+    // A weight budget smaller than a single entity, so the entity is evicted right after loading.
+    InMemoryEntityCache boundedCache = newCache(100L);
+    assertThat(boundedCache.getOrLoadEntityByName(this.callCtx, nameKey)).isNotNull();
+    // Caffeine evicts from a background maintenance task, so wait instead of asserting immediately.
+    await("name entry must be reclaimed under the weight bound")
+        .atMost(Duration.ofSeconds(5))
+        .untilAsserted(() -> assertThat(boundedCache.getEntityByName(nameKey)).isNull());
+
+    // Control: with the default budget the same entry stays resident.
+    InMemoryEntityCache unboundedCache =
+        newCache(FeatureConfiguration.ENTITY_CACHE_WEIGHER_TARGET.defaultValue());
+    assertThat(unboundedCache.getOrLoadEntityByName(this.callCtx, nameKey)).isNotNull();
+    assertThat(unboundedCache.getEntityByName(nameKey)).isNotNull();
+  }
+
+  private InMemoryEntityCache newCache(long weigherTarget) {
+    RealmConfig realmConfig = Mockito.mock(RealmConfig.class);
+    Mockito.when(realmConfig.getConfig(FeatureConfiguration.ENTITY_CACHE_WEIGHER_TARGET))
+        .thenReturn(weigherTarget);
+    Mockito.when(realmConfig.getConfig(BehaviorChangeConfiguration.ENTITY_CACHE_SOFT_VALUES))
+        .thenReturn(false);
+    return new InMemoryEntityCache(diagServices, realmConfig, this.metaStoreManager);
   }
 
   private static ResolvedPolarisEntity getResolvedPolarisEntity(PolarisBaseEntity catalog) {

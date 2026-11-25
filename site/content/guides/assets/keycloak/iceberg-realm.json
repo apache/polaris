@@ -108,6 +108,26 @@
       "disableableCredentialTypes": [],
       "requiredActions": [],
       "notBefore": 0
+    },
+    {
+      "username": "keycloak-admin",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "keycloak-admin@example.com",
+      "firstName": "Keycloak",
+      "lastName": "Admin",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "s3cr3t",
+          "temporary": false
+        }
+      ],
+      "clientRoles": {
+        "client1": [
+          "service_admin"
+        ]
+      }
     }
   ],
   "scopeMappings": [
@@ -377,51 +397,6 @@
             "access.token.claim": "true",
             "claim.name": "clientHost",
             "jsonType.label": "String"
-          }
-        },
-        {
-          "id": "principal-id-mapper",
-          "name": "Principal ID Mapper",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-hardcoded-claim-mapper",
-          "consentRequired": false,
-          "config": {
-            "introspection.token.claim": "true",
-            "id.token.claim": "true",
-            "access.token.claim": "true",
-            "claim.name": "principal_id",
-            "claim.value": "0",
-            "jsonType.label": "long"
-          }
-        },
-        {
-          "id": "principal-name-mapper",
-          "name": "Principal Name Mapper",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-hardcoded-claim-mapper",
-          "consentRequired": false,
-          "config": {
-            "introspection.token.claim": "true",
-            "id.token.claim": "true",
-            "access.token.claim": "true",
-            "claim.name": "principal_name",
-            "claim.value": "root",
-            "jsonType.label": "String"
-          }
-        },
-        {
-          "id": "principal-roles-mapper",
-          "name": "Principal Roles Mapper",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-hardcoded-claim-mapper",
-          "consentRequired": false,
-          "config": {
-            "introspection.token.claim": "true",
-            "id.token.claim": "true",
-            "access.token.claim": "true",
-            "claim.name": "principal_roles",
-            "claim.value": "[\"service_admin\"]",
-            "jsonType.label": "JSON"
           }
         },
         {
@@ -1956,5 +1931,16 @@
   },
   "clientPolicies": {
     "policies": []
+  },
+  "roles": {
+    "client": {
+      "client1": [
+        {
+          "name": "service_admin",
+          "composite": false,
+          "clientRole": true
+        }
+      ]
+    }
   }
 }

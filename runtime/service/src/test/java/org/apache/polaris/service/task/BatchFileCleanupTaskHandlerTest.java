@@ -18,11 +18,13 @@
  */
 package org.apache.polaris.service.task;
 
+import static org.apache.polaris.service.task.TaskTestUtils.TASK_LOCATION;
 import static org.apache.polaris.service.task.TaskTestUtils.addTaskLocation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatPredicate;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusMock;
@@ -30,11 +32,18 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 import org.apache.iceberg.ManifestFile;
@@ -45,17 +54,22 @@ import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
+import org.apache.iceberg.io.BulkDeletionFailureException;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.InputFile;
+import org.apache.iceberg.io.SupportsBulkOperations;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
@@ -100,25 +114,39 @@ public class BatchFileCleanupTaskHandlerTest {
     long snapshotId1 = 100L;
     ManifestFile manifestFile1 =
         TaskTestUtils.manifestFile(
-            fileIO, "manifest1.avro", snapshotId1, "dataFile1.parquet", "dataFile2.parquet");
+            fileIO,
+            TASK_LOCATION + "manifest1.avro",
+            snapshotId1,
+            TASK_LOCATION + "dataFile1.parquet",
+            TASK_LOCATION + "dataFile2.parquet");
     ManifestFile manifestFile2 =
         TaskTestUtils.manifestFile(
-            fileIO, "manifest2.avro", snapshotId1, "dataFile3.parquet", "dataFile4.parquet");
+            fileIO,
+            TASK_LOCATION + "manifest2.avro",
+            snapshotId1,
+            TASK_LOCATION + "dataFile3.parquet",
+            TASK_LOCATION + "dataFile4.parquet");
     Snapshot snapshot =
         TaskTestUtils.newSnapshot(
-            fileIO, "manifestList.avro", 1, snapshotId1, 99L, manifestFile1, manifestFile2);
+            fileIO,
+            TASK_LOCATION + "manifestList.avro",
+            1,
+            snapshotId1,
+            99L,
+            manifestFile1,
+            manifestFile2);
     StatisticsFile statisticsFile1 =
         TaskTestUtils.writeStatsFile(
             snapshot.snapshotId(),
             snapshot.sequenceNumber(),
-            "/metadata/" + UUID.randomUUID() + ".stats",
+            TASK_LOCATION + "metadata/" + UUID.randomUUID() + ".stats",
             fileIO);
     PartitionStatisticsFile partitionStatisticsFile1 =
         TaskTestUtils.writePartitionStatsFile(
             snapshot.snapshotId(),
-            "/metadata/" + "partition-stats-" + UUID.randomUUID() + ".parquet",
+            TASK_LOCATION + "metadata/" + "partition-stats-" + UUID.randomUUID() + ".parquet",
             fileIO);
-    String firstMetadataFile = "v1-295495059.metadata.json";
+    String firstMetadataFile = TASK_LOCATION + "v1-295495059.metadata.json";
     TableMetadata firstMetadata =
         TaskTestUtils.writeTableMetadata(
             fileIO,
@@ -130,11 +158,14 @@ public class BatchFileCleanupTaskHandlerTest {
 
     ManifestFile manifestFile3 =
         TaskTestUtils.manifestFile(
-            fileIO, "manifest3.avro", snapshot.snapshotId() + 1, "dataFile5.parquet");
+            fileIO,
+            TASK_LOCATION + "manifest3.avro",
+            snapshot.snapshotId() + 1,
+            TASK_LOCATION + "dataFile5.parquet");
     Snapshot snapshot2 =
         TaskTestUtils.newSnapshot(
             fileIO,
-            "manifestList2.avro",
+            TASK_LOCATION + "manifestList2.avro",
             snapshot.sequenceNumber() + 1,
             snapshot.snapshotId() + 1,
             snapshot.snapshotId(),
@@ -144,14 +175,14 @@ public class BatchFileCleanupTaskHandlerTest {
         TaskTestUtils.writeStatsFile(
             snapshot2.snapshotId(),
             snapshot2.sequenceNumber(),
-            "/metadata/" + UUID.randomUUID() + ".stats",
+            TASK_LOCATION + "metadata/" + UUID.randomUUID() + ".stats",
             fileIO);
     PartitionStatisticsFile partitionStatisticsFile2 =
         TaskTestUtils.writePartitionStatsFile(
             snapshot2.snapshotId(),
-            "/metadata/" + "partition-stats-" + UUID.randomUUID() + ".parquet",
+            TASK_LOCATION + "metadata/" + "partition-stats-" + UUID.randomUUID() + ".parquet",
             fileIO);
-    String secondMetadataFile = "v1-295495060.metadata.json";
+    String secondMetadataFile = TASK_LOCATION + "v1-295495060.metadata.json";
     TableMetadata secondMetadata =
         TaskTestUtils.writeTableMetadata(
             fileIO,
@@ -204,15 +235,20 @@ public class BatchFileCleanupTaskHandlerTest {
     long snapshotId = 100L;
     ManifestFile manifestFile =
         TaskTestUtils.manifestFile(
-            fileIO, "manifest1.avro", snapshotId, "dataFile1.parquet", "dataFile2.parquet");
+            fileIO,
+            TASK_LOCATION + "manifest1.avro",
+            snapshotId,
+            TASK_LOCATION + "dataFile1.parquet",
+            TASK_LOCATION + "dataFile2.parquet");
     TestSnapshot snapshot =
-        TaskTestUtils.newSnapshot(fileIO, "manifestList.avro", 1, snapshotId, 99L, manifestFile);
-    String metadataFile = "v1-49494949.metadata.json";
+        TaskTestUtils.newSnapshot(
+            fileIO, TASK_LOCATION + "manifestList.avro", 1, snapshotId, 99L, manifestFile);
+    String metadataFile = TASK_LOCATION + "v1-49494949.metadata.json";
     StatisticsFile statisticsFile =
         TaskTestUtils.writeStatsFile(
             snapshot.snapshotId(),
             snapshot.sequenceNumber(),
-            "/metadata/" + UUID.randomUUID() + ".stats",
+            TASK_LOCATION + "metadata/" + UUID.randomUUID() + ".stats",
             fileIO);
     TaskTestUtils.writeTableMetadata(fileIO, metadataFile, List.of(statisticsFile), snapshot);
 
@@ -238,9 +274,9 @@ public class BatchFileCleanupTaskHandlerTest {
 
   @Test
   public void testExistenceCheckIsPerformedOncePerFile() {
-    String presentFile1 = "s3://bucket/present1";
-    String presentFile2 = "s3://bucket/present2";
-    String missingFile = "s3://bucket/missing";
+    String presentFile1 = TASK_LOCATION + "present1";
+    String presentFile2 = TASK_LOCATION + "present2";
+    String missingFile = TASK_LOCATION + "missing";
 
     InputFile presentInput = Mockito.mock(InputFile.class);
     Mockito.when(presentInput.exists()).thenReturn(true);
@@ -264,8 +300,10 @@ public class BatchFileCleanupTaskHandlerTest {
                     BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA))
             .setName(UUID.randomUUID().toString())
             .build();
+    TaskEntity taskWithLocation = addTaskLocation(task);
 
-    assertThatCode(() -> handler.handleTask(task, polarisCallContext)).doesNotThrowAnyException();
+    assertThatCode(() -> handler.handleTask(taskWithLocation, polarisCallContext))
+        .doesNotThrowAnyException();
 
     // Each file must have been checked exactly once by the pre-delete scan.
     Mockito.verify(fileIO, Mockito.times(1)).newInputFile(presentFile1);
@@ -274,80 +312,365 @@ public class BatchFileCleanupTaskHandlerTest {
   }
 
   @ParameterizedTest
-  @ValueSource(ints = {1, 2, 3})
-  public void testCleanupWithRetries(int maxRetries) throws IOException {
-    AtomicInteger batchRetryCounter = new AtomicInteger(0);
+  @CsvSource({
+    "false, 0",
+    "false, 1",
+    "false, 2",
+    "false, 3",
+    "true, 0",
+    "true, 1",
+    "true, 2",
+    "true, 3"
+  })
+  public void testCleanupWithRetries(boolean bulk, int failures) {
+    String file = TASK_LOCATION + "metadata.json";
+    FileIO fileIO = bulk ? Mockito.mock(SupportsBulkOperations.class) : Mockito.mock(FileIO.class);
+    InputFile inputFile = Mockito.mock(InputFile.class);
+    Mockito.when(inputFile.exists()).thenReturn(true);
+    Mockito.when(fileIO.newInputFile(file)).thenReturn(inputFile);
+    AtomicInteger deleteCalls = new AtomicInteger();
+    RuntimeException failure =
+        bulk ? new BulkDeletionFailureException(1) : new IllegalStateException("delete failed");
+    var deletion =
+        Mockito.doAnswer(invocation -> {
+          if (deleteCalls.incrementAndGet() <= failures) {
+            throw failure;
+          }
+          return null;
+        });
+    if (bulk) {
+      deletion.when((SupportsBulkOperations) fileIO).deleteFiles(List.of(file));
+    } else {
+      deletion.when(fileIO).deleteFile(file);
+    }
+
+    BatchFileCleanupTaskHandler handler = newBatchFileCleanupTaskHandler(fileIO);
+    TaskEntity task =
+        new TaskEntity.Builder()
+            .withTaskType(AsyncTaskType.BATCH_FILE_CLEANUP)
+            .withData(
+                new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
+                    TableIdentifier.of("db", "table"),
+                    List.of(file),
+                    BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA))
+            .setName(UUID.randomUUID().toString())
+            .build();
+
+    TaskEntity taskWithLocation = addTaskLocation(task);
+
+    if (failures >= FileCleanupTaskHandler.MAX_ATTEMPTS) {
+      assertThatThrownBy(() -> handler.handleTask(taskWithLocation, polarisCallContext))
+          .hasRootCause(failure);
+    } else {
+      assertThatNoException()
+          .isThrownBy(() -> handler.handleTask(taskWithLocation, polarisCallContext));
+    }
+    assertThat(deleteCalls.get())
+        .isEqualTo(Math.min(failures + 1, FileCleanupTaskHandler.MAX_ATTEMPTS));
+    if (bulk) {
+      Mockito.verify(fileIO, Mockito.never()).deleteFile(Mockito.anyString());
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testPartialDeletionRetriesWithAlreadyDeletedFiles(boolean concurrent)
+      throws IOException {
+    AtomicInteger deleteCalls = new AtomicInteger();
+    String retryFile = UUID.randomUUID() + ".metadata.json";
     FileIO fileIO =
+        new InMemoryFileIO() {
+          @Override
+          public void deleteFile(String path) {
+            if (path.equals(retryFile)
+                && deleteCalls.incrementAndGet() < FileCleanupTaskHandler.MAX_ATTEMPTS) {
+              throw new IllegalStateException("transient delete failure");
+            }
+            super.deleteFile(path);
+          }
+        };
+    List<String> files = List.of(UUID.randomUUID() + ".metadata.json", retryFile);
+    for (String file : files) {
+      fileIO.newOutputFile(file).create().close();
+    }
+    BatchFileCleanupTaskHandler handler = newBatchFileCleanupTaskHandler(fileIO);
+
+    assertThatNoException()
+        .isThrownBy(() ->
+            handler
+                .tryDelete(
+                    TableIdentifier.of("db", "table"),
+                    fileIO,
+                    files,
+                    "table_metadata",
+                    concurrent,
+                    null,
+                    1)
+                .join());
+
+    assertThat(deleteCalls.get()).isEqualTo(FileCleanupTaskHandler.MAX_ATTEMPTS);
+    for (String file : files) {
+      assertThat(TaskUtils.exists(file, fileIO)).isFalse();
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testDeletesUseSuppliedSingleThreadExecutor(boolean concurrent) throws Exception {
+    executor.close();
+    executor = Executors.newSingleThreadExecutor(r -> new Thread(r, "cleanup-test-executor"));
+    Set<String> threads = ConcurrentHashMap.newKeySet();
+    FileIO fileIO = Mockito.mock(FileIO.class);
+    Mockito.doAnswer(
+            invocation -> {
+              threads.add(Thread.currentThread().getName());
+              return null;
+            })
+        .when(fileIO)
+        .deleteFile(Mockito.anyString());
+
+    newBatchFileCleanupTaskHandler(fileIO)
+        .tryDelete(
+            TableIdentifier.of("db", "table"),
+            fileIO,
+            List.of("first", "second"),
+            "table_metadata",
+            concurrent,
+            null,
+            1)
+        .get(5, TimeUnit.SECONDS);
+
+    assertThat(threads).containsExactly("cleanup-test-executor");
+    Mockito.verify(fileIO).deleteFile("first");
+    Mockito.verify(fileIO).deleteFile("second");
+  }
+
+  @Test
+  public void testConcurrentRetryWaitsForAllDeletes() throws Exception {
+    executor.close();
+    executor = Executors.newFixedThreadPool(2);
+    CountDownLatch slowDeleteStarted = new CountDownLatch(1);
+    CountDownLatch releaseSlowDelete = new CountDownLatch(1);
+    CountDownLatch failureOccurred = new CountDownLatch(1);
+    CountDownLatch retryStarted = new CountDownLatch(1);
+    AtomicInteger failingFileCalls = new AtomicInteger();
+    FileIO fileIO = Mockito.mock(FileIO.class);
+    Mockito.doAnswer(
+            invocation -> {
+              String file = invocation.getArgument(0);
+              if (file.equals("slow")) {
+                slowDeleteStarted.countDown();
+                if (!releaseSlowDelete.await(5, TimeUnit.SECONDS)) {
+                  throw new IllegalStateException("slow delete was not released");
+                }
+              } else if (failingFileCalls.incrementAndGet() == 1) {
+                if (!slowDeleteStarted.await(5, TimeUnit.SECONDS)) {
+                  throw new IllegalStateException("slow delete did not start");
+                }
+                failureOccurred.countDown();
+                throw new IllegalStateException("transient delete failure");
+              } else {
+                retryStarted.countDown();
+              }
+              return null;
+            })
+        .when(fileIO)
+        .deleteFile(Mockito.anyString());
+
+    try {
+      var result =
+          newBatchFileCleanupTaskHandler(fileIO)
+              .tryDelete(
+                  TableIdentifier.of("db", "table"),
+                  fileIO,
+                  List.of("failing", "slow"),
+                  "table_metadata",
+                  true,
+                  null,
+                  1);
+      assertThat(slowDeleteStarted.await(5, TimeUnit.SECONDS)).isTrue();
+      assertThat(failureOccurred.await(5, TimeUnit.SECONDS)).isTrue();
+      assertThat(retryStarted.await(500, TimeUnit.MILLISECONDS)).isFalse();
+      releaseSlowDelete.countDown();
+      result.get(5, TimeUnit.SECONDS);
+      assertThat(failingFileCalls.get()).isEqualTo(2);
+    } finally {
+      releaseSlowDelete.countDown();
+    }
+  }
+
+  @Test
+  public void testConcurrentRetryWaitsForDeletesAfterIterationFailure() throws Exception {
+    executor.close();
+    executor = Executors.newFixedThreadPool(2);
+    CountDownLatch slowDeleteStarted = new CountDownLatch(1);
+    CountDownLatch releaseSlowDelete = new CountDownLatch(1);
+    CountDownLatch iterationFailed = new CountDownLatch(1);
+    CountDownLatch retryStarted = new CountDownLatch(1);
+    AtomicInteger iterations = new AtomicInteger();
+    Iterable<String> files =
+        () -> {
+          if (iterations.incrementAndGet() > 1) {
+            retryStarted.countDown();
+            return List.of("slow").iterator();
+          }
+          return new Iterator<>() {
+            private boolean returned;
+
+            @Override
+            public boolean hasNext() {
+              if (returned) {
+                iterationFailed.countDown();
+                throw new IllegalStateException("transient iteration failure");
+              }
+              return true;
+            }
+
+            @Override
+            public String next() {
+              returned = true;
+              return "slow";
+            }
+          };
+        };
+    FileIO fileIO = Mockito.mock(FileIO.class);
+    Mockito.doAnswer(
+            invocation -> {
+              slowDeleteStarted.countDown();
+              if (!releaseSlowDelete.await(5, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("slow delete was not released");
+              }
+              return null;
+            })
+        .when(fileIO)
+        .deleteFile("slow");
+
+    try {
+      var result =
+          newBatchFileCleanupTaskHandler(fileIO)
+              .tryDelete(
+                  TableIdentifier.of("db", "table"),
+                  fileIO,
+                  files,
+                  "table_metadata",
+                  true,
+                  null,
+                  1);
+      assertThat(iterationFailed.await(5, TimeUnit.SECONDS)).isTrue();
+      assertThat(slowDeleteStarted.await(5, TimeUnit.SECONDS)).isTrue();
+      assertThat(retryStarted.await(500, TimeUnit.MILLISECONDS)).isFalse();
+      releaseSlowDelete.countDown();
+      result.get(5, TimeUnit.SECONDS);
+      Mockito.verify(fileIO, Mockito.times(2)).deleteFile("slow");
+    } finally {
+      releaseSlowDelete.countDown();
+    }
+  }
+
+  @Test
+  public void testBulkRetryAfterPartialDeletion() {
+    String firstFile = TASK_LOCATION + "first.metadata.json";
+    String retryFile = TASK_LOCATION + "retry.metadata.json";
+    List<String> files = List.of(firstFile, retryFile);
+    Set<String> remainingFiles = new HashSet<>(files);
+    SupportsBulkOperations fileIO = Mockito.mock(SupportsBulkOperations.class);
+    Mockito.doAnswer(
+            invocation -> {
+              remainingFiles.remove(firstFile);
+              throw new BulkDeletionFailureException(1);
+            })
+        .doAnswer(invocation -> {
+          assertThat(remainingFiles).containsExactly(retryFile);
+          files.forEach(remainingFiles::remove);
+          return null;
+        })
+        .when(fileIO)
+        .deleteFiles(files);
+
+    BatchFileCleanupTaskHandler handler = newBatchFileCleanupTaskHandler(fileIO);
+    handler
+        .tryDelete(
+            TableIdentifier.of("db", "table"), fileIO, files, "table_metadata", true, null, 1)
+        .join();
+
+    Mockito.verify(fileIO, Mockito.times(2)).deleteFiles(files);
+    Mockito.verify(fileIO, Mockito.never()).deleteFile(Mockito.anyString());
+    assertThat(remainingFiles).isEmpty();
+  }
+
+  @Test
+  public void testFileOutsideTableLocationIsNotDeleted() {
+    InMemoryFileIO fileIO =
         new InMemoryFileIO() {
           @Override
           public void close() {
             // no-op
           }
         };
+    String insideFile = TASK_LOCATION + "metadata/v1.metadata.json";
+    String outsideFile = "file:///other-table/metadata/v1.metadata.json";
+    fileIO.addFile(insideFile, new byte[] {1});
+    fileIO.addFile(outsideFile, new byte[] {1});
+    BatchFileCleanupTaskHandler handler = newBatchFileCleanupTaskHandler(fileIO);
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
-    Mockito.when(taskFileIOSupplier.apply(Mockito.any(), Mockito.any())).thenReturn(fileIO);
-    BatchFileCleanupTaskHandler handler =
-        new BatchFileCleanupTaskHandler(taskFileIOSupplier, executor, Duration.ofMinutes(5)) {
+    TaskEntity task =
+        addTaskLocation(
+            new TaskEntity.Builder()
+                .withTaskType(AsyncTaskType.BATCH_FILE_CLEANUP)
+                .withData(
+                    new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
+                        tableIdentifier,
+                        List.of(insideFile, outsideFile),
+                        BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA))
+                .setName(UUID.randomUUID().toString())
+                .build());
+
+    handler.handleTask(task, polarisCallContext);
+
+    assertThat(TaskUtils.exists(insideFile, fileIO)).isFalse();
+    assertThat(TaskUtils.exists(outsideFile, fileIO)).isTrue();
+  }
+
+  @Test
+  public void testFileUnderAnyRecordedTableLocationIsDeleted() {
+    InMemoryFileIO fileIO =
+        new InMemoryFileIO() {
           @Override
-          public CompletableFuture<Void> tryDelete(
-              TableIdentifier tableId,
-              FileIO fileIO,
-              Iterable<String> files,
-              String type,
-              Boolean isConcurrent,
-              Throwable e,
-              int attempt) {
-            if (attempt <= maxRetries) {
-              batchRetryCounter.incrementAndGet();
-              return tryDelete(tableId, fileIO, files, type, isConcurrent, e, attempt + 1);
-            } else {
-              return super.tryDelete(tableId, fileIO, files, type, isConcurrent, e, attempt);
-            }
+          public void close() {
+            // no-op
           }
         };
-    long snapshotId = 100L;
-    ManifestFile manifestFile =
-        TaskTestUtils.manifestFile(
-            fileIO, "manifest1.avro", snapshotId, "dataFile1.parquet", "dataFile2.parquet");
-    TestSnapshot snapshot =
-        TaskTestUtils.newSnapshot(fileIO, "manifestList.avro", 1, snapshotId, 99L, manifestFile);
-    String metadataFile = "v1-49494949.metadata.json";
-    StatisticsFile statisticsFile =
-        TaskTestUtils.writeStatsFile(
-            snapshot.snapshotId(),
-            snapshot.sequenceNumber(),
-            "/metadata/" + UUID.randomUUID() + ".stats",
-            fileIO);
-    TaskTestUtils.writeTableMetadata(fileIO, metadataFile, List.of(statisticsFile), snapshot);
-    assertThat(TaskUtils.exists(statisticsFile.path(), fileIO)).isTrue();
-
+    String insideFile = TASK_LOCATION + "metadata/v1.metadata.json";
+    String customDataLocation = "file:///custom-data/";
+    String customLocationFile = customDataLocation + "data1.parquet";
+    String outsideFile = "file:///other-table/data2.parquet";
+    fileIO.addFile(insideFile, new byte[] {1});
+    fileIO.addFile(customLocationFile, new byte[] {1});
+    fileIO.addFile(outsideFile, new byte[] {1});
+    BatchFileCleanupTaskHandler handler = newBatchFileCleanupTaskHandler(fileIO);
+    TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     TaskEntity task =
         new TaskEntity.Builder()
             .withTaskType(AsyncTaskType.BATCH_FILE_CLEANUP)
             .withData(
                 new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
                     tableIdentifier,
-                    List.of(statisticsFile.path()),
+                    List.of(insideFile, customLocationFile, outsideFile),
                     BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA))
             .setName(UUID.randomUUID().toString())
             .build();
+    Map<String, String> properties = new HashMap<>(task.getInternalPropertiesAsMap());
+    properties.put(
+        PolarisTaskConstants.STORAGE_LOCATIONS,
+        TaskUtils.encodeStorageLocations(Set.of(TASK_LOCATION, customDataLocation)));
+    TaskEntity taskWithLocations =
+        TaskEntity.of(
+            new PolarisBaseEntity.Builder(task).internalPropertiesAsMap(properties).build());
 
-    CompletableFuture<Void> future =
-        CompletableFuture.runAsync(
-            () -> {
-              var newTask = addTaskLocation(task);
-              assertThatPredicate(handler::canHandleTask).accepts(newTask);
-              handler.handleTask(
-                  newTask, polarisCallContext); // this will schedule the batch deletion
-            });
+    handler.handleTask(taskWithLocations, polarisCallContext);
 
-    // Wait for all async tasks to finish
-    future.join();
-
-    // Ensure that retries happened as expected
-    assertThat(batchRetryCounter.get()).isEqualTo(maxRetries);
-
-    // Check if the file was successfully deleted after retries
-    assertThat(TaskUtils.exists(statisticsFile.path(), fileIO)).isFalse();
+    assertThat(TaskUtils.exists(insideFile, fileIO)).isFalse();
+    assertThat(TaskUtils.exists(customLocationFile, fileIO)).isFalse();
+    assertThat(TaskUtils.exists(outsideFile, fileIO)).isTrue();
   }
 }

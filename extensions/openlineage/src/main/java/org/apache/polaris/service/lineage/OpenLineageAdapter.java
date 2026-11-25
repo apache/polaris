@@ -28,6 +28,8 @@ import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.service.lineage.api.OpenLineageBatchIngestResponse;
 import org.apache.polaris.service.lineage.api.PolarisLineageEvent;
 import org.apache.polaris.service.lineage.api.PolarisOpenLineageApiService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Adapter between the JAX-RS OpenLineage resource and the {@link OpenLineageIngestProvider}.
@@ -51,6 +53,8 @@ import org.apache.polaris.service.lineage.api.PolarisOpenLineageApiService;
  */
 @RequestScoped
 public class OpenLineageAdapter implements PolarisOpenLineageApiService {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(OpenLineageAdapter.class);
 
   private final OpenLineageIngestProvider provider;
   private final RealmConfig realmConfig;
@@ -76,10 +80,26 @@ public class OpenLineageAdapter implements PolarisOpenLineageApiService {
       return Response.status(Response.Status.NOT_IMPLEMENTED).build();
     }
     int successful = 0;
+    int unexpectedFailures = 0;
     List<OpenLineageBatchIngestResponse.FailedEvent> failed = new ArrayList<>();
 
     for (int i = 0; i < events.size(); i++) {
-      OpenLineageIngestResult result = ingestOne(events.get(i));
+      OpenLineageIngestResult result;
+      try {
+        result = ingestOne(events.get(i));
+      } catch (RuntimeException e) {
+        // Isolate each event so one throw cannot abort the batch. Non-retriable because the
+        // provider
+        // contract reserves UNAVAILABLE for transient failures. Only the first stack trace is
+        // logged so a provider failing on every event does not flood the log.
+        if (unexpectedFailures++ == 0) {
+          LOGGER.warn("Lineage event at batch index {} failed unexpectedly", i, e);
+        }
+        failed.add(
+            new OpenLineageBatchIngestResponse.FailedEvent(
+                i, false, "Event could not be processed"));
+        continue;
+      }
       switch (result) {
         case ACCEPTED -> successful++;
         case REJECTED ->
@@ -89,6 +109,12 @@ public class OpenLineageAdapter implements PolarisOpenLineageApiService {
                 new OpenLineageBatchIngestResponse.FailedEvent(
                     i, true, "Ingest backend unavailable"));
       }
+    }
+    if (unexpectedFailures > 1) {
+      LOGGER.warn(
+          "{} of {} lineage events in the batch failed unexpectedly; only the first was logged",
+          unexpectedFailures,
+          events.size());
     }
 
     OpenLineageBatchIngestResponse.Status status;

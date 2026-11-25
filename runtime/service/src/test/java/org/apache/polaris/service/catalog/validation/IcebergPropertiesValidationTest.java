@@ -52,15 +52,13 @@ class IcebergPropertiesValidationTest {
   void defaultAllowlistIsStsOnly() {
     when(realmConfig.getConfig(eq(FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS)))
         .thenReturn(FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS.defaultValue());
-    assertThatCode(
-            () ->
-                IcebergPropertiesValidation.validateS3CredentialVendingMechanismAllowed(
-                    realmConfig, "STS"))
+    assertThatCode(() ->
+            IcebergPropertiesValidation.validateS3CredentialVendingMechanismAllowed(
+                realmConfig, "STS"))
         .doesNotThrowAnyException();
-    assertThatThrownBy(
-            () ->
-                IcebergPropertiesValidation.validateS3CredentialVendingMechanismAllowed(
-                    realmConfig, "SECOND_MECHANISM"))
+    assertThatThrownBy(() ->
+            IcebergPropertiesValidation.validateS3CredentialVendingMechanismAllowed(
+                realmConfig, "SECOND_MECHANISM"))
         .isInstanceOf(ValidationException.class)
         .hasMessage(
             "S3 credential vending mechanism SECOND_MECHANISM is not enabled in this realm");
@@ -69,10 +67,9 @@ class IcebergPropertiesValidationTest {
   @Test
   void theListHasNoImplicitMember() {
     allow("SECOND_MECHANISM");
-    assertThatThrownBy(
-            () ->
-                IcebergPropertiesValidation.validateS3CredentialVendingMechanismAllowed(
-                    realmConfig, "STS"))
+    assertThatThrownBy(() ->
+            IcebergPropertiesValidation.validateS3CredentialVendingMechanismAllowed(
+                realmConfig, "STS"))
         .isInstanceOf(ValidationException.class)
         .hasMessage("S3 credential vending mechanism STS is not enabled in this realm");
   }
@@ -82,10 +79,9 @@ class IcebergPropertiesValidationTest {
     allow("SECOND_MECHANISM"); // would refuse STS if consulted
     AwsStorageConfigurationInfo empty =
         AwsStorageConfigurationInfo.builder().addAllowedLocation("s3://bucket/prefix/").build();
-    assertThatCode(
-            () ->
-                IcebergPropertiesValidation.validateS3CredentialVendingMechanismAllowed(
-                    realmConfig, (String) null))
+    assertThatCode(() ->
+            IcebergPropertiesValidation.validateS3CredentialVendingMechanismAllowed(
+                realmConfig, (String) null))
         .doesNotThrowAnyException();
     assertThat(empty.resolvedCredentialVendingMechanism())
         .isEqualTo(S3CredentialVendingMechanism.STS);

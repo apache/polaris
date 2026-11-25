@@ -158,29 +158,26 @@ class EntityNameValidatorTest {
 
   @Test
   void validateIdentifierAccepts() {
-    assertThatCode(
-            () ->
-                EntityNameValidator.validateIdentifier(
-                    TableIdentifier.of(Namespace.of("ns1", "ns2"), "table")))
+    assertThatCode(() ->
+            EntityNameValidator.validateIdentifier(
+                TableIdentifier.of(Namespace.of("ns1", "ns2"), "table")))
         .doesNotThrowAnyException();
   }
 
   @Test
   void validateIdentifierRejectsBadNamespaceLevel() {
-    assertThatThrownBy(
-            () ->
-                EntityNameValidator.validateIdentifier(
-                    TableIdentifier.of(Namespace.of("ns1", "bad/level"), "table")))
+    assertThatThrownBy(() ->
+            EntityNameValidator.validateIdentifier(
+                TableIdentifier.of(Namespace.of("ns1", "bad/level"), "table")))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Entity name must not contain '/'");
   }
 
   @Test
   void validateIdentifierRejectsBadName() {
-    assertThatThrownBy(
-            () ->
-                EntityNameValidator.validateIdentifier(
-                    TableIdentifier.of(Namespace.of("ns1"), " bad ")))
+    assertThatThrownBy(() ->
+            EntityNameValidator.validateIdentifier(
+                TableIdentifier.of(Namespace.of("ns1"), " bad ")))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Entity name must not have leading or trailing whitespace");
   }

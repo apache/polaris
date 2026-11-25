@@ -37,6 +37,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import com.azure.core.exception.HttpResponseException;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.storage.StorageException;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterables;
@@ -60,6 +61,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -106,12 +108,14 @@ import org.apache.iceberg.io.InputFile;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.CharSequenceSet;
+import org.apache.iceberg.util.JsonUtil;
 import org.apache.iceberg.util.LocationUtil;
 import org.apache.iceberg.view.ImmutableSQLViewRepresentation;
 import org.apache.iceberg.view.ImmutableViewVersion;
 import org.apache.iceberg.view.ViewMetadata;
 import org.apache.iceberg.view.ViewMetadataParser;
 import org.apache.iceberg.view.ViewOperations;
+import org.apache.iceberg.view.ViewProperties;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -127,6 +131,7 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
@@ -151,6 +156,7 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.core.storage.StorageUtil;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
@@ -176,6 +182,7 @@ import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
+import org.apache.polaris.service.task.TaskUtils;
 import org.apache.polaris.service.test.TestData;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
@@ -197,6 +204,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
@@ -362,7 +370,7 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
             .build();
     AwsCredentialsStorageIntegration storageIntegration =
         new AwsCredentialsStorageIntegration(
-            (destination) -> stsClient,
+            destination -> stsClient,
             config -> Optional.empty(),
             storageCredentialCache,
             mockAwsConfig,
@@ -765,10 +773,9 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     // commit FILE_C
     catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_C).commit();
     CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(5, true);
-    Assertions.assertThatThrownBy(
-            () ->
-                catalogHandlerUtils.commit(
-                    ((BaseTable) catalog.loadTable(TABLE)).operations(), request))
+    Assertions.assertThatThrownBy(() ->
+            catalogHandlerUtils.commit(
+                ((BaseTable) catalog.loadTable(TABLE)).operations(), request))
         .isInstanceOf(CommitFailedException.class)
         .hasMessageContaining("Requirement failed: branch main has changed");
 
@@ -840,10 +847,9 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     // now add more files to non-main branch
     catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_C).toBranch("non-main").commit();
     CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(5, true);
-    Assertions.assertThatThrownBy(
-            () ->
-                catalogHandlerUtils.commit(
-                    ((BaseTable) catalog.loadTable(TABLE)).operations(), request))
+    Assertions.assertThatThrownBy(() ->
+            catalogHandlerUtils.commit(
+                ((BaseTable) catalog.loadTable(TABLE)).operations(), request))
         .isInstanceOf(CommitFailedException.class)
         .hasMessageContaining("Requirement failed: branch main has changed");
 
@@ -916,10 +922,9 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     // branch
     catalog.loadTable(TABLE).newFastAppend().appendFile(FILE_C).toBranch("non-main").commit();
     CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(5, true);
-    Assertions.assertThatThrownBy(
-            () ->
-                catalogHandlerUtils.commit(
-                    ((BaseTable) catalog.loadTable(TABLE)).operations(), request))
+    Assertions.assertThatThrownBy(() ->
+            catalogHandlerUtils.commit(
+                ((BaseTable) catalog.loadTable(TABLE)).operations(), request))
         .isInstanceOf(CommitFailedException.class)
         .hasMessageContaining("Requirement failed: branch main has changed");
 
@@ -1475,6 +1480,66 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, updateRequest))
         .isInstanceOf(BadRequestException.class)
         .hasMessageContaining("is not allowed outside of table location");
+  }
+
+  @Test
+  public void testNotificationRecordsWritePathTransitions() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNotifications(), "Only applicable if notifications are supported");
+
+    String tableLocation =
+        String.format("s3://my-bucket/path/to/data/my_table_%s/", UUID.randomUUID());
+    updateCatalogProperties(
+        Map.of(FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
+    @SuppressWarnings("resource")
+    LocalIcebergCatalog catalog = catalog();
+    TableIdentifier table = TableIdentifier.of(Namespace.of("parent"), "my_table");
+
+    String dataKey = IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY;
+    String metadataKey = IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY;
+    String dataPath1 = tableLocation + "data1";
+    String metadataPath1 = tableLocation + "metadata1";
+    String dataPath2 = tableLocation + "data2";
+    String metadataPath2 = tableLocation + "metadata2";
+
+    // set (CREATE), replace (UPDATE), then remove (UPDATE) both write paths
+    List<Map<String, String>> versions =
+        List.of(
+            Map.of(dataKey, dataPath1, metadataKey, metadataPath1),
+            Map.of(dataKey, dataPath2, metadataKey, metadataPath2),
+            Map.of());
+    for (int i = 0; i < versions.size(); i++) {
+      Map<String, String> properties = versions.get(i);
+      String metadataLocation = tableLocation + "metadata/v" + (i + 1) + ".metadata.json";
+      TableMetadata metadata =
+          TableMetadata.newTableMetadata(
+              SCHEMA, PartitionSpec.unpartitioned(), tableLocation, properties);
+      fileIO.addFile(metadataLocation, TableMetadataParser.toJson(metadata).getBytes(UTF_8));
+
+      NotificationRequest request = new NotificationRequest();
+      request.setNotificationType(i == 0 ? NotificationType.CREATE : NotificationType.UPDATE);
+      TableUpdateNotification update = new TableUpdateNotification();
+      update.setMetadataLocation(metadataLocation);
+      update.setTableName(table.name());
+      update.setTableUuid(metadata.uuid());
+      update.setTimestamp(230950845L + i);
+      request.setPayload(update);
+      catalog.sendNotification(table, request);
+
+      Map<String, String> recorded = readTableEntity(table).getInternalPropertiesAsMap();
+      Assertions.assertThat(recorded)
+          .containsEntry(IcebergTableLikeEntity.LOCATION, metadata.location());
+      if (properties.isEmpty()) {
+        Assertions.assertThat(recorded).doesNotContainKeys(dataKey, metadataKey);
+      } else {
+        Assertions.assertThat(recorded).containsAllEntriesOf(properties);
+      }
+      // the refresh checks the metadata file against the recorded locations
+      Assertions.assertThat(catalog.loadTable(table).properties()).containsAllEntriesOf(properties);
+    }
   }
 
   @Test
@@ -2035,8 +2100,9 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
         .isInstanceOf(InMemoryFileIO.class);
   }
 
-  @Test
-  public void testDropViewWithPurge() {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testDropViewWithPurge(boolean customMetadataPath) {
     MeasuredFileIOFactory measured = new MeasuredFileIOFactory();
     LocalIcebergCatalog viewCatalog = newIcebergCatalog(CATALOG_NAME, metaStoreManager, measured);
     viewCatalog.initialize(
@@ -2045,12 +2111,18 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
 
     viewCatalog.createNamespace(NS);
-    viewCatalog
-        .buildView(TABLE)
-        .withSchema(SCHEMA)
-        .withDefaultNamespace(NS)
-        .withQuery("spark", "SELECT * FROM ns.tbl")
-        .create();
+    String metadataPath = STORAGE_LOCATION + "/view-metadata-" + UUID.randomUUID();
+    var builder =
+        viewCatalog
+            .buildView(TABLE)
+            .withSchema(SCHEMA)
+            .withDefaultNamespace(NS)
+            .withQuery("spark", "SELECT * FROM ns.tbl");
+    if (customMetadataPath) {
+      builder.withProperty("write.metadata.path", metadataPath);
+    }
+    builder.create();
+    String storedBase = readViewEntity(TABLE).getBaseLocation();
 
     Assertions.assertThat(viewCatalog.dropView(TABLE)).as("Drop should succeed").isTrue();
 
@@ -2060,6 +2132,12 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
                 .loadTasks(polarisContext, "testExecutor", PageToken.fromLimit(1))
                 .getEntities()
                 .getFirst());
+    assertThat(TaskUtils.storageLocations(taskEntity.getInternalPropertiesAsMap()))
+        .contains(storedBase);
+    if (customMetadataPath) {
+      assertThat(TaskUtils.storageLocations(taskEntity.getInternalPropertiesAsMap()))
+          .contains(metadataPath);
+    }
     Map<String, String> properties = taskEntity.getInternalPropertiesAsMap();
     properties.put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO");
     taskEntity =
@@ -2079,6 +2157,127 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
     Assertions.assertThat(measured.getNumDeletedFiles())
         .as("View metadata file should be deleted")
         .isGreaterThan(0);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {"location", "addedMetadataPath", "removedMetadataPath", "changedMetadataPath"})
+  public void testViewPurgeRejectsLocationsDifferentFromEntity(String mismatch) throws IOException {
+    catalog.createNamespace(NS);
+    String metadataPath = STORAGE_LOCATION + "/view-purge-metadata-" + UUID.randomUUID();
+    var builder =
+        catalog
+            .buildView(TABLE)
+            .withSchema(SCHEMA)
+            .withDefaultNamespace(NS)
+            .withQuery("spark", VIEW_QUERY)
+            .withProperty(ViewProperties.METADATA_COMPRESSION, "none");
+    if (!mismatch.equals("addedMetadataPath")) {
+      builder.withProperty(TableProperties.WRITE_METADATA_LOCATION, metadataPath);
+    }
+    builder.create();
+    ViewMetadata metadata = catalog.newViewOps(TABLE, false).current();
+    ObjectNode json = (ObjectNode) JsonUtil.mapper().readTree(ViewMetadataParser.toJson(metadata));
+    ObjectNode properties = (ObjectNode) json.get("properties");
+    switch (mismatch) {
+      case "location" -> json.put("location", metadata.location() + "changed");
+      case "removedMetadataPath" -> properties.remove(TableProperties.WRITE_METADATA_LOCATION);
+      case "addedMetadataPath", "changedMetadataPath" ->
+          properties.put(TableProperties.WRITE_METADATA_LOCATION, metadataPath + "-changed");
+      default -> throw new IllegalArgumentException("Unexpected mismatch: " + mismatch);
+    }
+    fileIO.addFile(metadata.metadataFileLocation(), JsonUtil.mapper().writeValueAsBytes(json));
+
+    assertThatThrownBy(() -> catalog.dropView(TABLE))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("does not match its stored");
+    assertThat(catalog.viewExists(TABLE)).isTrue();
+    assertThat(fileIO.fileExists(metadata.metadataFileLocation())).isTrue();
+    assertThat(
+            metaStoreManager
+                .loadTasks(polarisContext, "testExecutor", PageToken.fromLimit(1))
+                .getEntities())
+        .isEmpty();
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"separate", "nested", "ancestor", "equivalent"})
+  public void testViewPurgeUsesRecordedLocationsWithEquivalentMetadata(String layout)
+      throws IOException {
+    catalog.createNamespace(NS);
+    String viewLocation = STORAGE_LOCATION + "/view-purge-" + UUID.randomUUID();
+    String metadataPath =
+        switch (layout) {
+          case "separate" -> viewLocation + "-metadata";
+          case "nested" -> viewLocation + "/metadata";
+          case "ancestor" -> STORAGE_LOCATION;
+          case "equivalent" -> viewLocation;
+          default -> throw new IllegalArgumentException("Unexpected layout: " + layout);
+        };
+    catalog
+        .buildView(TABLE)
+        .withLocation(viewLocation)
+        .withSchema(SCHEMA)
+        .withDefaultNamespace(NS)
+        .withQuery("spark", VIEW_QUERY)
+        .withProperty(ViewProperties.METADATA_COMPRESSION, "none")
+        .withProperty(TableProperties.WRITE_METADATA_LOCATION, metadataPath)
+        .create();
+    ViewMetadata metadata = catalog.newViewOps(TABLE, false).current();
+    IcebergTableLikeEntity entity = readViewEntity(TABLE);
+    ObjectNode json = (ObjectNode) JsonUtil.mapper().readTree(ViewMetadataParser.toJson(metadata));
+    json.put("location", LocationUtil.stripTrailingSlash(metadata.location()));
+    String ignoredDataPath = STORAGE_LOCATION + "/ignored-view-data";
+    ((ObjectNode) json.get("properties"))
+        .put(TableProperties.WRITE_METADATA_LOCATION, metadataPath + "/")
+        .put(TableProperties.WRITE_DATA_LOCATION, ignoredDataPath);
+    fileIO.addFile(metadata.metadataFileLocation(), JsonUtil.mapper().writeValueAsBytes(json));
+
+    assertThat(catalog.dropView(TABLE)).isTrue();
+    TaskEntity task =
+        TaskEntity.of(
+            metaStoreManager
+                .loadTasks(polarisContext, "testExecutor", PageToken.fromLimit(1))
+                .getEntities()
+                .getFirst());
+    assertThat(TaskUtils.storageLocations(task.getInternalPropertiesAsMap()))
+        .containsExactlyInAnyOrderElementsOf(
+            switch (layout) {
+              case "separate" -> Set.of(entity.getBaseLocation(), metadataPath);
+              case "ancestor" -> Set.of(metadataPath);
+              default -> Set.of(entity.getBaseLocation());
+            })
+        .doesNotContain(ignoredDataPath);
+  }
+
+  @ParameterizedTest
+  @CsvSource({"false,false", "false,true", "true,false", "true,true"})
+  public void testViewPurgeFallsBackToMetadataForLegacyEntity(
+      boolean missingStoredBase, boolean customMetadataPath) {
+    catalog.createNamespace(NS);
+    String metadataPath = STORAGE_LOCATION + "/legacy-view-metadata-" + UUID.randomUUID();
+    var builder =
+        catalog
+            .buildView(TABLE)
+            .withSchema(SCHEMA)
+            .withDefaultNamespace(NS)
+            .withQuery("spark", VIEW_QUERY);
+    if (customMetadataPath) {
+      builder.withProperty(TableProperties.WRITE_METADATA_LOCATION, metadataPath);
+    }
+    builder.create();
+    ViewMetadata metadata = catalog.newViewOps(TABLE, false).current();
+    removeRecordedViewLocations(TABLE, missingStoredBase);
+
+    assertThat(catalog.dropView(TABLE)).isTrue();
+    TaskEntity task =
+        TaskEntity.of(
+            metaStoreManager
+                .loadTasks(polarisContext, "testExecutor", PageToken.fromLimit(1))
+                .getEntities()
+                .getFirst());
+    assertThat(TaskUtils.storageLocations(task.getInternalPropertiesAsMap()))
+        .containsExactlyInAnyOrderElementsOf(StorageUtil.getLocationsUsedByTable(metadata));
   }
 
   @Test
@@ -2399,21 +2598,17 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
             IcebergExceptionMapper.getAccessDeniedHints().stream()
                 .map(hint -> Arguments.of(new RuntimeException(hint), false)),
             cloudCodeMappings.entrySet().stream()
-                .flatMap(
-                    entry ->
-                        Stream.of(
-                            Arguments.of(
-                                new HttpResponseException(
-                                    "", new FakeAzureHttpResponse(entry.getKey()), ""),
-                                entry.getValue()),
-                            Arguments.of(
-                                new StorageException(entry.getKey(), ""), entry.getValue()))),
-            IcebergExceptionMapper.RETRYABLE_AZURE_HTTP_CODES.stream()
-                .map(
-                    code ->
+                .flatMap(entry ->
+                    Stream.of(
                         Arguments.of(
-                            new HttpResponseException("", new FakeAzureHttpResponse(code), ""),
-                            true)))
+                            new HttpResponseException(
+                                "", new FakeAzureHttpResponse(entry.getKey()), ""),
+                            entry.getValue()),
+                        Arguments.of(new StorageException(entry.getKey(), ""), entry.getValue()))),
+            IcebergExceptionMapper.RETRYABLE_AZURE_HTTP_CODES.stream()
+                .map(code ->
+                    Arguments.of(
+                        new HttpResponseException("", new FakeAzureHttpResponse(code), ""), true)))
         .flatMap(Function.identity());
   }
 
@@ -2862,6 +3057,28 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
         .hasMessageContaining("is not allowed outside of table location");
   }
 
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void testRegistrationRejectsExistingNamespaceName(boolean view) {
+    LocalIcebergCatalog catalog = catalog();
+    Namespace parent = Namespace.of("registration_parent");
+    catalog.createNamespace(parent);
+    catalog.createNamespace(Namespace.of("registration_parent", "registered"));
+    TableIdentifier identifier = TableIdentifier.of(parent, "registered");
+    String metadataLocation = STORAGE_LOCATION + "/registered/metadata/v1.metadata.json";
+
+    Assertions.assertThatThrownBy(
+            () -> {
+              if (view) {
+                catalog.registerView(identifier, metadataLocation);
+              } else {
+                catalog.registerTable(identifier, metadataLocation);
+              }
+            })
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessageContaining("Namespace with same name already exists");
+  }
+
   @Test
   public void testRegisterViewAllowsMetadataFileOutsideViewLocationWhenFlagEnabled() {
     updateCatalogProperties(
@@ -2901,10 +3118,9 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
 
     testCatalog.createNamespace(TABLE.namespace());
 
-    Assertions.assertThatThrownBy(
-            () ->
-                testCatalog.registerTable(
-                    TABLE, "s3://other-bucket/path/to/table/metadata/v1.metadata.json"))
+    Assertions.assertThatThrownBy(() ->
+            testCatalog.registerTable(
+                TABLE, "s3://other-bucket/path/to/table/metadata/v1.metadata.json"))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Invalid locations");
 
@@ -3134,6 +3350,126 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
 
   @ParameterizedTest
   @ValueSource(booleans = {false, true})
+  public void testViewCustomMetadataLocation(boolean createWithCustomPath) {
+    Assumptions.assumeTrue(requiresNamespaceCreate());
+    updateCatalogProperties(
+        Map.of(FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
+    catalog.createNamespace(NS);
+    String metadataPath = STORAGE_LOCATION + "/custom-view-metadata/" + UUID.randomUUID();
+    var builder =
+        catalog
+            .buildView(TABLE)
+            .withSchema(SCHEMA)
+            .withDefaultNamespace(NS)
+            .withQuery("spark", VIEW_QUERY);
+    if (createWithCustomPath) {
+      builder.withProperty("write.metadata.path", "s3://forbidden-bucket/metadata");
+      Assertions.assertThatThrownBy(builder::create).isInstanceOf(ForbiddenException.class);
+      builder.withProperty("write.metadata.path", metadataPath);
+    }
+    var view = builder.create();
+    if (!createWithCustomPath) {
+      view.updateProperties().set("write.metadata.path", metadataPath).commit();
+    }
+    ViewMetadata metadata = catalog.newViewOps(TABLE, false).current();
+    Assertions.assertThat(metadata.metadataFileLocation()).startsWith(metadataPath + "/");
+    Assertions.assertThat(fileIO.fileExists(metadata.metadataFileLocation())).isTrue();
+    Assertions.assertThatThrownBy(() ->
+            view.updateProperties()
+                .set("write.metadata.path", "s3://forbidden-bucket/metadata")
+                .commit())
+        .isInstanceOf(ForbiddenException.class);
+    Assertions.assertThat(catalog.loadView(TABLE).properties())
+        .containsEntry("write.metadata.path", metadataPath);
+    view.updateProperties().remove("write.metadata.path").commit();
+    ViewMetadata withoutCustomPath = catalog.newViewOps(TABLE, false).current();
+    Assertions.assertThat(withoutCustomPath.metadataFileLocation())
+        .startsWith(LocationUtil.stripTrailingSlash(withoutCustomPath.location()) + "/metadata/");
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testViewCustomMetadataLocationRespectsStructuredLocations(boolean legacyView) {
+    Assumptions.assumeTrue(requiresNamespaceCreate());
+    updateCatalogProperties(
+        Map.of(FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false"));
+    catalog.createNamespace(NS);
+    assertThatThrownBy(() ->
+            catalog
+                .buildView(TABLE)
+                .withSchema(SCHEMA)
+                .withDefaultNamespace(NS)
+                .withQuery("spark", VIEW_QUERY)
+                .withProperty("write.metadata.path", STORAGE_LOCATION + "/outside-view")
+                .create())
+        .isInstanceOf(ForbiddenException.class);
+    var view =
+        catalog
+            .buildView(TABLE)
+            .withSchema(SCHEMA)
+            .withDefaultNamespace(NS)
+            .withQuery("spark", VIEW_QUERY)
+            .create();
+    if (legacyView) {
+      removeRecordedViewLocations(TABLE, true);
+    }
+    Assertions.assertThatThrownBy(() ->
+            view.updateProperties()
+                .set(
+                    "write.metadata.path",
+                    LocationUtil.stripTrailingSlash(view.location()) + "-outside-view")
+                .commit())
+        .isInstanceOf(ForbiddenException.class);
+    String metadataPath = LocationUtil.stripTrailingSlash(view.location()) + "/custom-metadata";
+    view.updateProperties().set("write.metadata.path", metadataPath).commit();
+    Assertions.assertThat(catalog.newViewOps(TABLE, false).current().metadataFileLocation())
+        .startsWith(metadataPath + "/");
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void testViewUnchangedLegacyMetadataPathRemainsWritable(boolean missingStoredBase) {
+    Assumptions.assumeTrue(requiresNamespaceCreate());
+    updateCatalogProperties(
+        Map.of(FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
+    catalog.createNamespace(NS);
+    var view =
+        catalog
+            .buildView(TABLE)
+            .withSchema(SCHEMA)
+            .withDefaultNamespace(NS)
+            .withQuery("spark", VIEW_QUERY)
+            .create();
+    String metadataPath = LocationUtil.stripTrailingSlash(view.location()) + "-metadata";
+    view.updateProperties().set("write.metadata.path", metadataPath).commit();
+    if (missingStoredBase) {
+      removeRecordedViewLocations(TABLE, true);
+    }
+    updateCatalogProperties(
+        Map.of(FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false"));
+    view.updateProperties().set("comment", "updated").commit();
+    view.updateProperties().set("write.metadata.path", metadataPath + "/").commit();
+    var replaced =
+        catalog
+            .buildView(TABLE)
+            .withSchema(SCHEMA)
+            .withDefaultNamespace(NS)
+            .withQuery("spark", "SELECT 1")
+            .withProperty("write.metadata.path", metadataPath)
+            .createOrReplace();
+    replaced.updateProperties().set("comment", "updated again").commit();
+    assertThat(catalog.newViewOps(TABLE, false).current().metadataFileLocation())
+        .startsWith(metadataPath + "/");
+    assertThatThrownBy(() ->
+            replaced
+                .updateProperties()
+                .set("write.metadata.path", metadataPath + "-changed")
+                .commit())
+        .isInstanceOf(ForbiddenException.class);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
   public void testViewOperationsDoesNotRefreshAfterCommit(boolean updateMetadataOnCommit) {
     Assumptions.assumeTrue(
         requiresNamespaceCreate(),
@@ -3272,6 +3608,241 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   }
 
   @Test
+  public void testPurgeRejectedForTableWithoutRecordedLocation() {
+    catalog.createNamespace(NS);
+    catalog.buildTable(TABLE, SCHEMA).create();
+    EntityResult namespaceResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            NS.toString());
+    EntityResult tableResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity, namespaceResult.getEntity()),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            TABLE.name());
+    IcebergTableLikeEntity entity = IcebergTableLikeEntity.of(tableResult.getEntity());
+    assertThat(
+            metaStoreManager
+                .updateEntityPropertiesIfNotChanged(
+                    polarisContext,
+                    List.of(catalogEntity, namespaceResult.getEntity()),
+                    new IcebergTableLikeEntity.Builder(entity).setBaseLocation(null).build())
+                .isSuccess())
+        .isTrue();
+
+    assertThatThrownBy(() -> catalog.dropTable(TABLE, true))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("drop it without purge");
+    assertThat(catalog.tableExists(TABLE)).isTrue();
+  }
+
+  @Test
+  public void testPurgeTaskRecordsCustomDataAndMetadataLocations() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+
+    updateCatalogProperties(
+        Map.of(FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
+
+    catalog.createNamespace(NS);
+    String dataLocation =
+        "%s/purge-data/%s"
+            .formatted(LocationUtil.stripTrailingSlash(STORAGE_LOCATION), UUID.randomUUID());
+    String metadataLocation =
+        "%s/purge-metadata/%s"
+            .formatted(LocationUtil.stripTrailingSlash(STORAGE_LOCATION), UUID.randomUUID());
+    catalog
+        .buildTable(TABLE, SCHEMA)
+        .withProperty(TableProperties.WRITE_DATA_LOCATION, dataLocation)
+        .withProperty(TableProperties.WRITE_METADATA_LOCATION, metadataLocation)
+        .create();
+
+    assertThat(catalog.dropTable(TABLE, true)).isTrue();
+
+    List<PolarisBaseEntity> tasks =
+        metaStoreManager
+            .loadTasks(polarisContext, "testExecutor", PageToken.fromLimit(1))
+            .getEntities();
+    assertThat(tasks).hasSize(1);
+    assertThat(
+            TaskUtils.storageLocations(
+                TaskEntity.of(tasks.getFirst()).getInternalPropertiesAsMap()))
+        .contains(dataLocation, metadataLocation);
+  }
+
+  @Test
+  public void testPurgeTaskFallsBackToMetadataLocationsForEntityWithoutLocationProperty() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+
+    updateCatalogProperties(
+        Map.of(FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
+
+    catalog.createNamespace(NS);
+    String dataLocation =
+        "%s/legacy-data/%s"
+            .formatted(LocationUtil.stripTrailingSlash(STORAGE_LOCATION), UUID.randomUUID());
+    String metadataLocation =
+        "%s/legacy-metadata/%s"
+            .formatted(LocationUtil.stripTrailingSlash(STORAGE_LOCATION), UUID.randomUUID());
+    catalog
+        .buildTable(TABLE, SCHEMA)
+        .withProperty(TableProperties.WRITE_DATA_LOCATION, dataLocation)
+        .withProperty(TableProperties.WRITE_METADATA_LOCATION, metadataLocation)
+        .create();
+
+    // Simulate a table created before Polaris 1.3.0: no LOCATION nor write paths on the entity
+    EntityResult namespaceResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            NS.toString());
+    EntityResult tableResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity, namespaceResult.getEntity()),
+            PolarisEntityType.TABLE_LIKE,
+            PolarisEntitySubType.ICEBERG_TABLE,
+            TABLE.name());
+    IcebergTableLikeEntity entity = IcebergTableLikeEntity.of(tableResult.getEntity());
+    Map<String, String> legacyInternalProperties =
+        new HashMap<>(entity.getInternalPropertiesAsMap());
+    legacyInternalProperties.remove(IcebergTableLikeEntity.LOCATION);
+    legacyInternalProperties.remove(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY);
+    legacyInternalProperties.remove(
+        IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY);
+    assertThat(
+            metaStoreManager
+                .updateEntityPropertiesIfNotChanged(
+                    polarisContext,
+                    List.of(catalogEntity, namespaceResult.getEntity()),
+                    new IcebergTableLikeEntity.Builder(entity)
+                        .setInternalProperties(legacyInternalProperties)
+                        .build())
+                .isSuccess())
+        .isTrue();
+
+    assertThat(catalog.dropTable(TABLE, true)).isTrue();
+
+    List<PolarisBaseEntity> tasks =
+        metaStoreManager
+            .loadTasks(polarisContext, "testExecutor", PageToken.fromLimit(1))
+            .getEntities();
+    assertThat(tasks).hasSize(1);
+    assertThat(
+            TaskUtils.storageLocations(
+                TaskEntity.of(tasks.getFirst()).getInternalPropertiesAsMap()))
+        .contains(dataLocation, metadataLocation);
+  }
+
+  @Test
+  public void testPurgeRejectedForTableWithMetadataLocationDifferentFromEntity() {
+    catalog.createNamespace(NS);
+    Table table = catalog.buildTable(TABLE, SCHEMA).create();
+    TableMetadata current = ((BaseTable) table).operations().current();
+    TableMetadata relocated =
+        TableMetadata.buildFrom(current).setLocation("s3://other-bucket").build();
+    fileIO.addFile(
+        current.metadataFileLocation(), TableMetadataParser.toJson(relocated).getBytes(UTF_8));
+
+    assertThatThrownBy(() -> catalog.dropTable(TABLE, true)).isInstanceOf(ForbiddenException.class);
+    assertThat(catalog.listTables(NS)).contains(TABLE);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {TableProperties.WRITE_DATA_LOCATION, TableProperties.WRITE_METADATA_LOCATION})
+  public void testPurgeRejectedForTableWithCustomLocationDifferentFromEntity(String key) {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+
+    updateCatalogProperties(
+        Map.of(FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
+
+    catalog.createNamespace(NS);
+    String customLocation =
+        "%s/purge-custom/%s"
+            .formatted(LocationUtil.stripTrailingSlash(STORAGE_LOCATION), UUID.randomUUID());
+    Table table = catalog.buildTable(TABLE, SCHEMA).withProperty(key, customLocation).create();
+    TableMetadata current = ((BaseTable) table).operations().current();
+    TableMetadata tampered =
+        TableMetadata.buildFrom(current)
+            .setProperties(Map.of(key, "s3://other-bucket/elsewhere"))
+            .build();
+    fileIO.addFile(
+        current.metadataFileLocation(), TableMetadataParser.toJson(tampered).getBytes(UTF_8));
+
+    assertThatThrownBy(() -> catalog.dropTable(TABLE, true)).isInstanceOf(ForbiddenException.class);
+    assertThat(catalog.listTables(NS)).contains(TABLE);
+  }
+
+  @Test
+  public void testRemovedMetadataFilesAreDeletedAfterCommit() {
+    catalog.createNamespace(NS);
+    Table table =
+        catalog
+            .buildTable(TABLE, SCHEMA)
+            .withProperties(
+                ImmutableMap.of(
+                    TableProperties.METADATA_DELETE_AFTER_COMMIT_ENABLED, "true",
+                    TableProperties.METADATA_PREVIOUS_VERSIONS_MAX, "1"))
+            .create();
+    String v1Location = ((BaseTable) table).operations().current().metadataFileLocation();
+
+    table.newFastAppend().appendFile(FILE_A).commit();
+    table.newFastAppend().appendFile(FILE_B).commit();
+
+    assertThat(metadataFileExists(v1Location)).isFalse();
+  }
+
+  @Test
+  public void testRemovedMetadataFilesOutsideRecordedLocationsAreKeptAfterCommit() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+
+    updateCatalogProperties(
+        Map.of(FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
+
+    catalog.createNamespace(NS);
+    String oldMetadataPath =
+        "%s/old-metadata/%s"
+            .formatted(LocationUtil.stripTrailingSlash(STORAGE_LOCATION), UUID.randomUUID());
+    String newMetadataPath =
+        "%s/new-metadata/%s"
+            .formatted(LocationUtil.stripTrailingSlash(STORAGE_LOCATION), UUID.randomUUID());
+    Table table =
+        catalog
+            .buildTable(TABLE, SCHEMA)
+            .withProperties(
+                ImmutableMap.of(
+                    TableProperties.METADATA_DELETE_AFTER_COMMIT_ENABLED, "true",
+                    TableProperties.METADATA_PREVIOUS_VERSIONS_MAX, "1",
+                    TableProperties.WRITE_METADATA_LOCATION, oldMetadataPath))
+            .create();
+    String v1Location = ((BaseTable) table).operations().current().metadataFileLocation();
+    assertThat(v1Location).startsWith(oldMetadataPath);
+
+    // Moves the metadata path: the old path is no longer recorded on the entity after this commit
+    table.updateProperties().set(TableProperties.WRITE_METADATA_LOCATION, newMetadataPath).commit();
+    table.newFastAppend().appendFile(FILE_A).commit();
+    table.newFastAppend().appendFile(FILE_B).commit();
+
+    // v1 is no longer referenced by the table, but it is outside the recorded locations
+    assertThat(metadataFileExists(v1Location)).isTrue();
+  }
+
+  @Test
   public void testDeleteRemovedMetadataFilesIsPerformedOnSuccessfulCommit() {
     // Positive test: simulate the collector replay on successful commit (no workspace active).
     // This validates that deletes are performed when using the pluggable cleanup.
@@ -3304,11 +3875,10 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
       // Explicitly verify that the collector captured a cleanup targeting v1.
       assertThat(collected)
           .as("Collector should have captured cleanup for v1 metadata")
-          .anyMatch(
-              cleanup ->
-                  cleanup.baseMetadata().previousFiles().stream()
-                      .map(TableMetadata.MetadataLogEntry::file)
-                      .anyMatch(v1Location::equals));
+          .anyMatch(cleanup ->
+              cleanup.baseMetadata().previousFiles().stream()
+                  .map(TableMetadata.MetadataLogEntry::file)
+                  .anyMatch(v1Location::equals));
 
       // Replay the collected deletes (simulates success path after batch).
       for (MetadataFileCleanup cleanup : collected) {
@@ -3324,6 +3894,190 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
       catalog.setMetaStoreManager(metaStoreManager);
       catalog.dropTable(TABLE, false);
     }
+  }
+
+  @Test
+  public void testRefreshRejectsMetadataWithLocationDifferentFromEntity() throws IOException {
+    catalog.createNamespace(NS);
+    Table table = catalog.buildTable(TABLE, SCHEMA).create();
+    rewriteCurrentMetadata(table, json -> json.put("location", "s3://other-bucket"));
+
+    assertThatThrownBy(() -> catalog.loadTable(TABLE))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("does not match its stored location");
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {TableProperties.WRITE_DATA_LOCATION, TableProperties.WRITE_METADATA_LOCATION})
+  public void testRefreshRejectsMetadataWithWritePathDifferentFromEntity(String property)
+      throws IOException {
+    catalog.createNamespace(NS);
+    Table table = catalog.buildTable(TABLE, SCHEMA).create();
+    rewriteCurrentMetadata(
+        table, json -> ((ObjectNode) json.get("properties")).put(property, "s3://other-bucket"));
+
+    assertThatThrownBy(() -> catalog.loadTable(TABLE))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining(property);
+  }
+
+  @Test
+  public void testFirstCommitValidatesLocationsOfEntityWithoutRecordedLocations()
+      throws IOException {
+    catalog.createNamespace(NS);
+    Table table = catalog.buildTable(TABLE, SCHEMA).create();
+    removeRecordedLocations(TABLE);
+    rewriteCurrentMetadata(
+        table,
+        json ->
+            ((ObjectNode) json.get("properties"))
+                .put(TableProperties.WRITE_DATA_LOCATION, "s3://other-bucket/data"));
+
+    Table loaded = catalog.loadTable(TABLE);
+    assertThatThrownBy(() -> loaded.updateProperties().set("some-key", "some-value").commit())
+        .isInstanceOf(ForbiddenException.class);
+  }
+
+  @Test
+  public void testRefreshAcceptsAnyLocationForEntityWithoutRecordedLocations() throws IOException {
+    catalog.createNamespace(NS);
+    Table table = catalog.buildTable(TABLE, SCHEMA).create();
+    removeRecordedLocations(TABLE);
+    rewriteCurrentMetadata(table, json -> json.put("location", "s3://other-bucket"));
+
+    assertThat(catalog.loadTable(TABLE).location()).isEqualTo("s3://other-bucket");
+  }
+
+  @Test
+  public void testNotificationRecordsMovedTableLocation() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNotifications(), "Only applicable if notifications are supported");
+
+    String suffix = UUID.randomUUID().toString();
+    String location1 = String.format("s3://my-bucket/path/to/data/table1_%s", suffix);
+    String location2 = String.format("s3://my-bucket/path/to/data/table2_%s", suffix);
+    updateCatalogProperties(
+        Map.of(FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true"));
+    @SuppressWarnings("resource")
+    LocalIcebergCatalog catalog = catalog();
+    TableIdentifier table = TableIdentifier.of(Namespace.of("parent"), "my_table");
+
+    String uuid = null;
+    for (String location : List.of(location1, location2)) {
+      String metadataLocation = location + "/metadata/v1.metadata.json";
+      TableMetadata metadata =
+          TableMetadata.newTableMetadata(
+              SCHEMA, PartitionSpec.unpartitioned(), location, ImmutableMap.of());
+      fileIO.addFile(metadataLocation, TableMetadataParser.toJson(metadata).getBytes(UTF_8));
+
+      NotificationRequest request = new NotificationRequest();
+      request.setNotificationType(uuid == null ? NotificationType.CREATE : NotificationType.UPDATE);
+      TableUpdateNotification update = new TableUpdateNotification();
+      update.setMetadataLocation(metadataLocation);
+      update.setTableName(table.name());
+      update.setTableUuid(metadata.uuid());
+      update.setTimestamp(uuid == null ? 230950845L : 230950846L);
+      request.setPayload(update);
+      catalog.sendNotification(table, request);
+      uuid = metadata.uuid();
+
+      assertThat(readTableEntity(table).getBaseLocation()).isEqualTo(location + "/");
+      assertThat(catalog.loadTable(table).location()).isEqualTo(location);
+    }
+  }
+
+  @Test
+  public void testFirstCommitRecordsLocationsOfEntityWithoutRecordedLocations() {
+    catalog.createNamespace(NS);
+    catalog.buildTable(TABLE, SCHEMA).create();
+    removeRecordedLocations(TABLE);
+
+    catalog.loadTable(TABLE).updateProperties().set("some-key", "some-value").commit();
+
+    assertThat(readTableEntity(TABLE).getInternalPropertiesAsMap())
+        .containsKey(IcebergTableLikeEntity.LOCATION);
+  }
+
+  /** Overwrites the table's current metadata file in place with the given changes. */
+  private void rewriteCurrentMetadata(Table table, Consumer<ObjectNode> changes)
+      throws IOException {
+    TableMetadata current = ((BaseTable) table).operations().current();
+    ObjectNode json = (ObjectNode) JsonUtil.mapper().readTree(TableMetadataParser.toJson(current));
+    changes.accept(json);
+    fileIO.addFile(current.metadataFileLocation(), JsonUtil.mapper().writeValueAsBytes(json));
+  }
+
+  private List<PolarisEntityCore> catalogPath(Namespace namespace) {
+    EntityResult namespaceResult =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            List.of(catalogEntity),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            namespace.toString());
+    return List.of(catalogEntity, namespaceResult.getEntity());
+  }
+
+  private IcebergTableLikeEntity readViewEntity(TableIdentifier identifier) {
+    return IcebergTableLikeEntity.of(
+        metaStoreManager
+            .readEntityByName(
+                polarisContext,
+                catalogPath(identifier.namespace()),
+                PolarisEntityType.TABLE_LIKE,
+                PolarisEntitySubType.ICEBERG_VIEW,
+                identifier.name())
+            .getEntity());
+  }
+
+  /** Removes the locations recorded on the view entity, as for legacy entities. */
+  private void removeRecordedViewLocations(TableIdentifier identifier, boolean removeBaseLocation) {
+    IcebergTableLikeEntity entity = readViewEntity(identifier);
+    Map<String, String> internalProperties = new HashMap<>(entity.getInternalPropertiesAsMap());
+    internalProperties.remove(IcebergTableLikeEntity.LOCATION);
+    internalProperties.remove(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY);
+    EntityResult result =
+        metaStoreManager.updateEntityPropertiesIfNotChanged(
+            polarisContext,
+            catalogPath(identifier.namespace()),
+            new IcebergTableLikeEntity.Builder(entity)
+                .setBaseLocation(removeBaseLocation ? null : entity.getBaseLocation())
+                .setInternalProperties(internalProperties)
+                .build());
+    assertThat(result.isSuccess()).isTrue();
+  }
+
+  private IcebergTableLikeEntity readTableEntity(TableIdentifier identifier) {
+    return IcebergTableLikeEntity.of(
+        metaStoreManager
+            .readEntityByName(
+                polarisContext,
+                catalogPath(identifier.namespace()),
+                PolarisEntityType.TABLE_LIKE,
+                PolarisEntitySubType.ICEBERG_TABLE,
+                identifier.name())
+            .getEntity());
+  }
+
+  /** Removes the locations recorded on the table entity, as for entities written before 1.3.0. */
+  private void removeRecordedLocations(TableIdentifier identifier) {
+    IcebergTableLikeEntity entity = readTableEntity(identifier);
+    Map<String, String> internalProperties = new HashMap<>(entity.getInternalPropertiesAsMap());
+    internalProperties.remove(IcebergTableLikeEntity.LOCATION);
+    internalProperties.remove(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY);
+    internalProperties.remove(IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY);
+    EntityResult result =
+        metaStoreManager.updateEntityPropertiesIfNotChanged(
+            polarisContext,
+            catalogPath(identifier.namespace()),
+            new IcebergTableLikeEntity.Builder(entity)
+                .setInternalProperties(internalProperties)
+                .build());
+    assertThat(result.isSuccess()).isTrue();
   }
 
   @Test
@@ -3433,12 +4187,11 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
             .formatted(LocationUtil.stripTrailingSlash(STORAGE_LOCATION), UUID.randomUUID());
     String metadataPrefix = metadataDirectory + "/";
 
-    Assertions.assertThatThrownBy(
-            () ->
-                table
-                    .updateProperties()
-                    .set(TableProperties.WRITE_METADATA_LOCATION, metadataDirectory)
-                    .commit())
+    Assertions.assertThatThrownBy(() ->
+            table
+                .updateProperties()
+                .set(TableProperties.WRITE_METADATA_LOCATION, metadataDirectory)
+                .commit())
         .isInstanceOf(BadRequestException.class)
         .hasMessageContaining("is not allowed outside of table location");
 
@@ -3566,10 +4319,9 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
 
     await()
         .atMost(Duration.ofSeconds(10))
-        .until(
-            () ->
-                testPolarisEventListener.hasEvent(PolarisEventType.BEFORE_REFRESH_TABLE)
-                    && testPolarisEventListener.hasEvent(PolarisEventType.AFTER_REFRESH_TABLE));
+        .until(() ->
+            testPolarisEventListener.hasEvent(PolarisEventType.BEFORE_REFRESH_TABLE)
+                && testPolarisEventListener.hasEvent(PolarisEventType.AFTER_REFRESH_TABLE));
 
     PolarisEvent beforeRefreshEvent =
         testPolarisEventListener.getLatest(PolarisEventType.BEFORE_REFRESH_TABLE);

@@ -18,7 +18,10 @@
  */
 
 dependencyResolutionManagement {
-  versionCatalogs { create("baselibs") { from(files("../gradle/baselibs.versions.toml")) } }
+  versionCatalogs {
+    create("baselibs") { from(files("../gradle/baselibs.versions.toml")) }
+    create("libs") { from(files("../gradle/libs.versions.toml")) }
+  }
 }
 
 dependencyResolutionManagement {

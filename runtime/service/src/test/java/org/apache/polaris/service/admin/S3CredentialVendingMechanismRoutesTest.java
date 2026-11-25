@@ -74,9 +74,8 @@ class S3CredentialVendingMechanismRoutesTest {
     return TestServices.builder()
         .config(config)
         .additionalVendingMechanisms(Map.of(TEST_MECHANISM, TestServices.fakeMechanism()))
-        .fileIOFactorySupplier(
-            () ->
-                (FileIOFactory) (accessConfig, ioImplClassName, properties) -> new InMemoryFileIO())
+        .fileIOFactorySupplier(() ->
+            (FileIOFactory) (accessConfig, ioImplClassName, properties) -> new InMemoryFileIO())
         .build();
   }
 
@@ -146,19 +145,18 @@ class S3CredentialVendingMechanismRoutesTest {
       List<String> accessDelegationModes,
       Class<? extends RuntimeException> exceptionType,
       String expectedMessage) {
-    assertThatThrownBy(
-            () ->
-                svc.restApi()
-                    .loadTable(
-                        catalog,
-                        ns,
-                        table,
-                        accessDelegationModes,
-                        null,
-                        "ALL",
-                        null,
-                        svc.realmContext(),
-                        svc.securityContext()))
+    assertThatThrownBy(() ->
+            svc.restApi()
+                .loadTable(
+                    catalog,
+                    ns,
+                    table,
+                    accessDelegationModes,
+                    null,
+                    "ALL",
+                    null,
+                    svc.realmContext(),
+                    svc.securityContext()))
         .isInstanceOf(exceptionType)
         .hasMessage(expectedMessage);
   }
@@ -352,10 +350,9 @@ class S3CredentialVendingMechanismRoutesTest {
             fetched.getEntityVersion(),
             Map.of("default-base-location", "s3://bucket/base/mechkill"),
             fetched.getStorageConfigInfo());
-    assertThatThrownBy(
-            () ->
-                svc.catalogsApi()
-                    .updateCatalog("mechkill", touch, svc.realmContext(), svc.securityContext()))
+    assertThatThrownBy(() ->
+            svc.catalogsApi()
+                .updateCatalog("mechkill", touch, svc.realmContext(), svc.securityContext()))
         .isInstanceOf(ValidationException.class)
         .hasMessage(NOT_ENABLED);
     // The catalog with an empty mechanism in the same realm is unaffected.

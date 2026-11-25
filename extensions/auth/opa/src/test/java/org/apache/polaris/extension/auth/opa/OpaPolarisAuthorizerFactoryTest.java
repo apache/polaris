@@ -39,6 +39,7 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.polaris.core.auth.AuthorizationRequest;
@@ -229,23 +230,88 @@ public class OpaPolarisAuthorizerFactoryTest {
         PolarisPrincipal principal =
             PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("admin"));
         assertThatNoException()
-            .isThrownBy(
-                () ->
-                    authorizer
-                        .authorize(
-                            new AuthorizationState(mock(PolarisResolutionManifest.class)),
-                            new AuthorizationRequest(
-                                principal,
-                                List.of(
-                                    new TargetlessAuthorizationIntent(
-                                        PolarisAuthorizableOperation.GET_CATALOG))))
-                        .throwIfDenied());
+            .isThrownBy(() ->
+                authorizer
+                    .authorize(
+                        new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                        new AuthorizationRequest(
+                            principal,
+                            List.of(
+                                new TargetlessAuthorizationIntent(
+                                    PolarisAuthorizableOperation.GET_CATALOG))))
+                    .throwIfDenied());
 
         ObjectMapper mapper = JsonMapper.builder().build();
         JsonNode root = mapper.readTree(capturedRequestBody[0]);
         assertThat(root.path("input").path("context").get("realm").asText())
             .isEqualTo("factory-realm");
         factory.cleanup();
+      }
+    } finally {
+      server.stop(0);
+    }
+  }
+
+  @Test
+  public void testFactoryPassesContextPropertiesToAuthorizerContext() throws Exception {
+    final String[] capturedRequestBody = new String[1];
+
+    HttpServer server = createServerWithRequestCapture(capturedRequestBody);
+    try {
+      OpaAuthorizationConfig opaConfig =
+          ImmutableOpaAuthorizationConfig.builder()
+              .policyUri(
+                  URI.create(
+                      "http://localhost:"
+                          + server.getAddress().getPort()
+                          + "/v1/data/polaris/allow"))
+              .contextProperties(Map.of("group", "example-group", "tier", "qa"))
+              .auth(
+                  ImmutableAuthenticationConfig.builder()
+                      .type(OpaAuthorizationConfig.AuthenticationType.NONE)
+                      .build())
+              .http(
+                  ImmutableHttpConfig.builder()
+                      .timeout(Duration.ofSeconds(2))
+                      .verifySsl(true)
+                      .build())
+              .build();
+
+      try (JavaPoolAsyncExec asyncExec = new JavaPoolAsyncExec()) {
+        OpaPolarisAuthorizerFactory factory =
+            new OpaPolarisAuthorizerFactory(
+                opaConfig, Clock.systemUTC(), asyncExec, () -> null, () -> "test-realm");
+
+        factory.initialize();
+        try {
+          OpaPolarisAuthorizer authorizer =
+              (OpaPolarisAuthorizer) factory.create(mock(RealmConfig.class));
+
+          PolarisPrincipal principal =
+              PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("admin"));
+          authorizer
+              .authorize(
+                  new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                  new AuthorizationRequest(
+                      principal,
+                      List.of(
+                          new TargetlessAuthorizationIntent(
+                              PolarisAuthorizableOperation.GET_CATALOG))))
+              .throwIfDenied();
+
+          ObjectMapper mapper = JsonMapper.builder().build();
+          JsonNode properties =
+              mapper
+                  .readTree(capturedRequestBody[0])
+                  .path("input")
+                  .path("context")
+                  .path("properties");
+          assertThat(properties.path("group").asText()).isEqualTo("example-group");
+          assertThat(properties.path("tier").asText()).isEqualTo("qa");
+          assertThat(properties.size()).isEqualTo(2);
+        } finally {
+          factory.cleanup();
+        }
       }
     } finally {
       server.stop(0);
@@ -289,17 +355,16 @@ public class OpaPolarisAuthorizerFactoryTest {
         PolarisPrincipal principal =
             PolarisPrincipal.of("alice", AttributeMap.EMPTY, Set.of("admin"));
         assertThatNoException()
-            .isThrownBy(
-                () ->
-                    authorizer
-                        .authorize(
-                            new AuthorizationState(mock(PolarisResolutionManifest.class)),
-                            new AuthorizationRequest(
-                                principal,
-                                List.of(
-                                    new TargetlessAuthorizationIntent(
-                                        PolarisAuthorizableOperation.GET_CATALOG))))
-                        .throwIfDenied());
+            .isThrownBy(() ->
+                authorizer
+                    .authorize(
+                        new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                        new AuthorizationRequest(
+                            principal,
+                            List.of(
+                                new TargetlessAuthorizationIntent(
+                                    PolarisAuthorizableOperation.GET_CATALOG))))
+                    .throwIfDenied());
 
         ObjectMapper mapper = JsonMapper.builder().build();
         JsonNode root = mapper.readTree(capturedRequestBody[0]);
@@ -357,17 +422,16 @@ public class OpaPolarisAuthorizerFactoryTest {
                     .build(),
                 Set.of("auditor"));
         assertThatNoException()
-            .isThrownBy(
-                () ->
-                    authorizer
-                        .authorize(
-                            new AuthorizationState(mock(PolarisResolutionManifest.class)),
-                            new AuthorizationRequest(
-                                principal,
-                                List.of(
-                                    new TargetlessAuthorizationIntent(
-                                        PolarisAuthorizableOperation.LOAD_VIEW))))
-                        .throwIfDenied());
+            .isThrownBy(() ->
+                authorizer
+                    .authorize(
+                        new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                        new AuthorizationRequest(
+                            principal,
+                            List.of(
+                                new TargetlessAuthorizationIntent(
+                                    PolarisAuthorizableOperation.LOAD_VIEW))))
+                    .throwIfDenied());
 
         JsonNode root = JsonMapper.builder().build().readTree(capturedRequestBody[0]);
         assertThat(root.at("/input/context/request_id").asText())
@@ -429,17 +493,16 @@ public class OpaPolarisAuthorizerFactoryTest {
         // HTTP request via the @RequestScoped PolarisAuthorizer producer.
         OpaPolarisAuthorizer firstAuthorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
         assertThatNoException()
-            .isThrownBy(
-                () ->
-                    firstAuthorizer
-                        .authorize(
-                            new AuthorizationState(mock(PolarisResolutionManifest.class)),
-                            new AuthorizationRequest(
-                                principal,
-                                List.of(
-                                    new TargetlessAuthorizationIntent(
-                                        PolarisAuthorizableOperation.LOAD_VIEW))))
-                        .throwIfDenied());
+            .isThrownBy(() ->
+                firstAuthorizer
+                    .authorize(
+                        new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                        new AuthorizationRequest(
+                            principal,
+                            List.of(
+                                new TargetlessAuthorizationIntent(
+                                    PolarisAuthorizableOperation.LOAD_VIEW))))
+                    .throwIfDenied());
         JsonNode firstRoot = JsonMapper.builder().build().readTree(capturedRequestBody[0]);
         assertThat(firstRoot.at("/input/context/request_id").asText()).isEqualTo("request-1");
 
@@ -447,17 +510,16 @@ public class OpaPolarisAuthorizerFactoryTest {
         // and must pick up a distinct, freshly-resolved request ID rather than reusing the first.
         OpaPolarisAuthorizer secondAuthorizer = (OpaPolarisAuthorizer) factory.create(realmConfig);
         assertThatNoException()
-            .isThrownBy(
-                () ->
-                    secondAuthorizer
-                        .authorize(
-                            new AuthorizationState(mock(PolarisResolutionManifest.class)),
-                            new AuthorizationRequest(
-                                principal,
-                                List.of(
-                                    new TargetlessAuthorizationIntent(
-                                        PolarisAuthorizableOperation.LOAD_VIEW))))
-                        .throwIfDenied());
+            .isThrownBy(() ->
+                secondAuthorizer
+                    .authorize(
+                        new AuthorizationState(mock(PolarisResolutionManifest.class)),
+                        new AuthorizationRequest(
+                            principal,
+                            List.of(
+                                new TargetlessAuthorizationIntent(
+                                    PolarisAuthorizableOperation.LOAD_VIEW))))
+                    .throwIfDenied());
         JsonNode secondRoot = JsonMapper.builder().build().readTree(capturedRequestBody[0]);
         assertThat(secondRoot.at("/input/context/request_id").asText()).isEqualTo("request-2");
       }

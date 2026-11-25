@@ -231,14 +231,13 @@ public final class PageTokenUtil {
       var loader = ServiceLoader.load(Token.TokenType.class);
       loader.stream()
           .map(ServiceLoader.Provider::get)
-          .forEach(
-              tokenType -> {
-                var ex = byId.put(tokenType.id(), tokenType);
-                if (ex != null) {
-                  throw new IllegalStateException(
-                      format("Duplicate token type ID: from %s and %s", tokenType, ex));
-                }
-              });
+          .forEach(tokenType -> {
+            var ex = byId.put(tokenType.id(), tokenType);
+            if (ex != null) {
+              throw new IllegalStateException(
+                  format("Duplicate token type ID: from %s and %s", tokenType, ex));
+            }
+          });
       BY_ID = unmodifiableMap(byId);
     }
   }

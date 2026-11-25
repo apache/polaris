@@ -22,8 +22,7 @@ import jakarta.annotation.Nonnull;
 import java.net.URI;
 import org.apache.polaris.persistence.nosql.api.backend.Backend;
 import org.apache.polaris.persistence.nosql.api.backend.BackendFactory;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.http.apache5.Apache5HttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
@@ -43,11 +42,8 @@ public class DynamoDbBackendFactory
     var clientBuilder =
         DynamoDbClient.builder()
             .httpClientBuilder(Apache5HttpClient.builder())
-            .region(Region.of(config.region().orElse("us-east-1")));
-
-    // TODO credentials !
-    clientBuilder.credentialsProvider(
-        StaticCredentialsProvider.create(AwsBasicCredentials.create("xxx", "xxx")));
+            .region(Region.of(config.region().orElse("us-east-1")))
+            .credentialsProvider(DefaultCredentialsProvider.builder().build());
 
     config.endpointURI().ifPresent(uri -> clientBuilder.endpointOverride(URI.create(uri)));
 

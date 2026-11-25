@@ -18,7 +18,7 @@
 #
 
 ---
-openapi: 3.0.3
+openapi: 3.1.1
 info:
   title: Apache Polaris and Apache Iceberg REST Catalog API
   license:
@@ -183,6 +183,13 @@ paths:
 
   /polaris/v1/{prefix}/namespaces/{namespace}/semantic-models/{semantic-model-name}:
     $ref: './polaris-catalog-apis/semantic-models-api.yaml#/paths/~1polaris~1v1~1{prefix}~1namespaces~1{namespace}~1semantic-models~1{semantic-model-name}'
+
+  #################################
+  # Polaris Catalog Discovery API #
+  #################################
+
+  /polaris/discovery/v1/catalogs:
+    $ref: './polaris-catalog-apis/catalog-discovery-api.yaml#/paths/~1polaris~1discovery~1v1~1catalogs'
 
 
 components:

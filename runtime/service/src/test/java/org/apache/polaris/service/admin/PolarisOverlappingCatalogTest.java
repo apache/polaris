@@ -160,17 +160,15 @@ public class PolarisOverlappingCatalogTest {
         .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
 
     // This DBL overlaps with initial AL
-    assertThatThrownBy(
-            () ->
-                createCatalog(prefix, "dogs", initiallyExternal, Arrays.asList("huskies", "labs")))
+    assertThatThrownBy(() ->
+            createCatalog(prefix, "dogs", initiallyExternal, Arrays.asList("huskies", "labs")))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("One or more of its locations overlaps with an existing catalog");
 
     // This AL overlaps with initial DBL
-    assertThatThrownBy(
-            () ->
-                createCatalog(
-                    prefix, "kingdoms", initiallyExternal, Arrays.asList("plants", "animals")))
+    assertThatThrownBy(() ->
+            createCatalog(
+                prefix, "kingdoms", initiallyExternal, Arrays.asList("plants", "animals")))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("One or more of its locations overlaps with an existing catalog");
 
@@ -191,25 +189,21 @@ public class PolarisOverlappingCatalogTest {
         .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
 
     // This DBL overlaps with initial AL
-    assertThatThrownBy(
-            () ->
-                createCatalog(
-                    overlapScheme, prefix, "dogs", false, Arrays.asList("huskies", "labs")))
+    assertThatThrownBy(() ->
+            createCatalog(overlapScheme, prefix, "dogs", false, Arrays.asList("huskies", "labs")))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("One or more of its locations overlaps with an existing catalog");
 
     // This AL overlaps with initial DBL
-    assertThatThrownBy(
-            () ->
-                createCatalog(
-                    overlapScheme, prefix, "kingdoms", false, Arrays.asList("plants", "animals")))
+    assertThatThrownBy(() ->
+            createCatalog(
+                overlapScheme, prefix, "kingdoms", false, Arrays.asList("plants", "animals")))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("One or more of its locations overlaps with an existing catalog");
 
     // This AL overlaps with an initial AL
-    assertThatThrownBy(
-            () ->
-                createCatalog(overlapScheme, prefix, "plays", false, Arrays.asList("rent", "cats")))
+    assertThatThrownBy(() ->
+            createCatalog(overlapScheme, prefix, "plays", false, Arrays.asList("rent", "cats")))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("One or more of its locations overlaps with an existing catalog");
   }

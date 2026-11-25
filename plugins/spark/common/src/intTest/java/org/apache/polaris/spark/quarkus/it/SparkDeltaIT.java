@@ -26,7 +26,8 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
-import org.apache.polaris.service.it.env.IntegrationTestsHelper;
+import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
+import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.RowFactory;
@@ -38,11 +39,18 @@ import org.apache.spark.sql.types.StructType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 public class SparkDeltaIT extends SparkIntegrationBase {
   private String defaultNs;
   private String tableRootDir;
+
+  @Override
+  protected StorageConfigInfo getStorageConfigInfo() {
+    return FileStorageConfigInfo.builder()
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+        .setAllowedLocations(List.of(warehouseDir.toString()))
+        .build();
+  }
 
   private String getTableLocation(String tableName) {
     return String.format("%s/%s", tableRootDir, tableName);
@@ -53,14 +61,13 @@ public class SparkDeltaIT extends SparkIntegrationBase {
   }
 
   @BeforeEach
-  public void createDefaultResources(@TempDir Path tempDir) {
+  public void createDefaultResources() {
     spark.sparkContext().setLogLevel("WARN");
     defaultNs = generateName("delta");
     // create a default namespace
     sql("CREATE NAMESPACE %s", defaultNs);
     sql("USE NAMESPACE %s", defaultNs);
-    tableRootDir =
-        IntegrationTestsHelper.getTemporaryDirectory(tempDir).resolve(defaultNs).getPath();
+    tableRootDir = Path.of(warehouseDir).resolve(defaultNs).toString();
   }
 
   @AfterEach
@@ -168,6 +175,34 @@ public class SparkDeltaIT extends SparkIntegrationBase {
       }
     }
     assertThat(properties).contains("description=people table,test-owner=test-user");
+    sql("DROP TABLE %s", deltatb);
+  }
+
+  @Test
+  public void testDmlOperations() {
+    String deltatb = getTableNameWithRandomSuffix();
+    sql(
+        "CREATE TABLE %s (id INT, name STRING) USING DELTA LOCATION '%s'",
+        deltatb, getTableLocation(deltatb));
+    sql("INSERT INTO %s VALUES (1, 'anna'), (2, 'bob'), (3, 'carl')", deltatb);
+
+    // UPDATE is not covered: with IcebergSparkSessionExtensions loaded, Iceberg's row lineage
+    // rewrite rule fails with a scala.MatchError on any non-Iceberg V2 table, including Delta
+    // tables in spark_catalog.
+    sql("DELETE FROM %s WHERE id = 3", deltatb);
+    assertThat(sql("SELECT * FROM %s ORDER BY id", deltatb))
+        .containsExactly(new Object[] {1, "anna"}, new Object[] {2, "bob"});
+
+    sql(
+        "MERGE INTO %s t USING (SELECT 2 AS id, 'bobby' AS name UNION ALL SELECT 4, 'dan') s "
+            + "ON t.id = s.id "
+            + "WHEN MATCHED THEN UPDATE SET t.name = s.name "
+            + "WHEN NOT MATCHED THEN INSERT *",
+        deltatb);
+    assertThat(sql("SELECT * FROM %s ORDER BY id", deltatb))
+        .containsExactly(
+            new Object[] {1, "anna"}, new Object[] {2, "bobby"}, new Object[] {4, "dan"});
+
     sql("DROP TABLE %s", deltatb);
   }
 

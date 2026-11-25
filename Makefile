@@ -137,6 +137,15 @@ spec-bundle: ## Regenerate the bundled OpenAPI spec, license header included
 	@./spec/bundle.sh
 	@echo "--- Bundled OpenAPI spec regenerated ---"
 
+.PHONY: spec-bundle-verify
+spec-bundle-verify: spec-bundle ## Verify the bundled OpenAPI spec is up to date
+	@echo "--- Verifying bundled OpenAPI spec is up to date ---"
+	@if ! git diff --exit-code spec/generated/; then \
+		echo "ERROR: bundled OpenAPI spec is out of date. Please run 'make spec-bundle' and commit the changes."; \
+		exit 1; \
+	fi
+	@echo "--- Bundled OpenAPI spec is up to date ---"
+
 ##@ Polaris Client
 
 # Target to create the virtual environment directory
@@ -178,7 +187,7 @@ client-cleanup: ## Cleanup virtual environment, build artifacts, and generated f
 	@echo "Removing OpenAPI generator cache..."
 	@rm -rf $(PYTHON_CLIENT_DIR)/.openapi-generator
 	@echo "Removing Python cache files..."
-	@find $(PYTHON_CLIENT_DIR) -type d -name "__pycache__" -delete
+	@find $(PYTHON_CLIENT_DIR) -type d -name "__pycache__" -prune -exec rm -rf {} +
 	@echo "--- Client cleanup complete ---"
 
 .PHONY: client-setup-env
@@ -512,6 +521,6 @@ install-dependencies-brew: check-brew ## Install dependencies if not present via
 	done
 	@echo "--- All requested dependencies checked/installed ---"
 
-install-optional-dependencies-brew: DEPENDENCIES := $(OPTIONAL_DEPENDENCIES)
 .PHONY: install-optional-dependencies-brew
-install-optional-dependencies-brew: install-dependencies-brew ## Install optional dependencies if not present via Brew
+install-optional-dependencies-brew: ## Install optional dependencies if not present via Brew
+	@$(MAKE) --no-print-directory install-dependencies-brew DEPENDENCIES="$(OPTIONAL_DEPENDENCIES)"

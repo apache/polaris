@@ -128,7 +128,8 @@ Every realm passed with `--realm` must have a matching `--credential`, unless
 created with a randomly generated secret that is never shown, leaving the realm unusable; the
 command lists the realms that are missing credentials and exits without bootstrapping
 anything. This does not apply to `--credentials-file`, where the realms to bootstrap are taken
-from the file's own entries.
+from the file's own entries. Such a file must name at least one realm; one that names none is
+rejected rather than reported as a bootstrap that succeeded.
 
 For example, to bootstrap the `realm1` realm and create its root principal credential with the
 client ID `admin` and client secret `admin`, you can run the following commands:
@@ -265,6 +266,11 @@ you can adjust scan rates to reduce the load.
 The option for the reference and object scan rates are
 `polaris.persistence.nosql.maintenance.object-scan-rate-limit-per-second` and
 `polaris.persistence.nosql.maintenance.reference-scan-rate-limit-per-second`, both default to 'unlimited.'
+These limits also pace database reads during retained-object identification, including reads made
+by cleanup operations. Identification shares the limits across all realms, including the system realm,
+and counts requested references and object parts, including missing entries. Writes are not throttled.
+Large fetch batches remain intact and may cause temporary bursts; subsequent reads are delayed
+to maintain the configured average rate.
 It is safe to let the maintenance run for a long time, there is no runtime limit.
 Alternatively, you can run maintenance at high or the default unlimited scan rate during off-peak hours.
 

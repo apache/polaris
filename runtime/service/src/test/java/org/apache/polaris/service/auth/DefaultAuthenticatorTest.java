@@ -34,11 +34,13 @@ import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.quarkus.test.junit.QuarkusTest;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
+import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributePrefixes;
 import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
 import org.apache.polaris.core.collection.AttributeMap;
 import org.apache.polaris.core.collection.AttributeMap.AttributeKey;
@@ -368,6 +370,43 @@ public class DefaultAuthenticatorTest {
   }
 
   @Test
+  void testPrincipalRoleAllTakesPrecedenceOverNamedRoleInCredentials() {
+    // Given: credentials contain both PRINCIPAL_ROLE:ALL and a specific role name
+    PolarisCredential credentials =
+        PolarisCredential.of(
+            null,
+            PRINCIPAL_NAME,
+            Set.of(
+                DefaultAuthenticator.PRINCIPAL_ROLE_ALL,
+                DefaultAuthenticator.PRINCIPAL_ROLE_PREFIX + PRINCIPAL_ROLE1));
+
+    // When: authenticating the principal
+    PolarisPrincipal result = authenticator.authenticate(identityFor(credentials));
+
+    // Then: ALL wins over the named role and every granted role is activated
+    assertInternalPrincipal(result, principalEntity, PRINCIPAL_ROLE1, PRINCIPAL_ROLE2);
+    assertThat(
+            result.getAttributes().get(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY))
+        .isTrue();
+  }
+
+  @Test
+  void testOnlyUnprefixedRolesInCredentialsYieldsNoActiveRoles() {
+    // Given: credentials whose scopes lack the PRINCIPAL_ROLE: prefix (invalid for activation)
+    PolarisCredential credentials =
+        PolarisCredential.of(null, PRINCIPAL_NAME, Set.of("unprefixed-role", "other-role"));
+
+    // When: authenticating the principal
+    PolarisPrincipal result = authenticator.authenticate(identityFor(credentials));
+
+    // Then: no roles are activated even though the principal has grants in the metastore
+    assertInternalPrincipal(result, principalEntity);
+    assertThat(
+            result.getAttributes().get(PolarisPrincipalAttributes.PRINCIPAL_ROLE_ALL_ATTRIBUTE_KEY))
+        .isFalse();
+  }
+
+  @Test
   void testEmptyRolesRequestedReturnsEmptyRoles() {
     // Given: credentials with empty roles set
     PolarisCredential credentials =
@@ -572,11 +611,47 @@ public class DefaultAuthenticatorTest {
     Mockito.verifyNoInteractions(metaStoreManagerSpy);
   }
 
+  @Test
+  void testPrincipalEntityAttributeContainsUserProperties() {
+    // Given: a principal with user-defined properties
+    PrincipalEntity entity =
+        createPrincipal("principal-with-properties", Map.of("department", "finance"));
+    PolarisCredential credentials =
+        PolarisCredential.of(
+            null, entity.getName(), Set.of(DefaultAuthenticator.PRINCIPAL_ROLE_ALL));
+
+    // When: authenticating the principal
+    PolarisPrincipal result = authenticator.authenticate(identityFor(credentials));
+
+    // Then: the principal entity attribute must include the user-defined properties, but
+    // DefaultAuthenticator does not project authorizer-facing namespaced keys.
+    PrincipalEntity entityAttr =
+        result
+            .getAttributes()
+            .getOptional(PolarisPrincipalAttributes.PRINCIPAL_ENTITY_ATTRIBUTE_KEY)
+            .orElseThrow();
+    assertThat(entityAttr.getPropertiesAsMap()).containsEntry("department", "finance");
+    assertThat(
+            result
+                .getAttributes()
+                .containsKey(
+                    PolarisPrincipalAttributePrefixes.stringKey(
+                        PolarisPrincipalAttributePrefixes.USER_PREFIX + "department")))
+        .isFalse();
+    assertThat(result.getAttributes().containsKey(new AttributeKey<>("department"))).isFalse();
+  }
+
   private PrincipalEntity createPrincipal(String name, String... roles) {
+    return createPrincipal(name, Map.of(), roles);
+  }
+
+  private PrincipalEntity createPrincipal(
+      String name, Map<String, String> properties, String... roles) {
 
     PrincipalWithCredentialsCredentials credentials =
         newAdminService()
-            .createPrincipal(new PrincipalEntity.Builder().setName(name).build())
+            .createPrincipal(
+                new PrincipalEntity.Builder().setName(name).setProperties(properties).build())
             .getCredentials();
 
     metaStoreManager.rotatePrincipalSecrets(

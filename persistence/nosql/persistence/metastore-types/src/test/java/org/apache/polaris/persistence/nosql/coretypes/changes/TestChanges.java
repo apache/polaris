@@ -21,8 +21,10 @@ package org.apache.polaris.persistence.nosql.coretypes.changes;
 
 import static org.apache.polaris.persistence.nosql.api.index.IndexKey.key;
 import static org.apache.polaris.persistence.nosql.coretypes.changes.Change.CHANGE_SERIALIZER;
+import static org.apache.polaris.persistence.varint.VarInt.readVarInt;
 
 import java.nio.ByteBuffer;
+import java.util.Map;
 import java.util.stream.Stream;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
@@ -31,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @ExtendWith(SoftAssertionsExtension.class)
 public class TestChanges {
@@ -82,7 +85,79 @@ public class TestChanges {
         ChangeRemove.builder().build(),
         ChangeRename.builder().renameFrom(key("foo")).build(),
         ChangeRename.builder().renameFrom(key(42L)).build(),
-        ChangeUpdate.builder().build());
+        ChangeUpdate.builder().build(),
+        ImmutableGenericChange.of(ChangeType.valueOf("future"), Map.of("value", "payload")));
+  }
+
+  @ParameterizedTest
+  @MethodSource("changeSerialization")
+  void encodedBytesMatchMapper(Change change) {
+    assertEncodedBytesMatchMapper(change);
+  }
+
+  @Test
+  void knownTypeOnGenericChangeRetainsAttributes() {
+    assertEncodedBytesMatchMapper(
+        ImmutableGenericChange.of(ChangeType.ADD, Map.of("extra", "preserve me")));
+  }
+
+  private void assertEncodedBytesMatchMapper(Change change) {
+    var expected = ChangeSerializer.MAPPER.writeValueAsBytes(change);
+    var buffer = ByteBuffer.allocate(CHANGE_SERIALIZER.serializedSize(change));
+    CHANGE_SERIALIZER.serialize(change, buffer).flip();
+    soft.assertThat(readVarInt(buffer)).isEqualTo(expected.length);
+    var actual = new byte[buffer.remaining()];
+    buffer.get(actual);
+    soft.assertThat(actual).containsExactly(expected);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"HEAP", "SLICED", "READ_ONLY", "DIRECT"})
+  void nullProbePreservesBufferState(String kind) {
+    var buffer = kind.equals("DIRECT") ? ByteBuffer.allocateDirect(128) : ByteBuffer.allocate(128);
+    if (kind.equals("SLICED")) {
+      buffer = buffer.position(7).slice();
+    }
+    buffer.position(3);
+    CHANGE_SERIALIZER.serialize(null, buffer).put((byte) 42).flip().position(3);
+    if (kind.equals("READ_ONLY")) {
+      buffer = buffer.asReadOnlyBuffer();
+    }
+    var position = buffer.position();
+    var limit = buffer.limit();
+    soft.assertThat(CHANGE_SERIALIZER.isNullSerialized(buffer)).isTrue();
+    soft.assertThat(buffer.position()).isEqualTo(position);
+    soft.assertThat(buffer.limit()).isEqualTo(limit);
+    CHANGE_SERIALIZER.skip(buffer);
+    soft.assertThat(buffer.get()).isEqualTo((byte) 42);
+  }
+
+  @Test
+  void nullProbeAcceptsOverlongLength() {
+    var bytes = ChangeSerializer.MAPPER.writeValueAsBytes(null);
+    soft.assertThat(bytes.length).isLessThan(128);
+    var buffer = ByteBuffer.allocate(128).put((byte) (bytes.length | 0x80)).put((byte) 0);
+    buffer.put(bytes).put((byte) 42).flip();
+    soft.assertThat(CHANGE_SERIALIZER.isNullSerialized(buffer)).isTrue();
+    soft.assertThat(buffer.position()).isZero();
+    soft.assertThat(CHANGE_SERIALIZER.deserialize(buffer)).isNull();
+    soft.assertThat(buffer.get()).isEqualTo((byte) 42);
+  }
+
+  @Test
+  void nullProbeComparesEntirePayload() {
+    var encoded = ByteBuffer.allocate(128);
+    CHANGE_SERIALIZER.serialize(null, encoded).flip();
+    var length = readVarInt(encoded);
+    var payloadOffset = encoded.position();
+    for (int i = 0; i < length; i++) {
+      var index = payloadOffset + i;
+      var original = encoded.get(index);
+      encoded.put(index, (byte) (original ^ 1)).position(0);
+      soft.assertThat(CHANGE_SERIALIZER.isNullSerialized(encoded)).isFalse();
+      soft.assertThat(encoded.position()).isZero();
+      encoded.put(index, original);
+    }
   }
 
   @Test

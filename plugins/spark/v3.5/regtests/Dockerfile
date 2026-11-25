@@ -17,7 +17,7 @@
 # under the License.
 #
 
-FROM docker.io/apache/spark:3.5.6-java17
+FROM docker.io/apache/spark:3.5.9-java17
 
 ARG POLARIS_HOST=polaris \
     CURRENT_SCALA_VERSION=2.12
@@ -32,6 +32,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     mkdir -p /home/spark /tmp/polaris-regtests /opt/spark/conf && \
     chown -R spark:spark /home/spark /tmp/polaris-regtests && \
+    usermod -d /home/spark spark && \
     chmod -R 777 /opt/spark/conf
 
 WORKDIR /home/spark/polaris

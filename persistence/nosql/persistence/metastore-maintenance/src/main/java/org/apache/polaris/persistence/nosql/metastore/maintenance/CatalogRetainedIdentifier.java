@@ -167,124 +167,116 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
         collector);
 
     LOGGER.info("Identifying policy mappings...");
-    ignoreReferenceNotFound(
-        () -> {
-          var policyMappingsContinue =
-              new CelReferenceContinuePredicate<PolicyMappingsObj>(
-                  POLICY_MAPPINGS_REF_NAME,
-                  persistence,
-                  catalogsMaintenanceConfig
-                      .catalogPoliciesRetain()
-                      .orElse(DEFAULT_CATALOG_POLICIES_RETAIN));
-          // PolicyMappings are stored _INLINE_
-          collector.refRetain(
+    ignoreReferenceNotFound(() -> {
+      var policyMappingsContinue =
+          new CelReferenceContinuePredicate<PolicyMappingsObj>(
               POLICY_MAPPINGS_REF_NAME,
-              PolicyMappingsObj.class,
-              policyMappingsContinue,
-              policyMappingsObj ->
-                  policyMappingsObj
-                      .policyMappings()
-                      .indexForRead(collector.realmPersistence(), POLICY_MAPPING_SERIALIZER)
-                      .forEach(
-                          e -> {
-                            var policyMapping = e.value();
-                            policyMapping.externalMapping().ifPresent(collector::retainObject);
-                          }));
-        });
+              persistence,
+              catalogsMaintenanceConfig
+                  .catalogPoliciesRetain()
+                  .orElse(DEFAULT_CATALOG_POLICIES_RETAIN));
+      // PolicyMappings are stored _INLINE_
+      collector.refRetain(
+          POLICY_MAPPINGS_REF_NAME,
+          PolicyMappingsObj.class,
+          policyMappingsContinue,
+          policyMappingsObj ->
+              policyMappingsObj
+                  .policyMappings()
+                  .indexForRead(collector.realmPersistence(), POLICY_MAPPING_SERIALIZER)
+                  .forEach(e -> {
+                    var policyMapping = e.value();
+                    policyMapping.externalMapping().ifPresent(collector::retainObject);
+                  }));
+    });
 
     // per catalog
 
     LOGGER.info("Identifying catalogs...");
-    ignoreReferenceNotFound(
-        () -> {
-          var catalogsHistoryContinue =
-              new CelReferenceContinuePredicate<CatalogsObj>(
-                  CATALOGS_REF_NAME,
+    ignoreReferenceNotFound(() -> {
+      var catalogsHistoryContinue =
+          new CelReferenceContinuePredicate<CatalogsObj>(
+              CATALOGS_REF_NAME,
+              persistence,
+              catalogsMaintenanceConfig
+                  .catalogsHistoryRetain()
+                  .orElse(DEFAULT_CATALOGS_HISTORY_RETAIN));
+      var currentCatalogs = new ConcurrentHashMap<IndexKey, ObjRef>();
+      collector.refRetain(
+          CATALOGS_REF_NAME,
+          CatalogsObj.class,
+          catalogsHistoryContinue,
+          catalogs -> {
+            var allCatalogsIndex =
+                catalogs.nameToObjRef().indexForRead(persistence, OBJ_REF_SERIALIZER);
+            for (var entry : allCatalogsIndex) {
+              var catalogKey = entry.key();
+              var catalogObjRef = entry.value();
+              currentCatalogs.putIfAbsent(catalogKey, catalogObjRef);
+            }
+            collector.indexRetain(catalogs.stableIdToName());
+          });
+
+      var catalogObjs =
+          persistence.fetchMany(CatalogObj.class, currentCatalogs.values().toArray(ObjRef[]::new));
+      for (var catalogObj : catalogObjs) {
+        if (catalogObj == null) {
+          // just in case...
+          continue;
+        }
+
+        perCatalogRoles(
+            catalogObj,
+            catalogsMaintenanceConfig.catalogRolesRetain().orElse(DEFAULT_CATALOG_ROLES_RETAIN),
+            collector,
+            catalogRolesObj -> collector.indexRetain(catalogRolesObj.stableIdToName()));
+
+        LOGGER.info(
+            "Identifying catalog state for catalog '{}' ({})...",
+            catalogObj.name(),
+            catalogObj.stableId());
+        ignoreReferenceNotFound(() -> {
+          var catalogStateRefName = format(CATALOG_STATE_REF_NAME_PATTERN, catalogObj.stableId());
+          var catalogStateContinue =
+              new CelReferenceContinuePredicate<CatalogStateObj>(
+                  catalogStateRefName,
                   persistence,
                   catalogsMaintenanceConfig
-                      .catalogsHistoryRetain()
-                      .orElse(DEFAULT_CATALOGS_HISTORY_RETAIN));
-          var currentCatalogs = new ConcurrentHashMap<IndexKey, ObjRef>();
-          collector.refRetain(
-              CATALOGS_REF_NAME,
-              CatalogsObj.class,
-              catalogsHistoryContinue,
-              catalogs -> {
-                var allCatalogsIndex =
-                    catalogs.nameToObjRef().indexForRead(persistence, OBJ_REF_SERIALIZER);
-                for (var entry : allCatalogsIndex) {
-                  var catalogKey = entry.key();
-                  var catalogObjRef = entry.value();
-                  currentCatalogs.putIfAbsent(catalogKey, catalogObjRef);
+                      .catalogStateRetain()
+                      .orElse(DEFAULT_CATALOG_STATE_RETAIN));
+          collector.refRetainIndexToSingleObj(
+              catalogStateRefName,
+              CatalogStateObj.class,
+              catalogStateContinue,
+              CatalogStateObj::nameToObjRef,
+              new RetainedCollector.ProgressListener<>() {
+                public static final long PROGRESS_LOG_INTERVAL_MS = 2_000L;
+                private long commit;
+                private long nextLog =
+                    monotonicClock.currentTimeMillis() + PROGRESS_LOG_INTERVAL_MS;
+
+                @Override
+                public void onCommit(CatalogStateObj catalogStateObj, long commit) {
+                  collector.indexRetain(catalogStateObj.stableIdToName());
+                  catalogStateObj.locations().ifPresent(collector::indexRetain);
+                  catalogStateObj.changes().ifPresent(collector::indexRetain);
+                  this.commit = commit;
                 }
-                collector.indexRetain(catalogs.stableIdToName());
-              });
 
-          var catalogObjs =
-              persistence.fetchMany(
-                  CatalogObj.class, currentCatalogs.values().toArray(ObjRef[]::new));
-          for (var catalogObj : catalogObjs) {
-            if (catalogObj == null) {
-              // just in case...
-              continue;
-            }
-
-            perCatalogRoles(
-                catalogObj,
-                catalogsMaintenanceConfig.catalogRolesRetain().orElse(DEFAULT_CATALOG_ROLES_RETAIN),
-                collector,
-                catalogRolesObj -> collector.indexRetain(catalogRolesObj.stableIdToName()));
-
-            LOGGER.info(
-                "Identifying catalog state for catalog '{}' ({})...",
-                catalogObj.name(),
-                catalogObj.stableId());
-            ignoreReferenceNotFound(
-                () -> {
-                  var catalogStateRefName =
-                      format(CATALOG_STATE_REF_NAME_PATTERN, catalogObj.stableId());
-                  var catalogStateContinue =
-                      new CelReferenceContinuePredicate<CatalogStateObj>(
-                          catalogStateRefName,
-                          persistence,
-                          catalogsMaintenanceConfig
-                              .catalogStateRetain()
-                              .orElse(DEFAULT_CATALOG_STATE_RETAIN));
-                  collector.refRetainIndexToSingleObj(
-                      catalogStateRefName,
-                      CatalogStateObj.class,
-                      catalogStateContinue,
-                      CatalogStateObj::nameToObjRef,
-                      new RetainedCollector.ProgressListener<>() {
-                        public static final long PROGRESS_LOG_INTERVAL_MS = 2_000L;
-                        private long commit;
-                        private long nextLog =
-                            monotonicClock.currentTimeMillis() + PROGRESS_LOG_INTERVAL_MS;
-
-                        @Override
-                        public void onCommit(CatalogStateObj catalogStateObj, long commit) {
-                          collector.indexRetain(catalogStateObj.stableIdToName());
-                          catalogStateObj.locations().ifPresent(collector::indexRetain);
-                          catalogStateObj.changes().ifPresent(collector::indexRetain);
-                          this.commit = commit;
-                        }
-
-                        @Override
-                        public void onIndexEntry(long inCommit, long total) {
-                          var now = monotonicClock.currentTimeMillis();
-                          if (now >= nextLog) {
-                            LOGGER.info(
-                                "... {} total index entries processed so far, at commit {}",
-                                total,
-                                commit);
-                            nextLog = now + PROGRESS_LOG_INTERVAL_MS;
-                          }
-                        }
-                      },
-                      x -> {});
-                });
-          }
+                @Override
+                public void onIndexEntry(long inCommit, long total) {
+                  var now = monotonicClock.currentTimeMillis();
+                  if (now >= nextLog) {
+                    LOGGER.info(
+                        "... {} total index entries processed so far, at commit {}", total, commit);
+                    nextLog = now + PROGRESS_LOG_INTERVAL_MS;
+                  }
+                }
+              },
+              x -> {});
         });
+      }
+    });
 
     return true;
   }
@@ -309,14 +301,13 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
       RetainedCollector collector) {
 
     LOGGER.info("Identifying {}...", what);
-    ignoreReferenceNotFound(
-        () -> {
-          var persistence = collector.realmPersistence();
-          var historyContinue =
-              new CelReferenceContinuePredicate<O>(refName, persistence, celRetainExpr);
-          collector.refRetainIndexToSingleObj(
-              refName, objClazz, historyContinue, indexContainerFunction);
-        });
+    ignoreReferenceNotFound(() -> {
+      var persistence = collector.realmPersistence();
+      var historyContinue =
+          new CelReferenceContinuePredicate<O>(refName, persistence, celRetainExpr);
+      collector.refRetainIndexToSingleObj(
+          refName, objClazz, historyContinue, indexContainerFunction);
+    });
   }
 
   @SuppressWarnings("LoggingSimilarMessage")
@@ -328,24 +319,23 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
       RetainedCollector collector) {
 
     LOGGER.info("Identifying {}...", what);
-    ignoreReferenceNotFound(
-        () -> {
-          var persistence = collector.realmPersistence();
-          var historyContinue =
-              new CelReferenceContinuePredicate<O>(refName, persistence, celRetainExpr);
-          collector.refRetainIndexToSingleObj(
-              refName,
-              objClazz,
-              historyContinue,
-              ContainerObj::nameToObjRef,
-              containerObj -> {
-                collector.indexRetain(containerObj.stableIdToName());
-                // PrincipalsObj also keeps a by-client-id index that is never walked above.
-                if (containerObj instanceof PrincipalsObj principalsObj) {
-                  collector.indexRetain(principalsObj.byClientId());
-                }
-              });
-        });
+    ignoreReferenceNotFound(() -> {
+      var persistence = collector.realmPersistence();
+      var historyContinue =
+          new CelReferenceContinuePredicate<O>(refName, persistence, celRetainExpr);
+      collector.refRetainIndexToSingleObj(
+          refName,
+          objClazz,
+          historyContinue,
+          ContainerObj::nameToObjRef,
+          containerObj -> {
+            collector.indexRetain(containerObj.stableIdToName());
+            // PrincipalsObj also keeps a by-client-id index that is never walked above.
+            if (containerObj instanceof PrincipalsObj principalsObj) {
+              collector.indexRetain(principalsObj.byClientId());
+            }
+          });
+    });
   }
 
   private void perCatalogRoles(
@@ -358,21 +348,18 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
         "catalog roles",
         catalogObj.name(),
         catalogObj.stableId());
-    ignoreReferenceNotFound(
-        () -> {
-          var persistence = collector.realmPersistence();
-          var refName =
-              format(CatalogRolesObj.CATALOG_ROLES_REF_NAME_PATTERN, catalogObj.stableId());
-          var historyContinue =
-              new CelReferenceContinuePredicate<CatalogRolesObj>(
-                  refName, persistence, celRetainExpr);
-          collector.refRetainIndexToSingleObj(
-              refName,
-              CatalogRolesObj.class,
-              historyContinue,
-              CatalogRolesObj::nameToObjRef,
-              objConsumer);
-        });
+    ignoreReferenceNotFound(() -> {
+      var persistence = collector.realmPersistence();
+      var refName = format(CatalogRolesObj.CATALOG_ROLES_REF_NAME_PATTERN, catalogObj.stableId());
+      var historyContinue =
+          new CelReferenceContinuePredicate<CatalogRolesObj>(refName, persistence, celRetainExpr);
+      collector.refRetainIndexToSingleObj(
+          refName,
+          CatalogRolesObj.class,
+          historyContinue,
+          CatalogRolesObj::nameToObjRef,
+          objConsumer);
+    });
   }
 
   void ignoreReferenceNotFound(Runnable runnable) {
@@ -385,35 +372,33 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
 
   private void cleanupStaleGrantRecords(Persistence persistence, EntityLookupCache entityLookup) {
     LOGGER.info("Cleaning stale grant records...");
-    ignoreReferenceNotFound(
-        () -> {
-          IndexKey continuation = null;
-          while (true) {
-            var refObj =
-                persistence.fetchReferenceHead(REALM_GRANTS_REF_NAME, RealmGrantsObj.class);
-            if (refObj.isEmpty()) {
-              return;
-            }
+    ignoreReferenceNotFound(() -> {
+      IndexKey continuation = null;
+      while (true) {
+        var refObj = persistence.fetchReferenceHead(REALM_GRANTS_REF_NAME, RealmGrantsObj.class);
+        if (refObj.isEmpty()) {
+          return;
+        }
 
-            var batch =
-                scanStaleGrantRecords(
-                    persistence,
-                    refObj.get().acls().indexForRead(persistence, OBJ_REF_SERIALIZER),
-                    continuation,
-                    entityLookup);
-            if (batch.candidates().isEmpty()) {
-              return;
-            }
+        var batch =
+            scanStaleGrantRecords(
+                persistence,
+                refObj.get().acls().indexForRead(persistence, OBJ_REF_SERIALIZER),
+                continuation,
+                entityLookup);
+        if (batch.candidates().isEmpty()) {
+          return;
+        }
 
-            var cleaned = commitGrantCleanup(persistence, batch.candidates());
-            LOGGER.debug("Removed {} stale grant ACL entries in this batch", cleaned);
+        var cleaned = commitGrantCleanup(persistence, batch.candidates());
+        LOGGER.debug("Removed {} stale grant ACL entries in this batch", cleaned);
 
-            if (batch.exhausted()) {
-              return;
-            }
-            continuation = batch.lastScannedKey();
-          }
-        });
+        if (batch.exhausted()) {
+          return;
+        }
+        continuation = batch.lastScannedKey();
+      }
+    });
   }
 
   private GrantCleanupBatch scanStaleGrantRecords(
@@ -447,13 +432,12 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
         var staleRoleIds = new ArrayList<String>();
         aclObj
             .acl()
-            .forEach(
-                (roleId, entry) -> {
-                  var role = GrantTriplet.fromRoleName(roleId);
-                  if (!entityLookup.entityExists(role.catalogId(), role.id(), role.typeCode())) {
-                    staleRoleIds.add(roleId);
-                  }
-                });
+            .forEach((roleId, entry) -> {
+              var role = GrantTriplet.fromRoleName(roleId);
+              if (!entityLookup.entityExists(role.catalogId(), role.id(), role.typeCode())) {
+                staleRoleIds.add(roleId);
+              }
+            });
         if (!staleRoleIds.isEmpty()) {
           candidates.add(new GrantCleanupCandidate(aclKey, staleRoleIds));
         }
@@ -471,105 +455,100 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
     return persistence
         .createCommitter(REALM_GRANTS_REF_NAME, RealmGrantsObj.class, Integer.class)
         .synchronizingLocally()
-        .commitRuntimeException(
-            (state, refObjSupplier) -> {
-              var refObj = refObjSupplier.get();
-              if (refObj.isEmpty()) {
-                return state.noCommit(0);
-              }
+        .commitRuntimeException((state, refObjSupplier) -> {
+          var refObj = refObjSupplier.get();
+          if (refObj.isEmpty()) {
+            return state.noCommit(0);
+          }
 
-              var aclIndex =
-                  refObj.get().acls().asUpdatableIndex(state.persistence(), OBJ_REF_SERIALIZER);
-              var cleaned = 0;
-              for (var candidate : grantCleanupCandidates) {
-                if (candidate.removeAcl()) {
-                  if (aclIndex.remove(candidate.aclKey())) {
-                    cleaned++;
-                  }
-                  continue;
-                }
-
-                var aclRef = aclIndex.get(candidate.aclKey());
-                if (aclRef == null) {
-                  continue;
-                }
-
-                var currentAclObj = state.persistence().fetch(aclRef, AclObj.class);
-                if (currentAclObj == null) {
-                  continue;
-                }
-
-                var aclBuilder = privileges.newAclBuilder().from(currentAclObj.acl());
-                candidate.staleRoleIds().forEach(aclBuilder::removeEntry);
-                var updatedAcl = aclBuilder.build();
-                if (currentAclObj.acl().equals(updatedAcl)) {
-                  continue;
-                }
-
-                if (updatedAcl.isEmpty()) {
-                  if (aclIndex.remove(candidate.aclKey())) {
-                    cleaned++;
-                  }
-                  continue;
-                }
-
-                AclObj updatedAclObj =
-                    AclObj.builder()
-                        .from(currentAclObj)
-                        .id(state.persistence().generateId())
-                        .acl(updatedAcl)
-                        .build();
-                updatedAclObj =
-                    state.writeOrReplace(
-                        "acl-" + currentAclObj.securableId(), updatedAclObj, AclObj.class);
-                aclIndex.put(candidate.aclKey(), objRef(updatedAclObj));
+          var aclIndex =
+              refObj.get().acls().asUpdatableIndex(state.persistence(), OBJ_REF_SERIALIZER);
+          var cleaned = 0;
+          for (var candidate : grantCleanupCandidates) {
+            if (candidate.removeAcl()) {
+              if (aclIndex.remove(candidate.aclKey())) {
                 cleaned++;
               }
+              continue;
+            }
 
-              if (cleaned == 0) {
-                return state.noCommit(0);
+            var aclRef = aclIndex.get(candidate.aclKey());
+            if (aclRef == null) {
+              continue;
+            }
+
+            var currentAclObj = state.persistence().fetch(aclRef, AclObj.class);
+            if (currentAclObj == null) {
+              continue;
+            }
+
+            var aclBuilder = privileges.newAclBuilder().from(currentAclObj.acl());
+            candidate.staleRoleIds().forEach(aclBuilder::removeEntry);
+            var updatedAcl = aclBuilder.build();
+            if (currentAclObj.acl().equals(updatedAcl)) {
+              continue;
+            }
+
+            if (updatedAcl.isEmpty()) {
+              if (aclIndex.remove(candidate.aclKey())) {
+                cleaned++;
               }
+              continue;
+            }
 
-              var builder = RealmGrantsObj.builder().from(refObj.get());
-              builder.acls(aclIndex.toIndexed("idx-sec-", state::writeOrReplace));
-              return state.commitResult(cleaned, builder, refObj);
-            })
+            AclObj updatedAclObj =
+                AclObj.builder()
+                    .from(currentAclObj)
+                    .id(state.persistence().generateId())
+                    .acl(updatedAcl)
+                    .build();
+            updatedAclObj =
+                state.writeOrReplace(
+                    "acl-" + currentAclObj.securableId(), updatedAclObj, AclObj.class);
+            aclIndex.put(candidate.aclKey(), objRef(updatedAclObj));
+            cleaned++;
+          }
+
+          if (cleaned == 0) {
+            return state.noCommit(0);
+          }
+
+          var builder = RealmGrantsObj.builder().from(refObj.get());
+          builder.acls(aclIndex.toIndexed("idx-sec-", state::writeOrReplace));
+          return state.commitResult(cleaned, builder, refObj);
+        })
         .orElse(0);
   }
 
   private void cleanupStalePolicyMappings(Persistence persistence, EntityLookupCache entityLookup) {
     LOGGER.info("Cleaning stale policy mappings...");
-    ignoreReferenceNotFound(
-        () -> {
-          IndexKey continuation = null;
-          while (true) {
-            var refObj =
-                persistence.fetchReferenceHead(POLICY_MAPPINGS_REF_NAME, PolicyMappingsObj.class);
-            if (refObj.isEmpty()) {
-              return;
-            }
+    ignoreReferenceNotFound(() -> {
+      IndexKey continuation = null;
+      while (true) {
+        var refObj =
+            persistence.fetchReferenceHead(POLICY_MAPPINGS_REF_NAME, PolicyMappingsObj.class);
+        if (refObj.isEmpty()) {
+          return;
+        }
 
-            var batch =
-                scanStalePolicyMappings(
-                    refObj
-                        .get()
-                        .policyMappings()
-                        .indexForRead(persistence, POLICY_MAPPING_SERIALIZER),
-                    continuation,
-                    entityLookup);
-            if (batch.candidates().isEmpty()) {
-              return;
-            }
+        var batch =
+            scanStalePolicyMappings(
+                refObj.get().policyMappings().indexForRead(persistence, POLICY_MAPPING_SERIALIZER),
+                continuation,
+                entityLookup);
+        if (batch.candidates().isEmpty()) {
+          return;
+        }
 
-            var cleaned = commitPolicyMappingsCleanup(persistence, batch.candidates());
-            LOGGER.debug("Removed {} stale policy mappings in this batch", cleaned);
+        var cleaned = commitPolicyMappingsCleanup(persistence, batch.candidates());
+        LOGGER.debug("Removed {} stale policy mappings in this batch", cleaned);
 
-            if (batch.exhausted()) {
-              return;
-            }
-            continuation = batch.lastScannedKey();
-          }
-        });
+        if (batch.exhausted()) {
+          return;
+        }
+        continuation = batch.lastScannedKey();
+      }
+    });
   }
 
   private PolicyMappingsCleanupBatch scanStalePolicyMappings(
@@ -620,37 +599,36 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
     return persistence
         .createCommitter(POLICY_MAPPINGS_REF_NAME, PolicyMappingsObj.class, Integer.class)
         .synchronizingLocally()
-        .commitRuntimeException(
-            (state, refObjSupplier) -> {
-              var refObj = refObjSupplier.get();
-              if (refObj.isEmpty()) {
-                return state.noCommit(0);
-              }
+        .commitRuntimeException((state, refObjSupplier) -> {
+          var refObj = refObjSupplier.get();
+          if (refObj.isEmpty()) {
+            return state.noCommit(0);
+          }
 
-              var mappingsIndex =
-                  refObj
-                      .get()
-                      .policyMappings()
-                      .asUpdatableIndex(state.persistence(), POLICY_MAPPING_SERIALIZER);
-              var changed = false;
-              var cleaned = 0;
-              for (var keyByEntity : staleMappings) {
-                var removedForward = mappingsIndex.remove(keyByEntity.toIndexKey());
-                var removedReverse = mappingsIndex.remove(keyByEntity.reverse().toIndexKey());
-                if (removedForward || removedReverse) {
-                  changed = true;
-                  cleaned++;
-                }
-              }
+          var mappingsIndex =
+              refObj
+                  .get()
+                  .policyMappings()
+                  .asUpdatableIndex(state.persistence(), POLICY_MAPPING_SERIALIZER);
+          var changed = false;
+          var cleaned = 0;
+          for (var keyByEntity : staleMappings) {
+            var removedForward = mappingsIndex.remove(keyByEntity.toIndexKey());
+            var removedReverse = mappingsIndex.remove(keyByEntity.reverse().toIndexKey());
+            if (removedForward || removedReverse) {
+              changed = true;
+              cleaned++;
+            }
+          }
 
-              if (!changed) {
-                return state.noCommit(0);
-              }
+          if (!changed) {
+            return state.noCommit(0);
+          }
 
-              var builder = PolicyMappingsObj.builder().from(refObj.get());
-              builder.policyMappings(mappingsIndex.toIndexed("mappings", state::writeOrReplace));
-              return state.commitResult(cleaned, builder, refObj);
-            })
+          var builder = PolicyMappingsObj.builder().from(refObj.get());
+          builder.policyMappings(mappingsIndex.toIndexed("mappings", state::writeOrReplace));
+          return state.commitResult(cleaned, builder, refObj);
+        })
         .orElse(0);
   }
 
@@ -718,11 +696,8 @@ class CatalogRetainedIdentifier implements PerRealmRetainedIdentifier {
             try {
               return persistence
                   .fetchReferenceHead(k.refName(), k.containerClass())
-                  .map(
-                      container ->
-                          container
-                              .stableIdToName()
-                              .indexForRead(persistence, INDEX_KEY_SERIALIZER));
+                  .map(container ->
+                      container.stableIdToName().indexForRead(persistence, INDEX_KEY_SERIALIZER));
             } catch (ReferenceNotFoundException e) {
               return Optional.empty();
             }

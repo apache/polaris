@@ -109,7 +109,12 @@ spark = SparkSession.builder
 Similar as the CLI command, make sure the corresponding fields are replaced correctly.
 
 ### Create tables with Spark
-After Spark is started, you can use it to create and access Iceberg and Delta tables. For example:
+After Spark is started, you can use it to create and access Iceberg and Delta tables.
+
+The example below assumes FILE storage is enabled and the Polaris catalog's default base location
+and allowed location are both `file:///tmp/var/delta_tables`, with namespaces using their default
+locations. Adjust the table location to match your catalog and namespace configuration.
+
 ```python
 spark.sql("USE polaris")
 spark.sql("CREATE NAMESPACE IF NOT EXISTS DELTA_NS")
@@ -117,7 +122,7 @@ spark.sql("CREATE NAMESPACE IF NOT EXISTS DELTA_NS.PUBLIC")
 spark.sql("USE NAMESPACE DELTA_NS.PUBLIC")
 spark.sql("""CREATE TABLE IF NOT EXISTS PEOPLE (
     id int, name string)
-USING delta LOCATION 'file:///tmp/var/delta_tables/people';
+USING delta LOCATION 'file:///tmp/var/delta_tables/DELTA_NS/PUBLIC/people';
 """)
 ```
 
@@ -139,3 +144,6 @@ The following describes the current limitations of the Polaris Spark client:
 2. Creating a Delta table without an explicit location is not supported.
 3. Renaming a Delta table is not supported.
 4. ALTER TABLE ... SET LOCATION is not supported for DELTA table.
+5. Delta table locations follow the [Generic Table location restrictions]({{% ref "generic-table.md" %}}):
+   they must be within the catalog's allowed locations and, by default, the parent namespace location.
+   The catalog property `polaris.config.allow.unstructured.table.location=true` removes only the namespace-location constraint.

@@ -197,7 +197,7 @@ public class TableUpdateNotification {
 
     public final Builder tableUuid(String tableUuid) {
       if (tableUuid == null) {
-        throw new IllegalArgumentException("timestamp can't be null");
+        throw new IllegalArgumentException("tableUuid can't be null");
       }
       this.tableUuid = tableUuid;
       return this;

@@ -18,15 +18,19 @@
  */
 package org.apache.polaris.service.credentials.connection;
 
+import static org.apache.polaris.core.config.FeatureConfiguration.RESOLVE_CREDENTIALS_BY_STORAGE_NAME;
 import static org.apache.polaris.service.credentials.TestObjectFactory.createConnectionConfig;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.net.URI;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.RealmConfigImpl;
 import org.apache.polaris.core.connection.SigV4AuthenticationParametersDpo;
 import org.apache.polaris.core.connection.iceberg.IcebergRestConnectionConfigInfoDpo;
 import org.apache.polaris.core.credentials.connection.CatalogAccessProperty;
@@ -37,6 +41,7 @@ import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.secrets.SecretReference;
 import org.apache.polaris.core.storage.aws.StsClientProvider;
+import org.apache.polaris.service.storage.StorageConfiguration;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -55,12 +60,33 @@ public class SigV4ConnectionCredentialVendorTest {
   private SigV4ConnectionCredentialVendor vendor;
   private StsClient mockStsClient;
   private ServiceIdentityProvider mockServiceIdentityProvider;
+  private StorageConfiguration mockStorageConfiguration;
   private AtomicReference<StsClientProvider.StsDestination> capturedDestination;
+
+  private static RealmConfig realmConfig(Map<String, Object> overrides) {
+    return new RealmConfigImpl((rc, name) -> overrides.get(name), () -> "test-realm");
+  }
+
+  private SigV4ConnectionCredentialVendor vendor(RealmConfig realmConfig) {
+    return new SigV4ConnectionCredentialVendor(
+        destination -> {
+          capturedDestination.set(destination);
+          return mockStsClient;
+        },
+        mockServiceIdentityProvider,
+        mockStorageConfiguration,
+        realmConfig);
+  }
 
   @BeforeEach
   void setup() {
     mockStsClient = mock(StsClient.class);
     mockServiceIdentityProvider = Mockito.mock(ServiceIdentityProvider.class);
+    mockStorageConfiguration = mock(StorageConfiguration.class);
+    when(mockStorageConfiguration.stsCredentials("sigv4-catalog"))
+        .thenReturn(
+            StaticCredentialsProvider.create(
+                AwsBasicCredentials.create("named-access-key", "named-secret-key")));
     capturedDestination = new AtomicReference<>();
 
     // Mock STS AssumeRole response
@@ -87,13 +113,7 @@ public class SigV4ConnectionCredentialVendorTest {
         .thenReturn(Optional.of(mockCredential));
 
     // Create vendor with lambda that captures the destination
-    vendor =
-        new SigV4ConnectionCredentialVendor(
-            (destination) -> {
-              capturedDestination.set(destination);
-              return mockStsClient;
-            },
-            mockServiceIdentityProvider);
+    vendor = vendor(realmConfig(Map.of()));
   }
 
   @Test
@@ -208,6 +228,34 @@ public class SigV4ConnectionCredentialVendorTest {
   }
 
   @Test
+  public void testStsDestinationUsesStsEndpointWhenSet() {
+    ServiceIdentityInfoDpo serviceIdentity =
+        new AwsIamServiceIdentityInfoDpo(
+            new SecretReference("urn:polaris-secret:test:my-realm:AWS_IAM", Map.of()));
+
+    SigV4AuthenticationParametersDpo authParams =
+        new SigV4AuthenticationParametersDpo(
+            "arn:aws:iam::123456789012:role/customer-role",
+            null,
+            null,
+            "us-west-2",
+            "glue",
+            null,
+            "https://sts.example.com",
+            null);
+
+    IcebergRestConnectionConfigInfoDpo connectionConfig =
+        createConnectionConfig(authParams, serviceIdentity);
+
+    vendor.getConnectionCredentials(connectionConfig);
+
+    Assertions.assertThat(capturedDestination.get().endpoint())
+        .isPresent()
+        .hasValue(URI.create("https://sts.example.com"));
+    Assertions.assertThat(capturedDestination.get().region()).isPresent().hasValue("us-west-2");
+  }
+
+  @Test
   public void testSessionPolicyPassedToAssumeRole() {
     ServiceIdentityInfoDpo serviceIdentity =
         new AwsIamServiceIdentityInfoDpo(
@@ -238,6 +286,88 @@ public class SigV4ConnectionCredentialVendorTest {
     Mockito.verify(mockStsClient).assumeRole(requestCaptor.capture());
 
     Assertions.assertThat(requestCaptor.getValue().policy()).isEqualTo(customPolicy);
+  }
+
+  @Test
+  public void testStorageNameCredentialsBypassSts() {
+    SigV4AuthenticationParametersDpo authParams =
+        new SigV4AuthenticationParametersDpo(
+            null, null, null, "example-region", "custom-service", null, null, "sigv4-catalog");
+    IcebergRestConnectionConfigInfoDpo connectionConfig = createConnectionConfig(authParams, null);
+
+    ConnectionCredentials credentials =
+        vendor(realmConfig(Map.of(RESOLVE_CREDENTIALS_BY_STORAGE_NAME.key(), true)))
+            .getConnectionCredentials(connectionConfig);
+
+    // Long-lived keys: no session token, no expiry
+    Assertions.assertThat(credentials.credentials())
+        .containsEntry(
+            CatalogAccessProperty.AWS_ACCESS_KEY_ID.getPropertyName(), "named-access-key")
+        .containsEntry(
+            CatalogAccessProperty.AWS_SECRET_ACCESS_KEY.getPropertyName(), "named-secret-key")
+        .hasSize(2);
+    Assertions.assertThat(credentials.expiresAt()).isEmpty();
+    Mockito.verifyNoInteractions(mockStsClient);
+    Mockito.verifyNoInteractions(mockServiceIdentityProvider);
+  }
+
+  @Test
+  public void testStorageNameRejectedWhenResolveByStorageNameDisabled() {
+    SigV4AuthenticationParametersDpo authParams =
+        new SigV4AuthenticationParametersDpo(
+            null, null, null, "example-region", "custom-service", null, null, "sigv4-catalog");
+    IcebergRestConnectionConfigInfoDpo connectionConfig = createConnectionConfig(authParams, null);
+
+    Assertions.assertThatThrownBy(() -> vendor.getConnectionCredentials(connectionConfig))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining(RESOLVE_CREDENTIALS_BY_STORAGE_NAME.key());
+    Mockito.verifyNoInteractions(mockStorageConfiguration);
+    Mockito.verifyNoInteractions(mockStsClient);
+  }
+
+  @Test
+  public void testStorageNameWithRoleArnAssumesRoleUsingNamedKeys() {
+    SigV4AuthenticationParametersDpo authParams =
+        new SigV4AuthenticationParametersDpo(
+            "arn:aws:iam::123456789012:role/customer-role",
+            "my-session",
+            "external-id-123",
+            "us-west-2",
+            "glue",
+            null,
+            null,
+            "sigv4-catalog");
+    IcebergRestConnectionConfigInfoDpo connectionConfig = createConnectionConfig(authParams, null);
+
+    ConnectionCredentials credentials =
+        vendor(realmConfig(Map.of(RESOLVE_CREDENTIALS_BY_STORAGE_NAME.key(), true)))
+            .getConnectionCredentials(connectionConfig);
+
+    Assertions.assertThat(credentials.credentials())
+        .containsEntry(
+            CatalogAccessProperty.AWS_ACCESS_KEY_ID.getPropertyName(), "assumed-access-key-id")
+        .containsEntry(
+            CatalogAccessProperty.AWS_SECRET_ACCESS_KEY.getPropertyName(),
+            "assumed-secret-access-key")
+        .containsEntry(
+            CatalogAccessProperty.AWS_SESSION_TOKEN.getPropertyName(), "assumed-session-token")
+        .hasSize(3);
+
+    ArgumentCaptor<AssumeRoleRequest> requestCaptor =
+        ArgumentCaptor.forClass(AssumeRoleRequest.class);
+    Mockito.verify(mockStsClient).assumeRole(requestCaptor.capture());
+    AssumeRoleRequest capturedRequest = requestCaptor.getValue();
+    Assertions.assertThat(capturedRequest.roleArn())
+        .isEqualTo("arn:aws:iam::123456789012:role/customer-role");
+    Assertions.assertThat(
+            capturedRequest
+                .overrideConfiguration()
+                .flatMap(config -> config.credentialsProvider())
+                .orElseThrow()
+                .resolveCredentials()
+                .accessKeyId())
+        .isEqualTo("named-access-key");
+    Mockito.verifyNoInteractions(mockServiceIdentityProvider);
   }
 
   @Test

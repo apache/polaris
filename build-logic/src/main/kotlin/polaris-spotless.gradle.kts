@@ -34,16 +34,38 @@ spotless {
       ktfmt().googleStyle()
       target(
         "*.gradle.kts",
+        "runtime/*.gradle.kts",
+        "plugins/spark/*.gradle.kts",
         "build-logic/*.gradle.kts",
-        "build-logic/src/**/*.kt*",
+        "build-logic/src/**/*.gradle.kts",
         "gradle/server-test-runner/**/*.gradle.kts",
-        "gradle/server-test-runner/src/**/*.kt*",
+        "gradle/server-test-runner/src/**/*.gradle.kts",
+        "gradle/license-check-plugin/**/*.gradle.kts",
+        "gradle/license-check-plugin/src/**/*.gradle.kts",
+      )
+    }
+    kotlin {
+      ktfmt().googleStyle()
+      target(
+        "build-logic/src/**/*.kt",
+        "gradle/server-test-runner/src/**/*.kt",
+        "gradle/license-check-plugin/src/**/*.kt",
       )
     }
   } else if (!noSourceCheckProjects.contains(project.path)) {
     java {
       target("src/*/java/**/*.java")
-      googleJavaFormat()
+      googleJavaFormat(
+        versionCatalogs
+          .named("libs")
+          .findLibrary("google-java-format")
+          .orElseThrow {
+            GradleException("google-java-format version not found in libs.versions.toml")
+          }
+          .get()
+          .versionConstraint
+          .requiredVersion,
+      )
       // licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"))
       endWithNewline()
       toggleOffOn()

@@ -25,14 +25,22 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
-import org.apache.polaris.service.it.env.IntegrationTestsHelper;
+import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
+import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.spark.sql.SparkSession;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 public class SparkHudiIT extends SparkIntegrationBase {
+
+  @Override
+  protected StorageConfigInfo getStorageConfigInfo() {
+    return FileStorageConfigInfo.builder()
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+        .setAllowedLocations(List.of(warehouseDir.toString()))
+        .build();
+  }
 
   @Override
   protected SparkSession buildSparkSession() {
@@ -79,14 +87,13 @@ public class SparkHudiIT extends SparkIntegrationBase {
   }
 
   @BeforeEach
-  public void createDefaultResources(@TempDir Path tempDir) {
+  public void createDefaultResources() {
     spark.sparkContext().setLogLevel("INFO");
     defaultNs = generateName("hudi");
     // create a default namespace
     sql("CREATE NAMESPACE %s", defaultNs);
     sql("USE NAMESPACE %s", defaultNs);
-    tableRootDir =
-        IntegrationTestsHelper.getTemporaryDirectory(tempDir).resolve(defaultNs).getPath();
+    tableRootDir = Path.of(warehouseDir).resolve(defaultNs).toString();
   }
 
   @AfterEach
@@ -142,6 +149,37 @@ public class SparkHudiIT extends SparkIntegrationBase {
     sql("DROP TABLE %s", huditb2);
     tables = sql("SHOW TABLES");
     assertThat(tables.size()).isEqualTo(0);
+  }
+
+  @Test
+  public void testDmlOperations() {
+    String huditb = getTableNameWithRandomSuffix();
+    // Hudi requires a record key for UPDATE, DELETE and MERGE
+    sql(
+        "CREATE TABLE %s (id INT, name STRING) USING HUDI TBLPROPERTIES (primaryKey = 'id') LOCATION '%s'",
+        huditb, getTableLocation(huditb));
+    sql("INSERT INTO %s VALUES (1, 'anna'), (2, 'bob'), (3, 'carl')", huditb);
+
+    sql("UPDATE %s SET name = 'anne' WHERE id = 1", huditb);
+    assertThat(sql("SELECT id, name FROM %s ORDER BY id", huditb))
+        .containsExactly(
+            new Object[] {1, "anne"}, new Object[] {2, "bob"}, new Object[] {3, "carl"});
+
+    sql("DELETE FROM %s WHERE id = 3", huditb);
+    assertThat(sql("SELECT id, name FROM %s ORDER BY id", huditb))
+        .containsExactly(new Object[] {1, "anne"}, new Object[] {2, "bob"});
+
+    sql(
+        "MERGE INTO %s t USING (SELECT 2 AS id, 'bobby' AS name UNION ALL SELECT 4, 'dan') s "
+            + "ON t.id = s.id "
+            + "WHEN MATCHED THEN UPDATE SET t.name = s.name "
+            + "WHEN NOT MATCHED THEN INSERT *",
+        huditb);
+    assertThat(sql("SELECT id, name FROM %s ORDER BY id", huditb))
+        .containsExactly(
+            new Object[] {1, "anne"}, new Object[] {2, "bobby"}, new Object[] {4, "dan"});
+
+    sql("DROP TABLE %s", huditb);
   }
 
   @Test

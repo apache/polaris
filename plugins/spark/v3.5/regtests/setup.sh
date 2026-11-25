@@ -39,7 +39,7 @@ set -x
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-SPARK_VERSION=3.5.6
+SPARK_VERSION=3.5.9
 SCALA_VERSION=2.12
 POLARIS_CLIENT_JAR=""
 POLARIS_VERSION=""

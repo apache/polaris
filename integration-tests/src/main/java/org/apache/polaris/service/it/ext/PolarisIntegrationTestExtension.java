@@ -89,7 +89,7 @@ public class PolarisIntegrationTestExtension implements ParameterResolver {
     ExtensionContext.Store store = classCtx.getStore(NAMESPACE);
     return store.computeIfAbsent(
         Env.class,
-        (key) -> new Env(serverManagerSupplier.get().serverForContext(classCtx)),
+        key -> new Env(serverManagerSupplier.get().serverForContext(classCtx)),
         Env.class);
   }
 

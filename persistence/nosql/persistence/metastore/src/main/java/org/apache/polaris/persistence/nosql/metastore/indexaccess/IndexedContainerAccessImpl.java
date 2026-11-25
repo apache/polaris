@@ -106,23 +106,21 @@ final class IndexedContainerAccessImpl<C extends ContainerObj> extends IndexedCo
   @Override
   public Optional<IndexKey> nameKeyById(long stableId) {
     return stableIdIndex()
-        .flatMap(
-            idIndex -> {
-              var nameKey = idIndex.get(IndexKey.key(stableId));
-              return Optional.ofNullable(nameKey);
-            });
+        .flatMap(idIndex -> {
+          var nameKey = idIndex.get(IndexKey.key(stableId));
+          return Optional.ofNullable(nameKey);
+        });
   }
 
   @Override
   public Optional<ObjBase> byParentIdAndName(long parentId, String name) {
     return (parentId != 0L
             ? nameKeyById(parentId)
-                .flatMap(
-                    parentKey -> {
-                      var fullIdentifier =
-                          indexKeyToIdentifierBuilder(parentKey).addElements(name).build();
-                      return objRefByName(fullIdentifier.toIndexKey());
-                    })
+                .flatMap(parentKey -> {
+                  var fullIdentifier =
+                      indexKeyToIdentifierBuilder(parentKey).addElements(name).build();
+                  return objRefByName(fullIdentifier.toIndexKey());
+                })
             : objRefByName(IndexKey.key(name)))
         .flatMap(this::objByRef);
   }

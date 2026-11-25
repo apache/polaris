@@ -62,7 +62,7 @@ Thanks,
 ```
 
 ### Ensure that the changelog is up to date
-As part of Polaris development process, for each major change in the codebase, a new entry should be added to the `CHANGELOG.md` file. This is usually verified during pull request reviews. But some changes may have been missed. So before cutting a release, it is important to ensure that the changelog is up to date.
+As part of Polaris development process, for each major change in the codebase, a new changelog fragment should be added to the `changelog.d` directory (see `changelog.d/README.md`). This is usually verified during pull request reviews. But some changes may have been missed. So before cutting a release, it is important to ensure that the changelog fragments and the `CHANGELOG.md` file are up to date.
 
 ## Release branch creation workflow
 The first Github workflow to run is [`Release - 1 - Create Release Branch`](https://github.com/apache/polaris/actions/workflows/release-1-create-release-branch.yml). This workflow will create a release branch from the main branch. The release branch is named after the release number and does not include the patch version. For instance, the release branch for version 1.3.0 is named `release/1.3.x`. It should **only be executed only once** per `major.minor` version.
@@ -77,7 +77,7 @@ Once the workflow has run, the run details page contains a recap of the main inf
 ## Release candidate tag creation workflow
 The second Github workflow to run is [`Release - 2 - Update version and Changelog for Release Candidate`](https://github.com/apache/polaris/actions/workflows/release-2-update-release-candidate.yml). This workflow will:
 * Verify that all Github checks are green for the release branch.
-* For RC0 only: update the project version files with the final version number, update the changelog, and commit the changes to the release branch.
+* For RC0 only: update the project version files with the final version number, create the section of the release in `CHANGELOG.md` from the changelog fragments in `changelog.d`, and commit the changes to the release branch.
 * Create the `apache-polaris-[major].[minor].[patch]-rc[N]` tag
 
 The rules to create the `[major].[minor].[patch]-rc[N]` tag are as follows:
@@ -100,11 +100,12 @@ If the first release candidate is rejected, additional code changes may be neede
 
 Each code change that should be added to the release branch must be cherry-picked from the main branch and proposed in a dedicated pull request. The pull request must be reviewed and approved before being merged. This step is mandatory so that Github runs the CI checks. The subsequent workflows will verify that those checks passed.
 
-Once the pull requests have been merged, run the [`Release - 2 - Update version and Changelog for Release Candidate`](https://github.com/apache/polaris/actions/workflows/release-2-update-release-candidate.yml) workflow again to create a new RC tag. The workflow will automatically determine the next RC number.
+Once the pull requests have been merged, run the [`Release - 2 - Update version and Changelog for Release Candidate`](https://github.com/apache/polaris/actions/workflows/release-2-update-release-candidate.yml) workflow again to create a new RC tag. The workflow will automatically determine the next RC number. If the cherry-picked changes added changelog fragments, the workflow merges them into the existing `CHANGELOG.md` section of the release and commits the result before creating the tag. The workflow fails if any fragment remains unmerged.
 
 ## Build and publish release artifacts
 The third Github workflow to run is [`Release - 3 - Build and publish release artifacts`](https://github.com/apache/polaris/actions/workflows/release-3-build-and-publish-artifacts.yml). This workflow will:
 * Build the source and binary artifacts
+* Generate and sign a standalone build-environment JSON record for the source/binary/Maven job, and show its contents in the workflow summary
 * Stage artifacts to the Apache dist dev repository
 * Publish the source and binary artifacts to the Apache Nexus repository
 * Close the Apache Nexus repository
@@ -113,6 +114,16 @@ The third Github workflow to run is [`Release - 3 - Build and publish release ar
 * Create signature and checksum for all package files
 * Copy package files to Apache dist dev repository
 * Generate an e-mail to notify the community of the availability of the release candidate
+
+The release workflow pins a full Temurin JDK build and Helm version.
+Renovate proposes updates to the `setup-java` versions in release-3 and release-4 together, staying on Java 21 and including JDK build-number updates.
+Review these updates before creating a release candidate tag.
+Renovate also manages the pinned Helm version through its built-in support for `azure/setup-helm`.
+The build-environment record is staged with the distribution files and later attached to the GitHub release; it is not included inside the source or binary archives.
+Ordinary contributor builds do not require the exact release JDK.
+Compilation and documentation cache keys include the selected JDK's exact runtime version and vendor.
+Changing JDK patch version or vendor therefore prevents reuse of those tasks' local and remote cached outputs from the previous JDK.
+Those tasks run again unless the cache already contains outputs for the newly selected JDK.
 
 This workflow must be run from an RC tag (e.g., `apache-polaris-1.3.0-rc0`). Select the tag from the `Use workflow from` dropdown in the Github Actions UI. Selecting any other reference in the Github Actions UI will result in a failure.
 
@@ -160,6 +171,17 @@ The vote result is:
 
 We will proceed with publishing the approved artifacts and sending out the announcement soon.
 ```
+
+Then submit a PR against `main` that brings in the changes that the release made to `CHANGELOG.md` on the release branch:
+* the new `## [x.y.z]` section,
+* the `## [Unreleased]` section, emptied of the entries that moved into the release,
+* the links at the end of the file: the new `[x.y.z]: ...` definition, and the updated `[Unreleased]: ...` link. Without them, the next release fails to update the links, because it expects the `[Unreleased]` link to compare the latest release with `HEAD`.
+
+These propagation steps assume a release cut from `main`, rather than an independently maintained release line. Delete only fragments whose entries have moved into the release section on `main`; preserve fragments added after branching, and reconcile any fragments edited on `main` since then.
+
+For an independent maintenance release, review propagation separately: consuming a fragment there does not mean that `main` no longer needs it. Preserve notes still needed for `main`'s next release, and do not replace its `[Unreleased]` comparison base with an older maintenance release.
+
+Do this only once the vote has passed, not for each release candidate.
 
 ## Publish the release
 The final workflow to run is [`Release - 4 - Publish Release After Vote Success`](https://github.com/apache/polaris/actions/workflows/release-4-publish-release.yml). This workflow will:

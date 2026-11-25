@@ -18,16 +18,15 @@
  */
 package org.apache.polaris.core.policy.content;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import java.io.IOException;
 import org.apache.polaris.core.policy.validator.InvalidPolicyException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DeserializationContext;
+import tools.jackson.databind.ValueDeserializer;
 
-public class StrictBooleanDeserializer extends JsonDeserializer<Boolean> {
+public class StrictBooleanDeserializer extends ValueDeserializer<Boolean> {
   @Override
-  public Boolean deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-    String text = p.getText();
+  public Boolean deserialize(JsonParser p, DeserializationContext ctxt) {
+    String text = p.getValueAsString();
     if ("true".equals(text)) {
       return Boolean.TRUE;
     } else if ("false".equals(text)) {

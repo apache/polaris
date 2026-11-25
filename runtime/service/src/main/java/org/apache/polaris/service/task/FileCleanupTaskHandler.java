@@ -19,18 +19,24 @@
 package org.apache.polaris.service.task;
 
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import org.apache.iceberg.CatalogUtil;
+import java.util.function.Consumer;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.io.FileIO;
+import org.apache.iceberg.io.SupportsBulkOperations;
+import org.apache.iceberg.util.Tasks;
 import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.TaskEntity;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,6 +98,25 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
       Thread.currentThread().interrupt();
       throw new RuntimeException("Interrupted while waiting for " + description, e);
     }
+  }
+
+  /**
+   * Returns whether {@code file} is under one of {@code tableLocations}, the table locations
+   * recorded in the task (see {@link TaskUtils#storageLocations}). Files outside the table
+   * locations are skipped instead of deleted.
+   */
+  protected static boolean isUnderTableLocation(
+      Set<String> tableLocations, TableIdentifier tableId, String file) {
+    StorageLocation fileLocation = StorageLocation.of(file);
+    if (tableLocations.stream().anyMatch(l -> fileLocation.isChildOf(StorageLocation.of(l)))) {
+      return true;
+    }
+    LOGGER
+        .atWarn()
+        .addKeyValue(StructuredLogKeys.FILE, file)
+        .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableId)
+        .log("Not deleting file outside of the table locations {}", tableLocations);
+    return false;
   }
 
   @Override
@@ -202,8 +227,37 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
     if (attempt > MAX_ATTEMPTS && e != null) {
       return CompletableFuture.failedFuture(e);
     }
-    return CompletableFuture.runAsync(
-            () -> CatalogUtil.deleteFiles(fileIO, files, type, isConcurrent), executorService)
+    return CompletableFuture.<Void>completedFuture(null)
+        .thenComposeAsync(
+            ignored -> {
+              if (fileIO instanceof SupportsBulkOperations bulkIO) {
+                bulkIO.deleteFiles(files);
+                return CompletableFuture.<Void>completedFuture(null);
+              }
+              Consumer<String> deleteFile =
+                  file -> {
+                    try {
+                      fileIO.deleteFile(file);
+                    } catch (NotFoundException nfe) {
+                      // Already removed, including by an earlier attempt of this batch.
+                    }
+                  };
+              if (!isConcurrent) {
+                Tasks.foreach(files).noRetry().run(deleteFile::accept);
+                return CompletableFuture.<Void>completedFuture(null);
+              }
+              List<CompletableFuture<Void>> deletions = new ArrayList<>();
+              try {
+                for (String file : files) {
+                  deletions.add(
+                      CompletableFuture.runAsync(() -> deleteFile.accept(file), executorService));
+                }
+              } catch (RuntimeException ex) {
+                deletions.add(CompletableFuture.failedFuture(ex));
+              }
+              return CompletableFuture.allOf(deletions.toArray(CompletableFuture[]::new));
+            },
+            executorService)
         .exceptionallyComposeAsync(
             newEx -> {
               LOGGER

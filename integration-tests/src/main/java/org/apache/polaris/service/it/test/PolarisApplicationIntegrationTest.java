@@ -298,10 +298,8 @@ public class PolarisApplicationIntegrationTest {
       Namespace topLevelNamespace = Namespace.of("top_level");
       sessionCatalog.createNamespace(sessionContext, topLevelNamespace);
       sessionCatalog.loadNamespaceMetadata(sessionContext, Namespace.of("top_level"));
-      assertThatThrownBy(
-              () ->
-                  sessionCatalog.listNamespaces(
-                      sessionContext, Namespace.of("top_level", "whoops")))
+      assertThatThrownBy(() ->
+              sessionCatalog.listNamespaces(sessionContext, Namespace.of("top_level", "whoops")))
           .isInstanceOf(NoSuchNamespaceException.class)
           .hasMessage("Namespace does not exist: top_level.whoops");
     }
@@ -377,20 +375,18 @@ public class PolarisApplicationIntegrationTest {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       Namespace ns = Namespace.of("db1");
       sessionCatalog.createNamespace(sessionContext, ns);
-      assertThatThrownBy(
-              () ->
-                  sessionCatalog
-                      .buildTable(
-                          sessionContext,
-                          TableIdentifier.of(ns, "the_table"),
-                          new Schema(
-                              List.of(
-                                  Types.NestedField.required(
-                                      1, "theField", Types.StringType.get()))))
-                      .withLocation("file:///tmp/tables")
-                      .withSortOrder(SortOrder.unsorted())
-                      .withPartitionSpec(PartitionSpec.unpartitioned())
-                      .create())
+      assertThatThrownBy(() ->
+              sessionCatalog
+                  .buildTable(
+                      sessionContext,
+                      TableIdentifier.of(ns, "the_table"),
+                      new Schema(
+                          List.of(
+                              Types.NestedField.required(1, "theField", Types.StringType.get()))))
+                  .withLocation("file:///tmp/tables")
+                  .withSortOrder(SortOrder.unsorted())
+                  .withPartitionSpec(PartitionSpec.unpartitioned())
+                  .create())
           .isInstanceOf(BadRequestException.class)
           .hasMessage("Malformed request: Cannot create table on static-facade external catalogs.");
     }
@@ -405,37 +401,33 @@ public class PolarisApplicationIntegrationTest {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       Namespace ns = Namespace.of("db1");
       sessionCatalog.createNamespace(sessionContext, ns);
-      assertThatThrownBy(
-              () ->
-                  sessionCatalog
-                      .buildTable(
-                          sessionContext,
-                          TableIdentifier.of(ns, "the_table"),
-                          new Schema(
-                              List.of(
-                                  Types.NestedField.required(
-                                      1, "theField", Types.StringType.get()))))
-                      .withSortOrder(SortOrder.unsorted())
-                      .withPartitionSpec(PartitionSpec.unpartitioned())
-                      .withProperties(Map.of("write.data.path", "s3://my-bucket/path/to/data"))
-                      .create())
+      assertThatThrownBy(() ->
+              sessionCatalog
+                  .buildTable(
+                      sessionContext,
+                      TableIdentifier.of(ns, "the_table"),
+                      new Schema(
+                          List.of(
+                              Types.NestedField.required(1, "theField", Types.StringType.get()))))
+                  .withSortOrder(SortOrder.unsorted())
+                  .withPartitionSpec(PartitionSpec.unpartitioned())
+                  .withProperties(Map.of("write.data.path", "s3://my-bucket/path/to/data"))
+                  .create())
           .isInstanceOf(ForbiddenException.class)
           .hasMessageContaining("Forbidden: Invalid locations");
 
-      assertThatThrownBy(
-              () ->
-                  sessionCatalog
-                      .buildTable(
-                          sessionContext,
-                          TableIdentifier.of(ns, "the_table"),
-                          new Schema(
-                              List.of(
-                                  Types.NestedField.required(
-                                      1, "theField", Types.StringType.get()))))
-                      .withSortOrder(SortOrder.unsorted())
-                      .withPartitionSpec(PartitionSpec.unpartitioned())
-                      .withProperties(Map.of("write.metadata.path", "s3://my-bucket/path/to/data"))
-                      .create())
+      assertThatThrownBy(() ->
+              sessionCatalog
+                  .buildTable(
+                      sessionContext,
+                      TableIdentifier.of(ns, "the_table"),
+                      new Schema(
+                          List.of(
+                              Types.NestedField.required(1, "theField", Types.StringType.get()))))
+                  .withSortOrder(SortOrder.unsorted())
+                  .withPartitionSpec(PartitionSpec.unpartitioned())
+                  .withProperties(Map.of("write.metadata.path", "s3://my-bucket/path/to/data"))
+                  .create())
           .isInstanceOf(ForbiddenException.class)
           .hasMessageContaining("Forbidden: Invalid locations");
     }
@@ -518,16 +510,15 @@ public class PolarisApplicationIntegrationTest {
       sessionCatalog.registerTable(sessionContext, tableIdentifier, metadataLocation);
       Table table = sessionCatalog.loadTable(sessionContext, tableIdentifier);
       ((ResolvingFileIO) table.io()).setConf(new Configuration());
-      assertThatThrownBy(
-              () ->
-                  table
-                      .newAppend()
-                      .appendFile(
-                          new TestHelpers.TestDataFile(
-                              location + "/path/to/file.parquet",
-                              new PartitionData(PartitionSpec.unpartitioned().partitionType()),
-                              10L))
-                      .commit())
+      assertThatThrownBy(() ->
+              table
+                  .newAppend()
+                  .appendFile(
+                      new TestHelpers.TestDataFile(
+                          location + "/path/to/file.parquet",
+                          new PartitionData(PartitionSpec.unpartitioned().partitionType()),
+                          10L))
+                  .commit())
           .isInstanceOf(BadRequestException.class)
           .hasMessage("Malformed request: Cannot update table on static-facade external catalogs.");
     }
@@ -578,16 +569,15 @@ public class PolarisApplicationIntegrationTest {
     try (RESTSessionCatalog sessionCatalog = new RESTSessionCatalog()) {
       String emptyEnvironmentVariable = "env:__NULL_ENV_VARIABLE__";
       assertThat(EnvironmentUtil.resolveAll(Map.of("", emptyEnvironmentVariable)).get("")).isNull();
-      assertThatThrownBy(
-              () ->
-                  sessionCatalog.initialize(
-                      "polaris_catalog_test",
-                      ImmutableMap.<String, String>builder()
-                          .put("uri", endpoints.catalogApiEndpoint().toString())
-                          .put(OAuth2Properties.TOKEN, authToken)
-                          .put("warehouse", emptyEnvironmentVariable)
-                          .putAll(endpoints.extraHeaders("header."))
-                          .build()))
+      assertThatThrownBy(() ->
+              sessionCatalog.initialize(
+                  "polaris_catalog_test",
+                  ImmutableMap.<String, String>builder()
+                      .put("uri", endpoints.catalogApiEndpoint().toString())
+                      .put(OAuth2Properties.TOKEN, authToken)
+                      .put("warehouse", emptyEnvironmentVariable)
+                      .putAll(endpoints.extraHeaders("header."))
+                      .build()))
           .isInstanceOf(BadRequestException.class)
           .hasMessage("Malformed request: Please specify a warehouse");
     }
@@ -600,25 +590,24 @@ public class PolarisApplicationIntegrationTest {
     try (PolarisClient localClient = polarisClient(endpoints)) {
       await()
           .atMost(Duration.of(1, ChronoUnit.MINUTES))
-          .untilAsserted(
-              () -> {
-                Invocation.Builder request =
-                    localClient.managementApi(authToken).request("v1/principal-roles");
-                // The default limit is 8KiB and each of these headers is at least 8 bytes, so 1500
-                // definitely exceeds the limit
-                for (int i = 0; i < 1500; i++) {
-                  request = request.header("header" + i, "" + i);
-                }
+          .untilAsserted(() -> {
+            Invocation.Builder request =
+                localClient.managementApi(authToken).request("v1/principal-roles");
+            // The default limit is 8KiB and each of these headers is at least 8 bytes, so 1500
+            // definitely exceeds the limit
+            for (int i = 0; i < 1500; i++) {
+              request = request.header("header" + i, "" + i);
+            }
 
-                try (Response response = request.post(Entity.json(new PrincipalRole("r")))) {
-                  assertThat(response.getStatus())
-                      .isEqualTo(Response.Status.REQUEST_HEADER_FIELDS_TOO_LARGE.getStatusCode());
-                } catch (ProcessingException e) {
-                  // In some runtime environments the request above will return a 431 but in others
-                  // it'll result in a ProcessingException from the socket being closed. The test
-                  // asserts that one of those things happens.
-                }
-              });
+            try (Response response = request.post(Entity.json(new PrincipalRole("r")))) {
+              assertThat(response.getStatus())
+                  .isEqualTo(Response.Status.REQUEST_HEADER_FIELDS_TOO_LARGE.getStatusCode());
+            } catch (ProcessingException e) {
+              // In some runtime environments the request above will return a 431 but in others
+              // it'll result in a ProcessingException from the socket being closed. The test
+              // asserts that one of those things happens.
+            }
+          });
     }
   }
 
@@ -629,30 +618,29 @@ public class PolarisApplicationIntegrationTest {
     try (PolarisClient localClient = polarisClient(endpoints)) {
       await()
           .atMost(Duration.of(1, ChronoUnit.MINUTES))
-          .untilAsserted(
-              () -> {
-                // The behaviour in case of large requests depends on the specific server
-                // configuration. This test assumes that the server under test is configured to deny
-                // requests larger than 1000000 bytes. The test payload below assumes UTF8 encoding
-                // of ASCII charts plus a bit of JSON overhead.
-                Entity<PrincipalRole> largeRequest =
-                    Entity.json(new PrincipalRole("r".repeat(1000001)));
-                try (Response response =
-                    localClient
-                        .managementApi(authToken)
-                        .request("v1/principal-roles")
-                        .post(largeRequest)) {
-                  // Note we only validate the status code here because per RFC 9110, the server MAY
-                  // not provide a response body. The HTTP status line is still expected to be
-                  // provided most of the time.
-                  assertThat(response.getStatus())
-                      .isEqualTo(Response.Status.REQUEST_ENTITY_TOO_LARGE.getStatusCode());
-                } catch (ProcessingException e) {
-                  // In some runtime environments the request above will return a 431 but in others
-                  // it'll result in a ProcessingException from the socket being closed. The test
-                  // asserts that one of those things happens.
-                }
-              });
+          .untilAsserted(() -> {
+            // The behaviour in case of large requests depends on the specific server
+            // configuration. This test assumes that the server under test is configured to deny
+            // requests larger than 1000000 bytes. The test payload below assumes UTF8 encoding
+            // of ASCII charts plus a bit of JSON overhead.
+            Entity<PrincipalRole> largeRequest =
+                Entity.json(new PrincipalRole("r".repeat(1000001)));
+            try (Response response =
+                localClient
+                    .managementApi(authToken)
+                    .request("v1/principal-roles")
+                    .post(largeRequest)) {
+              // Note we only validate the status code here because per RFC 9110, the server MAY
+              // not provide a response body. The HTTP status line is still expected to be
+              // provided most of the time.
+              assertThat(response.getStatus())
+                  .isEqualTo(Response.Status.REQUEST_ENTITY_TOO_LARGE.getStatusCode());
+            } catch (ProcessingException e) {
+              // In some runtime environments the request above will return a 431 but in others
+              // it'll result in a ProcessingException from the socket being closed. The test
+              // asserts that one of those things happens.
+            }
+          });
     }
   }
 

@@ -35,21 +35,22 @@ For the `polaris catalogs create` [command]({{% ref "../../command-line-interfac
 ### Example
 
 ```shell
-CLIENT_ID=root \
-CLIENT_SECRET=s3cr3t \
-DEFAULT_BASE_LOCATION=abfss://tenant123@blob.core.windows.net \
-TENANT_ID=tenant123.onmicrosoft.com \
-MULTI_TENANT_APP_NAME=myapp \
+CLIENT_ID=root
+CLIENT_SECRET=s3cr3t
+DEFAULT_BASE_LOCATION=abfss://tenant123@blob.core.windows.net
+TENANT_ID=tenant123.onmicrosoft.com
+MULTI_TENANT_APP_NAME=myapp
 CONSENT_URL=https://myapp.com/consent
+
 polaris \
-  --client-id ${CLIENT_ID} \
-  --client-secret ${CLIENT_SECRET} \
+  --client-id "${CLIENT_ID}" \
+  --client-secret "${CLIENT_SECRET}" \
   catalogs \
   create \
   --storage-type azure \
-  --tenant-id ${TENANT_ID} \
-  --multi-tenant-app-name ${MULTI_TENANT_APP_NAME} \
-  --consent-url ${CONSENT_URL} \
-  --default-base-location ${DEFAULT_BASE_LOCATION} \
+  --tenant-id "${TENANT_ID}" \
+  --multi-tenant-app-name "${MULTI_TENANT_APP_NAME}" \
+  --consent-url "${CONSENT_URL}" \
+  --default-base-location "${DEFAULT_BASE_LOCATION}" \
   my_azure_catalog
 ```

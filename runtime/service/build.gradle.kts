@@ -92,7 +92,6 @@ dependencies {
   implementation(libs.auth0.jwt)
 
   implementation(libs.smallrye.common.annotation)
-  implementation(libs.swagger.jaxrs)
   implementation(libs.microprofile.fault.tolerance.api)
 
   compileOnly(libs.jspecify)
@@ -113,6 +112,7 @@ dependencies {
   }
   implementation(platform(libs.azuresdk.bom))
   implementation("com.azure:azure-core")
+  implementation("com.azure:azure-identity")
   implementation("com.azure:azure-storage-blob")
   implementation("com.azure:azure-storage-file-datalake")
   implementation(libs.msal4j)

@@ -25,11 +25,19 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
 import org.apache.commons.io.FileUtils;
-import org.apache.polaris.service.it.env.IntegrationTestsHelper;
+import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
+import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 public class SparkIT extends SparkIntegrationBase {
+  @Override
+  protected StorageConfigInfo getStorageConfigInfo() {
+    return FileStorageConfigInfo.builder()
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+        .setAllowedLocations(List.of(warehouseDir.toString()))
+        .build();
+  }
+
   @Test
   public void testNamespaces() {
     List<Object[]> namespaces = sql("SHOW NAMESPACES");
@@ -138,7 +146,85 @@ public class SparkIT extends SparkIntegrationBase {
   }
 
   @Test
-  public void testMixedTableAndViews(@TempDir Path tempDir) {
+  public void testPaimonCtasAndRtasAreRejectedWithoutSideEffects() {
+    String namespace = generateName("ns");
+    sql("CREATE NAMESPACE %s", namespace);
+    sql("USE %s", namespace);
+
+    String ctasTable = "paimon_ctas";
+    assertThatThrownBy(() -> sql("CREATE TABLE %s USING paimon AS SELECT 1 AS id", ctasTable))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("CTAS and RTAS");
+    assertThat(sql("SHOW TABLES")).isEmpty();
+
+    String rtasTable = "paimon_rtas";
+    sql("CREATE TABLE %s AS SELECT 1 AS id", rtasTable);
+    assertThatThrownBy(() -> sql("REPLACE TABLE %s USING paimon AS SELECT 2 AS id", rtasTable))
+        .isInstanceOf(UnsupportedOperationException.class)
+        .hasMessageContaining("CTAS and RTAS");
+    assertThat(sql("SELECT * FROM %s", rtasTable)).containsExactly(new Object[] {1});
+
+    sql("DROP TABLE %s", rtasTable);
+    sql("DROP NAMESPACE %s", namespace);
+  }
+
+  @Test
+  public void testIcebergDmlOperations() {
+    String namespace = generateName("ns");
+    sql("CREATE NAMESPACE %s", namespace);
+    sql("USE %s", namespace);
+
+    String icebergTable = "icebergtb";
+    sql("CREATE TABLE %s (id INT, name STRING)", icebergTable);
+    sql("INSERT INTO %s VALUES (1, 'anna'), (2, 'bob'), (3, 'carl')", icebergTable);
+
+    sql("UPDATE %s SET name = 'anne' WHERE id = 1", icebergTable);
+    assertThat(sql("SELECT * FROM %s ORDER BY id", icebergTable))
+        .containsExactly(
+            new Object[] {1, "anne"}, new Object[] {2, "bob"}, new Object[] {3, "carl"});
+
+    sql("DELETE FROM %s WHERE id = 3", icebergTable);
+    assertThat(sql("SELECT * FROM %s ORDER BY id", icebergTable))
+        .containsExactly(new Object[] {1, "anne"}, new Object[] {2, "bob"});
+
+    sql(
+        "MERGE INTO %s t USING (SELECT 2 AS id, 'bobby' AS name UNION ALL SELECT 4, 'dan') s "
+            + "ON t.id = s.id "
+            + "WHEN MATCHED THEN UPDATE SET t.name = s.name "
+            + "WHEN NOT MATCHED THEN INSERT *",
+        icebergTable);
+    assertThat(sql("SELECT * FROM %s ORDER BY id", icebergTable))
+        .containsExactly(
+            new Object[] {1, "anne"}, new Object[] {2, "bobby"}, new Object[] {4, "dan"});
+
+    sql("DROP TABLE %s", icebergTable);
+    sql("DROP NAMESPACE %s", namespace);
+  }
+
+  @Test
+  public void testIcebergProcedures() {
+    String namespace = generateName("ns");
+    sql("CREATE NAMESPACE %s", namespace);
+    sql("USE %s", namespace);
+
+    String icebergTable = "icebergtb";
+    sql("CREATE TABLE %s (id INT, name STRING)", icebergTable);
+    sql("INSERT INTO %s VALUES (1, 'anna')", icebergTable);
+    Object afterFirstInsert = sql("SELECT current_timestamp()").get(0)[0];
+    sql("INSERT INTO %s VALUES (2, 'bob')", icebergTable);
+
+    sql(
+        "CALL %s.system.rollback_to_timestamp('%s.%s', TIMESTAMP '%s')",
+        catalogName, namespace, icebergTable, afterFirstInsert);
+    assertThat(sql("SELECT * FROM %s ORDER BY id", icebergTable))
+        .containsExactly(new Object[] {1, "anna"});
+
+    sql("DROP TABLE %s", icebergTable);
+    sql("DROP NAMESPACE %s", namespace);
+  }
+
+  @Test
+  public void testMixedTableAndViews() {
     String namespace = generateName("ns");
     sql("CREATE NAMESPACE %s", namespace);
     sql("USE %s", namespace);
@@ -152,8 +238,7 @@ public class SparkIT extends SparkIntegrationBase {
     sql("CREATE VIEW %s AS SELECT col1 + 2 AS col1, col2 FROM %s", viewName, icebergTable);
 
     String deltaTable = "deltatb";
-    String deltaDir =
-        IntegrationTestsHelper.getTemporaryDirectory(tempDir).resolve(namespace).getPath();
+    String deltaDir = Path.of(warehouseDir).resolve(namespace).toString();
     sql(
         "CREATE TABLE %s (col1 int, col2 int) using delta location '%s/%s'",
         deltaTable, deltaDir, deltaTable);

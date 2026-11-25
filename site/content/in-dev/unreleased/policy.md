@@ -55,6 +55,10 @@ Polaris supports several predefined system policy types (prefixed with `system.`
 Support for additional predefined system policy types and custom policy type definitions is in progress.
 For more details, please refer to the [roadmap](https://github.com/apache/polaris/discussions/1028).
 
+Polaris stores and resolves these policies but does not run the maintenance operations itself. Compaction,
+snapshot expiration and orphan file removal are performed by external engines or services, for example Spark's
+Iceberg maintenance procedures.
+
 ### Policy Inheritance
 
 The entity hierarchy in Polaris is structured as follows:
@@ -82,8 +86,9 @@ The inheritance follows an override mechanism:
 2. Namespace-level policies override parent namespace and catalog policies
 
 {{< alert important >}}
-Because an override completely replaces the same policy type at higher levels,
-**only one instance of a given policy type can be attached to (and therefore affect) a resource**.
+For an inheritable policy type, the closest attachment to the resource completely overrides
+any attachment of the same type higher in the hierarchy.
+**At most one policy of that type applies to the resource.**
 {{< /alert >}}
 
 ## Working with Policies
@@ -148,8 +153,8 @@ PUT /polaris/v1/{prefix}/namespaces/{namespace}/policies/{policy-name}/mappings
 }
 ```
 
-For inheritable policies, only one policy of a given type can be attached to a resource. For non-inheritable policies,
-multiple policies of the same type can be attached.
+A resource can have at most one directly attached policy of each inheritable type.
+For non-inheritable policies, multiple policies of the same type can be attached.
 
 ### Retrieving Applicable Policies
 A user can view applicable policies on a resource (e.g., table, namespace, or catalog) as long as they have
@@ -163,36 +168,36 @@ GET /polaris/v1/catalog/applicable-policies?namespace=finance%1Fquarterly&target
 **Sample response:**
 ```json
 {
-  "policies": [
+  "applicable-policies": [
     {
       "name": "snapshot-expiry-policy",
-      "type": "system.snapshot-expiry",
-      "appliedAt": "namespace",
-      "content": {
-        "version": "2025-02-03",
-        "enable": true,
-        "config": {
-          "min_snapshot_to_keep": 1,
-          "max_snapshot_age_days": 2,
-          "max_ref_age_days": 3
-        }
-      }
+      "policy-type": "system.snapshot-expiry",
+      "version": 0,
+      "inheritable": true,
+      "inherited": true,
+      "namespace": [
+        "finance"
+      ],
+      "content": "{\"version\":\"2025-02-03\",\"enable\":true,\"config\":{\"min_snapshot_to_keep\":1,\"max_snapshot_age_days\":2,\"max_ref_age_days\":3}}"
     },
     {
       "name": "compaction-policy",
-      "type": "system.data-compaction",
-      "appliedAt": "catalog",
-      "content": {
-        "version": "2025-02-03",
-        "enable": true,
-        "config": {
-          "target_file_size_bytes": 134217728
-        }
-      }
+      "policy-type": "system.data-compaction",
+      "version": 0,
+      "inheritable": true,
+      "inherited": true,
+      "namespace": [
+        "finance"
+      ],
+      "content": "{\"version\":\"2025-02-03\",\"enable\":true,\"config\":{\"target_file_size_bytes\":134217728}}"
     }
   ]
 }
 ```
+
+The `namespace` field shows that both policies are defined in `finance`.
+The `inherited` flag is `true` for both policies, so the table inherits them.
+The `content` field contains a JSON string.
 
 ### API Reference
 

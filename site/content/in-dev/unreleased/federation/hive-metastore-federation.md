@@ -104,7 +104,7 @@ understood as follows:
 
 | Pattern                                                                              | Works after a `-PNonRESTCatalogs=HIVE` build | Notes                                                                                                                                                                                                                                                                                          |
 |--------------------------------------------------------------------------------------|----------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| HDFS or warehouse access fully handled by ambient Hadoop config and process identity | Yes                                          | Recommended fit for the current design. Provide `hive-site.xml` / `core-site.xml` plus any required Kerberos or Hadoop client configuration.                                                                                                                                                   |
+| HDFS or warehouse access fully handled by ambient Hadoop config and process identity | Only with a `*` wildcard in `allowedLocations` | `hdfs://` is not an accepted location prefix for any storage type, so an HDFS warehouse cannot be described in `storageConfigInfo` directly; the same rule applies to [Hadoop federation]({{% ref "hadoop-catalog-federation.md#warehouse-access-patterns" %}}). With `ALLOW_WILDCARD_LOCATION=true` and a `file://` base location next to the `*` entry, provide `hive-site.xml` / `core-site.xml` plus any required Kerberos or Hadoop client configuration. |
 | `HadoopFileIO` with `s3a://` warehouses                                              | Only with extra runtime packaging            | A HIVE-enabled Polaris build still needs `hadoop-aws` and related filesystem dependencies. They are not included just by enabling the `HIVE` build flag.                                                                                                                                       |
 | `S3FileIO` with ambient AWS credentials                                              | Sometimes                                    | Can work when Polaris is explicitly configured to use `S3FileIO` and the process already has valid AWS credentials and region settings. This is not the general documented production path today, and non-secret endpoint or path-style settings may still be needed for S3-compatible stores. |
 | **UNSAFE!** Putting object-store credentials in catalog properties                   | **DO NOT USE / THIS IS UNSAFE**              | Unsafe. Secrets placed in catalog properties are returned to authenticated catalog clients through `/config`. This may look like a workaround in some S3-compatible deployments, but it **exposes passwords, access keys, session tokens, or other secrets as plain text**.                    |
@@ -150,6 +150,28 @@ obtain tokens that authorize against the federated metadata.
 prefixes. If your IAM trust policy requires an `externalId` or explicit `userArn`, include those
 optional fields in `storageConfigInfo`. Polaris persists them and supplies them when assuming the
 role cited by `roleArn` during metadata commits.
+
+## Connection properties
+
+`connectionConfigInfo.properties` holds settings for the Hive client that Polaris creates for the
+federated catalog. Unlike catalog-level `properties`, these values are visible only through the
+Management API and are never returned to catalog clients via `/v1/config`, so they are the right
+place for non-secret client settings. Only the following keys are forwarded to the Iceberg
+`HiveCatalog`; any other key is stored but ignored:
+
+| Key | Purpose |
+|-----|---------|
+| `clients` | Hive metastore client pool size |
+| `list-all-tables` | List non-Iceberg tables as well |
+| `s3.endpoint`, `s3.path-style-access`, `client.region` | Non-secret FileIO client settings for S3-compatible warehouses |
+
+The `s3.*` and `client.region` keys only take effect when the catalog uses `S3FileIO`. `HiveCatalog`
+defaults to `HadoopFileIO`, which ignores them, so set
+`io-impl=org.apache.iceberg.aws.s3.S3FileIO` in the catalog-level `properties` (it is not accepted
+as a connection property) when you rely on them.
+
+Connection properties take precedence over catalog-level `properties` when the same key is present.
+Credentials must never be placed here; use the Polaris process identity as described above.
 
 ## Limitations and operational notes
 

@@ -27,6 +27,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.auth.AuthorizationRequest;
@@ -113,6 +114,10 @@ public abstract class PolicyCatalogHandler extends CatalogHandler {
   public LoadPolicyResponse updatePolicy(PolicyIdentifier identifier, UpdatePolicyRequest request) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.UPDATE_POLICY;
     authorizeBasicPolicyOperationOrThrow(op, identifier);
+
+    if (request.getCurrentPolicyVersion() == null) {
+      throw new BadRequestException("current-policy-version is required to update a policy");
+    }
 
     return LoadPolicyResponse.builder()
         .setPolicy(

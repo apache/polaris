@@ -342,25 +342,24 @@ final class RetainedCollectorImpl implements Persistence, RetainedCollector {
         var ref = fetchReference(refName);
 
         return ref.pointer()
-            .map(
-                head ->
-                    (Iterator<C>)
-                        new AbstractIterator<C>() {
-                          private ObjRef next = head;
+            .map(head ->
+                (Iterator<C>)
+                    new AbstractIterator<C>() {
+                      private ObjRef next = head;
 
-                          @Override
-                          protected C computeNext() {
-                            if (next == null) {
-                              return endOfData();
-                            }
-                            var r = fetch(next, clazz);
-                            if (r == null) {
-                              return endOfData();
-                            }
-                            next = r.directParent().orElse(null);
-                            return r;
-                          }
-                        })
+                      @Override
+                      protected C computeNext() {
+                        if (next == null) {
+                          return endOfData();
+                        }
+                        var r = fetch(next, clazz);
+                        if (r == null) {
+                          return endOfData();
+                        }
+                        next = r.directParent().orElse(null);
+                        return r;
+                      }
+                    })
             .orElse(emptyIterator());
       }
 

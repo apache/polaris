@@ -482,8 +482,7 @@ components:
 
     PolicyType:
       description: The type of a policy
-      type: string
-      nullable: true
+      type: [string, "null"]
       example: system.data-compaction
 
     PolicyName:
@@ -637,7 +636,6 @@ components:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/Namespace'
         name:
           type: string
-          nullable: false
 
     ListPoliciesResponse:
       type: object

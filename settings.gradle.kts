@@ -42,6 +42,8 @@ includeBuild("build-logic") { name = "polaris-build-logic" }
 
 includeBuild("gradle/server-test-runner") { name = "polaris-server-test-runner" }
 
+includeBuild("gradle/license-check-plugin") { name = "polaris-license-check-plugin" }
+
 if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
   throw GradleException(
     """
@@ -78,8 +80,6 @@ fun polarisProject(name: String, directory: File) {
   prj.projectDir = file(directory)
 }
 
-val projects = Properties()
-
 loadProperties(file("gradle/projects.main.properties")).forEach { name, directory ->
   polarisProject(name as String, file(directory as String))
 }
@@ -97,15 +97,11 @@ for (sparkVersion in sparkVersions) {
   val scalaVersionsKey = "scalaVersions.${sparkVersion}"
   val scalaVersionsStr = sparkScalaVersions[scalaVersionsKey].toString()
   val scalaVersions = scalaVersionsStr.split(",").map { it.trim() }
-  var first = true
   for (scalaVersion in scalaVersions) {
     polarisProject(
       "polaris-spark-${sparkVersion}_${scalaVersion}",
       file("${polarisSparkDir}/v${sparkVersion}/spark"),
     )
-    if (first) {
-      first = false
-    }
     // Skip all duplicated spark client projects in IDE imports.
     // This is to avoid problems during dependency analysis and sync, like
     // "Multiple projects in this build are located in the same directory".
@@ -126,7 +122,7 @@ plugins {
   // When updating the develocity plugin version, verify that the version that
   // https://develocity.apache.org/ runs is compatible with the plugin version
   // as on https://docs.gradle.com/develocity/current/miscellaneous/compatibility/
-  id("com.gradle.develocity") version "4.6.0"
+  id("com.gradle.develocity") version "4.6.1"
   id("com.gradle.common-custom-user-data-gradle-plugin") version "2.8.0"
 }
 

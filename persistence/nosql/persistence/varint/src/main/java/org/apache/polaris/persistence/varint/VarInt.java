@@ -34,14 +34,11 @@ public final class VarInt {
 
   public static int varIntLen(long v) {
     checkArgument(v >= 0);
-    int l = 0;
-    while (true) {
-      l++;
-      if (v <= 0x7f) {
-        return l;
-      }
-      v >>= 7;
+    if (v <= 0x7f) {
+      return 1;
     }
+    // Round the number of significant bits up to groups of seven payload bits.
+    return (64 - Long.numberOfLeadingZeros(v) + 6) / 7;
   }
 
   public static ByteBuffer putVarInt(ByteBuffer b, long v) {

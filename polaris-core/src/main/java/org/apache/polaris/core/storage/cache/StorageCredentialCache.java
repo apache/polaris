@@ -60,13 +60,12 @@ public class StorageCredentialCache {
                                   entry.maxCacheDurationMs()));
                       return Duration.ofMillis(expireAfterMillis);
                     }))
-            .build(
-                key -> {
-                  LOGGER.atDebug().log("StorageCredentialCache::load");
-                  StorageAccessConfig accessConfig = key.load();
-                  return new StorageCredentialCacheEntry(
-                      accessConfig, maxCacheDurationMs(key.realmConfig()));
-                });
+            .build(key -> {
+              LOGGER.atDebug().log("StorageCredentialCache::load");
+              StorageAccessConfig accessConfig = key.load();
+              return new StorageCredentialCacheEntry(
+                  accessConfig, maxCacheDurationMs(key.realmConfig()));
+            });
   }
 
   /** How long credentials should remain in the cache. */

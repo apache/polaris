@@ -30,8 +30,8 @@ com.google.code.findbugs:jsr305
 javax.annotation:javax.annotation-api
 javax.servlet.jsp:jsp-api
 # Cannot globally ban javax.servlet:javax.servlet-api, because it is needed by Spark 3.5 integration tests
+# Cannot globally ban javax.ws.rs:jsr311-api, because it is needed by Ranger's RangerAdminRESTClient
 javax.validation:validation-api
-javax.ws.rs:jsr311-api
 
 
 # See https://github.com/RoaringBitmap/RoaringBitmap/issues/749, should only use org.roaringbitmap:RoaringBitmap

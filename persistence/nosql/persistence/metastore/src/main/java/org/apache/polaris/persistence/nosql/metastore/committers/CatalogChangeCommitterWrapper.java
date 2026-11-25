@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.persistence.nosql.metastore.committers;
 
+import static com.google.common.base.Preconditions.checkState;
 import static org.apache.polaris.persistence.nosql.api.index.IndexContainer.newUpdatableIndex;
 import static org.apache.polaris.persistence.nosql.api.index.IndexKey.INDEX_KEY_SERIALIZER;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.OBJ_REF_SERIALIZER;
@@ -72,6 +73,7 @@ public record CatalogChangeCommitterWrapper<RESULT>(CatalogChangeCommitter<RESUL
     refObj.ifPresent(ref::from);
 
     var r = changeCommitter.change(state, ref, byName, byId, changes, locations);
+    checkState(r != null && r.result() != null, "Catalog change callback returned a null result");
 
     if (r instanceof ChangeResult.CommitChange<RESULT>(RESULT result)) {
       ref.changes(changes.toIndexed("idx-changes-", state::writeOrReplace))

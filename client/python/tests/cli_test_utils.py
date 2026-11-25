@@ -43,6 +43,7 @@ class CLITestBase(unittest.TestCase):
         client.api_client.configuration.username = None
         client.api_client.configuration.password = None
         client.api_client.configuration.access_token = None
+        client.api_client.configuration._polaris_catalog_base = None
         client.api_client.default_headers = {}
         return client
 

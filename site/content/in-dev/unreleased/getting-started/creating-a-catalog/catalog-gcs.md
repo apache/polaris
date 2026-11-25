@@ -33,17 +33,18 @@ For the `polaris catalogs create` [command]({{% ref "../../command-line-interfac
 ### example
 
 ```shell
-CLIENT_ID=root \
-CLIENT_SECRET=s3cr3t \
-DEFAULT_BASE_LOCATION=gs://my-ml-bucket/predictions/  \
-SERVICE_ACCOUNT=serviceAccount:my-service-account@my-project.iam.gserviceaccount.com \
+CLIENT_ID=root
+CLIENT_SECRET=s3cr3t
+DEFAULT_BASE_LOCATION=gs://my-ml-bucket/predictions/
+SERVICE_ACCOUNT=serviceAccount:my-service-account@my-project.iam.gserviceaccount.com
+
 polaris \
-  --client-id ${CLIENT_ID} \
-  --client-secret ${CLIENT_SECRET} \
+  --client-id "${CLIENT_ID}" \
+  --client-secret "${CLIENT_SECRET}" \
   catalogs \
   create \
   --storage-type gcs \
-  --service-account ${SERVICE_ACCOUNT} \
-  --default-base-location ${DEFAULT_BASE_LOCATION} \
+  --service-account "${SERVICE_ACCOUNT}" \
+  --default-base-location "${DEFAULT_BASE_LOCATION}" \
   my_gcs_catalog
 ```

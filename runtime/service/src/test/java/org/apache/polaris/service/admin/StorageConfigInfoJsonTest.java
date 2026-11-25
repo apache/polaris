@@ -96,13 +96,10 @@ class StorageConfigInfoJsonTest {
                     .setAllowedLocations(List.of("s3://bucket/base/"))
                     .build())
             .build();
-    assertThatThrownBy(
-            () ->
-                svc.catalogsApi()
-                    .createCatalog(
-                        new CreateCatalogRequest(catalog),
-                        svc.realmContext(),
-                        svc.securityContext()))
+    assertThatThrownBy(() ->
+            svc.catalogsApi()
+                .createCatalog(
+                    new CreateCatalogRequest(catalog), svc.realmContext(), svc.securityContext()))
         .isInstanceOf(ValidationException.class)
         .hasMessage("S3 credential vending mechanism BOGUS is not enabled in this realm");
   }

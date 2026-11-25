@@ -147,10 +147,10 @@ jobs:
           echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
 
       - name: Set up Java
-        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: 'temurin'
-          java-version: '21'
+          java-version: '21.0.13+9'
 
       - name: Install Subversion
         run: |
@@ -168,7 +168,25 @@ jobs:
         run: |
           source "${LIBS_DIR}/_exec.sh"
 
-          exec_process ./gradlew assemble sourceTarball -Prelease -PuseGpgAgent
+          exec_process ./gradlew assemble sourceTarball releaseBuildEnvironment -Prelease -PuseGpgAgent
+
+          if [[ ${DRY_RUN:-1} -ne 1 ]]; then
+            evidence="build/distributions/polaris-build-environment-${version_without_rc}.json"
+            jq -r '
+              def cell: tostring | gsub("[\\r\\n]"; " ") | gsub("\\|"; "\\|");
+              ["## Build environment", "", "| Property | Value |", "| --- | --- |"],
+              (["Release version", .release.version], ["Gradle", .gradleVersion],
+               ["Gradle JVM vendor", .gradleJvm.vendor], ["Gradle JVM version", .gradleJvm.runtimeVersion],
+               ["OS", .environment.osName], ["Architecture", .environment.architecture],
+               ["Runner image", ((.ci.ImageOS // "") + " " + (.ci.ImageVersion // ""))],
+               ["Locale", .environment.locale], ["Timezone", .environment.timezone],
+               ["Encoding", .environment.encoding] | map(cell) | "| " + join(" | ") + " |"),
+              (.configuredToolchains | map({role, vendor, runtimeVersion}) | unique[] |
+                [.role, (.vendor + " " + .runtimeVersion)] | map(cell) | "| " + join(" | ") + " |")
+              | if type == "array" then .[] else . end
+            ' "$evidence" >> "$GITHUB_STEP_SUMMARY"
+            echo "Evidence asset: $(basename "$evidence") (with ASC signature and SHA-512 checksum)" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
           cat <<EOT >> $GITHUB_STEP_SUMMARY
           ## Build
@@ -184,6 +202,11 @@ jobs:
 
           source "${LIBS_DIR}/_constants.sh"
           source "${LIBS_DIR}/_exec.sh"
+
+          # Require the signed environment record before changing the staged distribution.
+          for suffix in "" .asc .sha512; do
+            exec_process test -s "build/distributions/polaris-build-environment-${version_without_rc}.json${suffix}"
+          done
 
           dist_dev_dir=${RELEASEY_DIR}/polaris-dist-dev
 
@@ -290,10 +313,18 @@ jobs:
           docker buildx inspect
 
       - name: Set up Java
-        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: 'temurin'
-          java-version: '21'
+          java-version: '21.0.13+9'
+
+      - name: Check Docker image dependency licenses
+        run: |
+          source "${LIBS_DIR}/_exec.sh"
+
+          exec_process ./gradlew :polaris-server:checkDistributionLicenses :polaris-admin:checkDistributionLicenses \
+            -Dquarkus.container-image.build=false \
+            -Dquarkus.container-image.push=false
 
       - name: Build Polaris Server Docker image
         run: |
@@ -353,9 +384,9 @@ jobs:
           echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
 
       - name: Set up Helm
-        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e # v5.1.0
         with:
-          version: 'latest'
+          version: 'v4.3.2'
 
       - name: Install Subversion
         run: |
@@ -549,15 +580,15 @@ jobs:
           echo "LIBS_DIR=$(pwd)/releasey/libs" >> $GITHUB_ENV
 
       - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.15"
 
       - name: Set up JDK for openapi-generator-cli
-        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: 'temurin'
-          java-version: '21'
+          java-version: '21.0.13+9'
 
       - name: Install Subversion
         run: |
@@ -620,7 +651,7 @@ jobs:
           make client-rc-testpypi-build RC_VERSION="${version_without_rc}" RC_NUMBER="${rc_number}"
 
       - name: Publish Python client RC to Test PyPI
-        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
         with:
           repository-url: https://test.pypi.org/legacy/
           packages-dir: client/python/dist/

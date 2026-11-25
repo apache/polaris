@@ -56,18 +56,11 @@ public final class StorageLocationValidator {
       @NonNull List<String> allowedLocationsToValid,
       @NonNull Set<PolarisStorageActions> actions,
       @NonNull Set<String> locations) {
-    // trim trailing / from allowed locations so that locations missing the trailing slash still
-    // match
+    // Don't trim trailing slashes here: trimming would change the location prefix (e.g.
+    // "s3://bucket//" would become "s3://bucket/"). StorageLocation.isChildOf already takes care of
+    // normalizing the location when doing comparisons.
     Set<String> allowedLocationStrings =
         allowedLocationsToValid.stream()
-            .map(
-                str -> {
-                  if (str.endsWith("/") && str.length() > 1) {
-                    return str.substring(0, str.length() - 1);
-                  } else {
-                    return str;
-                  }
-                })
             .map(str -> str.replace("file:///", "file:/"))
             .collect(Collectors.toSet());
     List<StorageLocation> allowedLocations =

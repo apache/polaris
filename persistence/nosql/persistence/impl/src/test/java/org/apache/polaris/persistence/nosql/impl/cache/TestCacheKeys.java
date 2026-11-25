@@ -20,18 +20,11 @@ package org.apache.polaris.persistence.nosql.impl.cache;
 
 import static org.apache.polaris.persistence.nosql.api.Realms.SYSTEM_REALM_ID;
 import static org.apache.polaris.persistence.nosql.api.obj.ObjRef.objRef;
-import static org.apache.polaris.persistence.nosql.api.obj.ObjTypes.objTypeById;
-import static org.apache.polaris.persistence.nosql.impl.cache.CaffeineCacheBackend.cacheKeyObjId;
-import static org.apache.polaris.persistence.nosql.impl.cache.CaffeineCacheBackend.cacheKeyValueNegative;
-import static org.apache.polaris.persistence.nosql.impl.cache.CaffeineCacheBackend.cacheKeyValueObj;
-import static org.apache.polaris.persistence.nosql.impl.cache.CaffeineCacheBackend.cacheKeyValueObjRead;
-import static org.apache.polaris.persistence.nosql.impl.cache.CaffeineCacheBackend.cacheKeyValueReference;
-import static org.apache.polaris.persistence.nosql.impl.cache.CaffeineCacheBackend.cacheKeyValueReferenceRead;
+import static org.apache.polaris.persistence.nosql.impl.cache.CaffeineCacheBackend.cacheKeyObjRead;
+import static org.apache.polaris.persistence.nosql.impl.cache.CaffeineCacheBackend.cacheKeyReferenceRead;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import java.util.stream.Stream;
-import org.apache.polaris.persistence.nosql.api.obj.ImmutableGenericObj;
-import org.apache.polaris.persistence.nosql.api.ref.Reference;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
 import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
@@ -47,34 +40,17 @@ public class TestCacheKeys {
   @ParameterizedTest
   @MethodSource
   public void referenceKeys(String realmId, String referenceName) {
-    var read1 = cacheKeyValueReferenceRead(realmId, referenceName);
-    var read2 = cacheKeyValueReferenceRead(realmId, referenceName);
+    var read1 = cacheKeyReferenceRead(realmId, referenceName);
+    var read2 = cacheKeyReferenceRead(realmId, referenceName);
     soft.assertThat(read2).isEqualTo(read1);
     soft.assertThat(read2.hashCode()).isEqualTo(read1.hashCode());
     soft.assertThat(read1).isEqualTo(read2);
 
-    var readDiffRealm = cacheKeyValueReferenceRead(SYSTEM_REALM_ID, referenceName);
+    var readDiffRealm = cacheKeyReferenceRead(SYSTEM_REALM_ID, referenceName);
     soft.assertThat(readDiffRealm).isNotEqualTo(read1);
 
-    var readDiffName = cacheKeyValueReferenceRead(realmId, referenceName + 'a');
+    var readDiffName = cacheKeyReferenceRead(realmId, referenceName + 'a');
     soft.assertThat(readDiffName).isNotEqualTo(read1);
-
-    var write1 =
-        cacheKeyValueReference(
-            realmId,
-            Reference.builder().name(referenceName).previousPointers().createdAtMicros(42L).build(),
-            0L);
-    soft.assertThat(write1).isEqualTo(read1);
-    soft.assertThat(read1).isEqualTo(write1);
-    var write2 =
-        cacheKeyValueReference(
-            realmId,
-            Reference.builder().name(referenceName).previousPointers().createdAtMicros(42L).build(),
-            2L);
-    soft.assertThat(write2).isEqualTo(read1);
-    soft.assertThat(read1).isEqualTo(write2);
-    soft.assertThat(write2).isEqualTo(write1);
-    soft.assertThat(write1).isEqualTo(write2);
   }
 
   static Stream<Arguments> referenceKeys() {
@@ -85,57 +61,19 @@ public class TestCacheKeys {
   @ParameterizedTest
   @MethodSource
   public void objKeys(String realmId, String type, long id) {
-    var read1 = cacheKeyValueObjRead(realmId, objRef(type, id));
-    var read2 = cacheKeyValueObjRead(realmId, objRef(type, id, 1));
+    var read1 = cacheKeyObjRead(realmId, objRef(type, id));
+    var read2 = cacheKeyObjRead(realmId, objRef(type, id, 1));
     soft.assertThat(read2).isEqualTo(read1);
     soft.assertThat(read2.hashCode()).isEqualTo(read1.hashCode());
     soft.assertThat(read1).isEqualTo(read2);
 
-    var negative1 = cacheKeyValueNegative(realmId, cacheKeyObjId(objRef(type, id)), 0L);
-    soft.assertThat(negative1).isEqualTo(read1);
-    soft.assertThat(read1).isEqualTo(negative1);
-    var negative2 = cacheKeyValueNegative(realmId, cacheKeyObjId(objRef(type, id, 1)), 123L);
-    soft.assertThat(negative2).isEqualTo(read1);
-    soft.assertThat(read1).isEqualTo(negative2);
-
-    var obj1 =
-        cacheKeyValueObj(
-            realmId,
-            ImmutableGenericObj.builder()
-                .type(objTypeById(type))
-                .id(id)
-                .numParts(42)
-                .createdAtMicros(123)
-                .build(),
-            0L);
-    var obj2 =
-        cacheKeyValueObj(
-            realmId,
-            ImmutableGenericObj.builder()
-                .type(objTypeById(type))
-                .id(id)
-                .numParts(1)
-                .createdAtMicros(123)
-                .build(),
-            0L);
-    var obj3 =
-        cacheKeyValueObj(
-            realmId,
-            ImmutableGenericObj.builder()
-                .type(objTypeById(type))
-                .id(id)
-                .numParts(1)
-                .createdAtMicros(42)
-                .build(),
-            0L);
-    soft.assertThat(obj2).isEqualTo(obj1);
-    soft.assertThat(obj1).isEqualTo(obj2);
-    soft.assertThat(obj3).isEqualTo(obj1);
-    soft.assertThat(obj1).isEqualTo(obj3);
-    soft.assertThat(obj1).isEqualTo(read1);
-    soft.assertThat(read1).isEqualTo(obj1);
-    soft.assertThat(obj1).isEqualTo(negative1);
-    soft.assertThat(negative1).isEqualTo(obj1);
+    var multipart = cacheKeyObjRead(realmId, objRef(type, id, 42));
+    soft.assertThat(multipart).isEqualTo(read1);
+    soft.assertThat(multipart.hashCode()).isEqualTo(read1.hashCode());
+    soft.assertThat(cacheKeyObjRead(SYSTEM_REALM_ID, objRef(type, id))).isNotEqualTo(read1);
+    soft.assertThat(cacheKeyObjRead(realmId, objRef(type, id + 1))).isNotEqualTo(read1);
+    soft.assertThat(cacheKeyObjRead(realmId, objRef(type + "x", id))).isNotEqualTo(read1);
+    soft.assertThat(cacheKeyReferenceRead(realmId, type)).isNotEqualTo(read1);
   }
 
   static Stream<Arguments> objKeys() {

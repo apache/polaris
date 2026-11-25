@@ -221,13 +221,12 @@ public class RestCatalogFlociS3SpecialIT extends AbstractRestCatalogFlociS3Speci
       var id = TableIdentifier.of("test-ns", "t4");
       restCatalog.createTable(id, SCHEMA);
 
-      assertThatThrownBy(
-              () ->
-                  catalogApi.loadTable(
-                      catalogName,
-                      id,
-                      "ALL",
-                      Map.of("X-Iceberg-Access-Delegation", accessDelegationHeader)))
+      assertThatThrownBy(() ->
+              catalogApi.loadTable(
+                  catalogName,
+                  id,
+                  "ALL",
+                  Map.of("X-Iceberg-Access-Delegation", accessDelegationHeader)))
           .hasMessageContaining("This catalog cannot vend credentials or sign requests")
           .hasMessageContaining("request without X-Iceberg-Access-Delegation");
     }
@@ -247,13 +246,12 @@ public class RestCatalogFlociS3SpecialIT extends AbstractRestCatalogFlociS3Speci
       var id = TableIdentifier.of("test-ns", "t3");
       restCatalog.createTable(id, SCHEMA);
 
-      assertThatThrownBy(
-              () ->
-                  catalogApi.loadTable(
-                      catalogName,
-                      id,
-                      "ALL",
-                      Map.of("X-Iceberg-Access-Delegation", VENDED_CREDENTIALS.protocolValue())))
+      assertThatThrownBy(() ->
+              catalogApi.loadTable(
+                  catalogName,
+                  id,
+                  "ALL",
+                  Map.of("X-Iceberg-Access-Delegation", VENDED_CREDENTIALS.protocolValue())))
           .hasMessageContaining("but no credentials are available")
           .hasMessageContaining(id.toString());
     }

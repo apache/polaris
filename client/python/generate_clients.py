@@ -31,7 +31,7 @@ HEADER_DIR = CLIENT_DIR / "templates"
 SPEC_DIR = CLIENT_DIR / "spec"
 POLARIS_MANAGEMENT_SPEC = SPEC_DIR / "polaris-management-service.yml"
 ICEBERG_CATALOG_SPEC = SPEC_DIR / "iceberg-rest-catalog-open-api.yaml"
-POLARIS_CATALOG_SPEC = SPEC_DIR / "polaris-catalog-service.yaml"
+POLARIS_CATALOG_SPEC = SPEC_DIR / "generated" / "bundled-polaris-catalog-service.yaml"
 OPEN_API_GENERATOR_IGNORE = CLIENT_DIR / ".openapi-generator-ignore"
 
 # Open API Generator Configs

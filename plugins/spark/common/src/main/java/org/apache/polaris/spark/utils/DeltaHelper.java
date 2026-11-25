@@ -90,7 +90,7 @@ public class DeltaHelper {
     // Here, we use reflection to set the isUnityCatalog to true for exactly same behavior as
     // unity catalog for now.
     //
-    // The lookups walk the class hierachy and match the field by suffix because the bytecode
+    // The lookups walk the class hierarchy and match the field by suffix because the bytecode
     // shape of `private lazy val isUnityCatalog` differs across delta version:
     //   * delta < 4.1: declared on the concret leaf class DeltaCatalog. Scala emits the backing
     //     field with its plain name `isUnityCatalog`.

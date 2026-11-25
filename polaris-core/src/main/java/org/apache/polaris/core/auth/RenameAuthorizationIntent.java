@@ -19,6 +19,7 @@
 package org.apache.polaris.core.auth;
 
 import com.google.common.base.Preconditions;
+import java.util.function.Consumer;
 import org.jspecify.annotations.NonNull;
 
 /** Authorization intent for rename operations over a source and destination securable. */
@@ -31,5 +32,11 @@ public record RenameAuthorizationIntent(
     Preconditions.checkNotNull(operation, "operation must be non-null");
     Preconditions.checkNotNull(from, "from must be non-null");
     Preconditions.checkNotNull(to, "to must be non-null");
+  }
+
+  @Override
+  public void visitSecurables(Consumer<PolarisSecurable> visitor) {
+    visitor.accept(from);
+    visitor.accept(to);
   }
 }

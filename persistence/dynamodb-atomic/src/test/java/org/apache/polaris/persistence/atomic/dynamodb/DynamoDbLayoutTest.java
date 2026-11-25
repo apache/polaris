@@ -1,0 +1,75 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.polaris.persistence.atomic.dynamodb;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.Test;
+
+class DynamoDbLayoutTest {
+
+  @Test
+  void entityPkCombinesRealmAndId() {
+    assertThat(DynamoDbLayout.entityPk("realm1", 42L)).isEqualTo("realm1#42");
+  }
+
+  @Test
+  void sentinelPkCombinesParentCoordinatesAndName() {
+    assertThat(DynamoDbLayout.sentinelPk("realm1", 7L, 3L, 2, "my_table"))
+        .isEqualTo("6#realm1#7#3#2#my_table");
+  }
+
+  @Test
+  void sentinelPkStaysUniqueWhenRealmIdContainsSeparator() {
+    // Without the realmId length prefix these two distinct entities both encode to
+    // realm1#7#3#2#0#my_table and collide.
+    String separatorInRealmId = DynamoDbLayout.sentinelPk("realm1#7", 3L, 2L, 0, "my_table");
+    String separatorInName = DynamoDbLayout.sentinelPk("realm1", 7L, 3L, 2, "0#my_table");
+    assertThat(separatorInRealmId).isNotEqualTo(separatorInName);
+  }
+
+  @Test
+  void childPkCombinesParentCoordinatesAndSubtype() {
+    assertThat(DynamoDbLayout.childPk("realm1", 7L, 3L, 2, 0)).isEqualTo("realm1#7#3#2#0");
+    assertThat(DynamoDbLayout.childPk("realm1", 7L, 3L, 1, 2)).isEqualTo("realm1#7#3#1#2");
+  }
+
+  @Test
+  void childSkPrefixesAndPadsTheIdToNineteenDigits() {
+    assertThat(DynamoDbLayout.childSk(0L)).isEqualTo("CHILD#0000000000000000000");
+    assertThat(DynamoDbLayout.childSk(42L)).isEqualTo("CHILD#0000000000000000042");
+    assertThat(DynamoDbLayout.childSk(Long.MAX_VALUE)).isEqualTo("CHILD#9223372036854775807");
+  }
+
+  @Test
+  void childSkSortsInNumericOrder() {
+    // Unpadded, "30" would sort after "200".
+    assertThat(DynamoDbLayout.childSk(30L)).isLessThan(DynamoDbLayout.childSk(200L));
+    assertThat(DynamoDbLayout.childSk(200L)).isLessThan(DynamoDbLayout.childSk(Long.MAX_VALUE));
+  }
+
+  @Test
+  void childSkStaysApartFromEntityAndNameMarkers() {
+    // The CHILD# prefix keeps child records from colliding with the ENTITY and NAME items that
+    // may share a partition key.
+    assertThat(DynamoDbLayout.childSk(42L)).startsWith(DynamoDbLayout.SK_CHILD_PREFIX);
+    assertThat(DynamoDbLayout.childSk(42L)).isNotEqualTo(DynamoDbLayout.SK_ENTITY);
+    assertThat(DynamoDbLayout.childSk(42L)).isNotEqualTo(DynamoDbLayout.SK_NAME);
+  }
+}

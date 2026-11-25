@@ -38,6 +38,22 @@ All properties listed here are **runtime** properties and can be changed without
 
 ## Features & Behavior
 
+### How the effective value of a feature is determined
+
+For a given catalog, the value of a feature is resolved in this order, and the first value that is
+set wins:
+
+1. The catalog property, for features that have one. It is listed as `Catalog Config` in the feature's
+   description, for example `polaris.config.allow.unstructured.table.location`. A deprecated catalog
+   property, if the feature has one, is only used when the current one is not set.
+2. The realm override
+   `polaris.features.realm-overrides."<realm>".overrides."<FEATURE>"`.
+3. The feature `polaris.features."<FEATURE>"`, which applies to all realms.
+4. The default value of the feature.
+
+Changing or removing a value at any level changes the effective value for every catalog that does not
+set a value at a higher level.
+
 ### `polaris.features`
 
 {{% include-config-section "flags-polaris_features" %}}
@@ -73,6 +89,10 @@ All properties listed here are **runtime** properties and can be changed without
 ### `polaris.storage`
 
 {{% include-config-section "smallrye-polaris_storage" %}}
+
+### `polaris.storage.cloudflare-r2`
+
+{{% include-config-section "smallrye-polaris_storage_cloudflare_r2" %}}
 
 ### `polaris.storage-credential-cache`
 
@@ -120,6 +140,10 @@ All properties listed here are **runtime** properties and can be changed without
 
 {{% include-config-section "smallrye-polaris_persistence_nosql_mongodb" %}}
 
+### `polaris.persistence.nosql.dynamodb`
+
+{{% include-config-section "smallrye-polaris_persistence_nosql_dynamodb" %}}
+
 ### `polaris.persistence.relational.jdbc`
 
 {{% include-config-section "smallrye-polaris_persistence_relational_jdbc" %}}
@@ -137,6 +161,10 @@ All properties listed here are **runtime** properties and can be changed without
 ### `polaris.event-listener.aws-cloudwatch`
 
 {{% include-config-section "smallrye-polaris_event_listener_aws_cloudwatch" %}}
+
+### `polaris.event-listener.kafka`
+
+{{% include-config-section "smallrye-polaris_event_listener_kafka" %}}
 
 ### `opentelemetry` event listener
 
@@ -200,3 +228,7 @@ configuration details.
 ### `polaris.realm-context`
 
 {{% include-config-section "smallrye-polaris_realm_context" %}}
+
+### `polaris.idempotency`
+
+{{% include-config-section "smallrye-polaris_idempotency" %}}

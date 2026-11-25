@@ -25,6 +25,6 @@ build:
 
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
-| `polaris.rate-limiter.token-bucket.requests-per-second` |  | `long` | Number of allowed requests per second per realm. The value _must_ be greater than zero.  |
+| `polaris.rate-limiter.token-bucket.requests-per-second` |  | `long` | Number of allowed requests per second per realm. The value _must_ be greater than zero. |
 | `polaris.rate-limiter.token-bucket.window` |  | `duration` | This setting is no longer used and will be removed in a future release. <br><br>_Deprecated_  |
-| `polaris.rate-limiter.token-bucket.type` |  | `string` | The type of the token bucket factory. Must be a registered (`org.apache.polaris.service.ratelimiter.TokenBucketFactory`) identifier.  |
+| `polaris.rate-limiter.token-bucket.type` |  | `string` | The type of the token bucket factory. Must be a registered (`org.apache.polaris.service.ratelimiter.TokenBucketFactory`) identifier. |

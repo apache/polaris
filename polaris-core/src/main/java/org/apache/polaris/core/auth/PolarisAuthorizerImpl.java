@@ -30,6 +30,7 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_MANAGE_ACC
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_MANAGE_CONTENT;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_MANAGE_METADATA;
+import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_READ_CONFIG;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_DROP;
@@ -100,11 +101,13 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_DETACH_POLICY;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_FULL_METADATA;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_INGEST_LINEAGE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_LIST;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_LIST_GRANTS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_MANAGE_STRUCTURE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_DATA;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_LINEAGE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_METRICS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_PARTITION_SPECS;
@@ -124,9 +127,11 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_WRITE_PROPER
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_DROP;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_FULL_METADATA;
+import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_INGEST_LINEAGE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_LIST;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_LIST_GRANTS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_MANAGE_GRANTS_ON_SECURABLE;
+import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_READ_LINEAGE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_WRITE_PROPERTIES;
 
@@ -254,7 +259,25 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             TABLE_READ_DATA,
             TABLE_READ_PROPERTIES,
             TABLE_WRITE_DATA,
-            TABLE_WRITE_PROPERTIES));
+            TABLE_WRITE_PROPERTIES,
+            TABLE_MANAGE_STRUCTURE,
+            TABLE_ASSIGN_UUID,
+            TABLE_UPGRADE_FORMAT_VERSION,
+            TABLE_ADD_SCHEMA,
+            TABLE_SET_CURRENT_SCHEMA,
+            TABLE_ADD_PARTITION_SPEC,
+            TABLE_ADD_SORT_ORDER,
+            TABLE_SET_DEFAULT_SORT_ORDER,
+            TABLE_ADD_SNAPSHOT,
+            TABLE_SET_SNAPSHOT_REF,
+            TABLE_REMOVE_SNAPSHOTS,
+            TABLE_REMOVE_SNAPSHOT_REF,
+            TABLE_SET_LOCATION,
+            TABLE_SET_PROPERTIES,
+            TABLE_REMOVE_PROPERTIES,
+            TABLE_SET_STATISTICS,
+            TABLE_REMOVE_STATISTICS,
+            TABLE_REMOVE_PARTITION_SPECS));
     SUPER_PRIVILEGES.putAll(
         VIEW_READ_PROPERTIES,
         List.of(
@@ -505,6 +528,76 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             CATALOG_READ_PROPERTIES,
             CATALOG_WRITE_PROPERTIES,
             SERVICE_MANAGE_ACCESS));
+    // CATALOG_READ_CONFIG gates client bootstrap via the Iceberg REST /v1/config endpoint, so it
+    // is subsumed by every privilege that is exercised through that client: the catalog-level
+    // read/manage privileges and all catalog-content privileges (including Iceberg table-update
+    // privileges, POLICY_*, and SEMANTIC_MODEL_*). Note the check still evaluates grants on the
+    // catalog path, so content privileges must be granted at catalog level (or above) to subsume;
+    // grants scoped to a single namespace or table are not visible to the catalog-level check.
+    SUPER_PRIVILEGES.putAll(
+        CATALOG_READ_CONFIG,
+        List.of(
+            CATALOG_FULL_METADATA,
+            CATALOG_MANAGE_CONTENT,
+            CATALOG_MANAGE_METADATA,
+            CATALOG_READ_CONFIG,
+            CATALOG_READ_PROPERTIES,
+            CATALOG_WRITE_PROPERTIES,
+            NAMESPACE_CREATE,
+            NAMESPACE_DROP,
+            NAMESPACE_FULL_METADATA,
+            NAMESPACE_LIST,
+            NAMESPACE_READ_PROPERTIES,
+            NAMESPACE_WRITE_PROPERTIES,
+            POLICY_ATTACH,
+            POLICY_CREATE,
+            POLICY_DETACH,
+            POLICY_DROP,
+            POLICY_FULL_METADATA,
+            POLICY_LIST,
+            POLICY_MANAGE_GRANTS_ON_SECURABLE,
+            POLICY_READ,
+            POLICY_WRITE,
+            SEMANTIC_MODEL_CREATE,
+            SEMANTIC_MODEL_DROP,
+            SEMANTIC_MODEL_FULL_METADATA,
+            SEMANTIC_MODEL_LIST,
+            SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE,
+            SEMANTIC_MODEL_READ,
+            SEMANTIC_MODEL_WRITE,
+            TABLE_ADD_PARTITION_SPEC,
+            TABLE_ADD_SCHEMA,
+            TABLE_ADD_SNAPSHOT,
+            TABLE_ADD_SORT_ORDER,
+            TABLE_ASSIGN_UUID,
+            TABLE_CREATE,
+            TABLE_DROP,
+            TABLE_FULL_METADATA,
+            TABLE_LIST,
+            TABLE_MANAGE_STRUCTURE,
+            TABLE_READ_DATA,
+            TABLE_READ_PROPERTIES,
+            TABLE_REMOVE_PARTITION_SPECS,
+            TABLE_REMOVE_PROPERTIES,
+            TABLE_REMOVE_SNAPSHOTS,
+            TABLE_REMOVE_SNAPSHOT_REF,
+            TABLE_REMOVE_STATISTICS,
+            TABLE_SET_CURRENT_SCHEMA,
+            TABLE_SET_DEFAULT_SORT_ORDER,
+            TABLE_SET_LOCATION,
+            TABLE_SET_PROPERTIES,
+            TABLE_SET_SNAPSHOT_REF,
+            TABLE_SET_STATISTICS,
+            TABLE_UPGRADE_FORMAT_VERSION,
+            TABLE_WRITE_DATA,
+            TABLE_WRITE_PROPERTIES,
+            VIEW_CREATE,
+            VIEW_DROP,
+            VIEW_FULL_METADATA,
+            VIEW_LIST,
+            VIEW_READ_PROPERTIES,
+            VIEW_WRITE_PROPERTIES,
+            SERVICE_MANAGE_ACCESS));
     SUPER_PRIVILEGES.putAll(
         CATALOG_WRITE_PROPERTIES,
         List.of(
@@ -732,6 +825,52 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
         SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE,
         List.of(SEMANTIC_MODEL_MANAGE_GRANTS_ON_SECURABLE, CATALOG_MANAGE_ACCESS));
 
+    // Lineage privileges. Lineage is a property of the entity it describes, so the read privilege
+    // follows the entity's read uber-grants and the ingest privilege its write uber-grants. Tables
+    // and views get separate privileges because subsumption ignores the leaf type: a single
+    // privilege implied by both TABLE_* and VIEW_* grants would let a view grant on a namespace
+    // confer lineage access on every table in it, and vice versa. Grantability at root, catalog and
+    // namespace scope comes from hasTransitivePrivilege's path walk, not from this map. Ingest
+    // deliberately does not confer read: ingest is append-only event submission, and an engine
+    // principal has no need to query the graph.
+    SUPER_PRIVILEGES.putAll(
+        TABLE_READ_LINEAGE,
+        List.of(
+            TABLE_READ_LINEAGE,
+            TABLE_READ_PROPERTIES,
+            TABLE_READ_DATA,
+            TABLE_WRITE_PROPERTIES,
+            TABLE_WRITE_DATA,
+            TABLE_FULL_METADATA,
+            CATALOG_MANAGE_METADATA,
+            CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        TABLE_INGEST_LINEAGE,
+        List.of(
+            TABLE_INGEST_LINEAGE,
+            TABLE_WRITE_PROPERTIES,
+            TABLE_WRITE_DATA,
+            TABLE_FULL_METADATA,
+            CATALOG_MANAGE_METADATA,
+            CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        VIEW_READ_LINEAGE,
+        List.of(
+            VIEW_READ_LINEAGE,
+            VIEW_READ_PROPERTIES,
+            VIEW_WRITE_PROPERTIES,
+            VIEW_FULL_METADATA,
+            CATALOG_MANAGE_METADATA,
+            CATALOG_MANAGE_CONTENT));
+    SUPER_PRIVILEGES.putAll(
+        VIEW_INGEST_LINEAGE,
+        List.of(
+            VIEW_INGEST_LINEAGE,
+            VIEW_WRITE_PROPERTIES,
+            VIEW_FULL_METADATA,
+            CATALOG_MANAGE_METADATA,
+            CATALOG_MANAGE_CONTENT));
+
     // Policy privileges
     SUPER_PRIVILEGES.putAll(
         POLICY_CREATE,
@@ -800,8 +939,8 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
   @Override
   public void resolveAuthorizationInputs(
       @NonNull AuthorizationState authzState, @NonNull AuthorizationRequest request) {
-    PolarisResolutionManifest resolutionManifest = authzState.getResolutionManifest();
-    resolutionManifest.resolveAll();
+    authzState.selectAll();
+    authzState.resolve();
   }
 
   @Override

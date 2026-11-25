@@ -19,9 +19,21 @@
 
 package org.apache.polaris.core.storage;
 
+import static org.apache.polaris.core.config.RealmConfigurationSource.EMPTY_CONFIG;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
+import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.RealmConfigImpl;
+import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
@@ -124,5 +136,72 @@ public class PolarisStorageConfigurationInfoTest {
                 .addAllowedLocations("file:///tmp/bar", "file:///meep/moo")
                 .build(),
             "{\"@type\":\"FileStorageConfigurationInfo\",\"allowedLocations\":[\"file:///tmp/bar\",\"file:///meep/moo\"],\"storageType\":\"FILE\",\"fileIoImplClassName\":\"org.apache.iceberg.hadoop.HadoopFileIO\"}"));
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  public void forEntityPathStructuredLocations(
+      List<PolarisEntity> entityPath, String location, boolean allowed) {
+    RealmConfig realmConfig = new RealmConfigImpl(EMPTY_CONFIG, () -> "test-realm");
+    TableIdentifier identifier = TableIdentifier.of("ns", "t");
+    LocationRestrictions restrictions =
+        PolarisStorageConfigurationInfo.forEntityPath(realmConfig, entityPath).orElseThrow();
+    if (allowed) {
+      soft.assertThatCode(() -> restrictions.validate(realmConfig, identifier, Set.of(location)))
+          .doesNotThrowAnyException();
+    } else {
+      soft.assertThatThrownBy(
+              () -> restrictions.validate(realmConfig, identifier, Set.of(location)))
+          .isInstanceOf(ForbiddenException.class)
+          .hasMessageContaining("Invalid locations");
+    }
+  }
+
+  static Stream<Arguments> forEntityPathStructuredLocations() {
+    PolarisEntity catalog =
+        new PolarisEntity.Builder()
+            .setType(PolarisEntityType.CATALOG)
+            .setName("catalog")
+            .setInternalProperties(
+                Map.of(
+                    PolarisEntityConstants.getStorageConfigInfoPropertyName(),
+                    AwsStorageConfigurationInfo.builder()
+                        .addAllowedLocations("s3://lake/")
+                        .roleARN("arn:aws:iam::123456789012:role/polaris-test")
+                        .build()
+                        .serialize()))
+            .build();
+    PolarisEntity namespace = entity(PolarisEntityType.NAMESPACE, "ns", "s3://lake/ns/");
+    PolarisEntity table = entity(PolarisEntityType.TABLE_LIKE, "t", "s3://lake/ns/t/");
+    // A table outside its namespace, as left behind by renaming it from another namespace.
+    PolarisEntity movedTable =
+        entity(PolarisEntityType.TABLE_LIKE, "moved", "s3://lake/other/moved/");
+    // Tables created by notifications have no base location.
+    PolarisEntity tableWithoutLocation = entity(PolarisEntityType.TABLE_LIKE, "notified", null);
+
+    List<PolarisEntity> namespacePath = List.of(catalog, namespace);
+    List<PolarisEntity> tablePath = List.of(catalog, namespace, table);
+    List<PolarisEntity> movedTablePath = List.of(catalog, namespace, movedTable);
+    List<PolarisEntity> noLocationTablePath = List.of(catalog, namespace, tableWithoutLocation);
+    return Stream.of(
+        arguments(namespacePath, "s3://lake/ns/t/", true),
+        arguments(namespacePath, "s3://lake/other/t/", false),
+        arguments(tablePath, "s3://lake/ns/t/", true),
+        arguments(tablePath, "s3://lake/ns/t/data/", true),
+        arguments(tablePath, "s3://lake/ns/elsewhere/", false),
+        arguments(movedTablePath, "s3://lake/other/moved/", false),
+        arguments(noLocationTablePath, "s3://lake/ns/notified/", true),
+        arguments(noLocationTablePath, "s3://lake/other/notified/", false));
+  }
+
+  private static PolarisEntity entity(PolarisEntityType type, String name, String location) {
+    PolarisEntity.Builder builder = new PolarisEntity.Builder().setType(type).setName(name);
+    if (type == PolarisEntityType.TABLE_LIKE) {
+      builder.setSubType(PolarisEntitySubType.ICEBERG_TABLE);
+    }
+    if (location != null) {
+      builder.setProperties(Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, location));
+    }
+    return builder.build();
   }
 }

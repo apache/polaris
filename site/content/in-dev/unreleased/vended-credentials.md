@@ -79,6 +79,10 @@ endpoint URL in the properties listed above (one per storage type). Iceberg clie
 the Iceberg REST credential-refresh protocol can call this endpoint to obtain fresh credentials
 before the current ones expire, avoiding the need to re-load the table.
 
+The endpoint is only returned together with credentials: a response that carries no vended
+credentials, for example because the request included `none` or because the storage configuration
+does not vend credentials, does not contain it.
+
 ## When delegation cannot be satisfied
 
 `X-Iceberg-Access-Delegation` tells Polaris which access mechanisms the client supports. If the
@@ -96,6 +100,18 @@ storage configuration, or a mechanism Polaris does not support), so a later requ
 table would not succeed either. A client that asks for delegation usually has no storage
 credentials of its own, and a `200` response without credentials would only move the failure to
 the first data access, where it is much harder to diagnose.
+
+### Clients that can work without delegation
+
+A client that has storage credentials of its own can say so by including `none` in the header, a
+value defined by the Iceberg REST specification. Polaris then treats the request like one without
+the header: the table is returned without credentials, the request is authorized as a plain
+metadata operation, and none of the `400` responses above apply. This holds whether `none` is sent
+alone or together with `vended-credentials` or `remote-signing`; Polaris does not vend credentials
+to a client that has said it can operate without them.
+
+Clients that want credentials where the catalog can provide them should therefore send
+`vended-credentials` without `none`, and accept the `400` responses above where it cannot.
 
 For catalogs that cannot vend credentials, configure the client to authenticate to the object
 store directly and omit the header. In Spark, for example, remove

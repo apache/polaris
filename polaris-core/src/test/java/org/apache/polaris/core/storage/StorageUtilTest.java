@@ -19,11 +19,13 @@
 package org.apache.polaris.core.storage;
 
 import java.util.Map;
+import org.apache.iceberg.view.ViewMetadata;
 import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.Mockito;
 
 public class StorageUtilTest {
 
@@ -106,5 +108,71 @@ public class StorageUtilTest {
                     IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY, "/2/",
                     IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY, "/3/")))
         .contains("/1/", "/2/", "/3/");
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {"s3://bucket", "gs://bucket", "abfss://container@account.dfs.core.windows.net"})
+  public void getLocationsUsedByView(String root) {
+    ViewMetadata metadata = Mockito.mock(ViewMetadata.class);
+    Mockito.when(metadata.location()).thenReturn(root + "/view");
+    Mockito.when(metadata.properties()).thenReturn(Map.of());
+    Assertions.assertThat(StorageUtil.getLocationsUsedByTable(metadata))
+        .containsExactly(root + "/view");
+    Mockito.when(metadata.properties())
+        .thenReturn(
+            Map.of(
+                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY,
+                    root + "/metadata",
+                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY, root + "/ignored"));
+    Assertions.assertThat(StorageUtil.getLocationsUsedByTable(metadata))
+        .containsExactlyInAnyOrder(root + "/view", root + "/metadata");
+    // Metadata under the view's base is already covered, so no separate credential scope is needed.
+    Mockito.when(metadata.properties())
+        .thenReturn(
+            Map.of(
+                IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY,
+                root + "/view/metadata"));
+    Assertions.assertThat(StorageUtil.getLocationsUsedByTable(metadata))
+        .containsExactly(root + "/view");
+  }
+
+  @Test
+  public void getLocationsUsedByTableKeepsOneWhenLocationsDifferOnlyByScheme() {
+    // abfss:// (secure) and abfs:// (non-secure) denote the same Azure location, so each is a
+    // child of the other. The base location must survive rather than both being dropped.
+    Assertions.assertThat(
+            StorageUtil.getLocationsUsedByTable(
+                "abfss://container@account.dfs.core.windows.net/table",
+                Map.of(
+                    IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
+                    "abfs://container@account.dfs.core.windows.net/table")))
+        .containsExactly("abfss://container@account.dfs.core.windows.net/table");
+  }
+
+  @Test
+  public void getLocationsUsedByTableKeepsOneWhenLocationsDifferOnlyByTrailingSlash() {
+    // s3://bucket/table and s3://bucket/table/ denote the same location, so each is a child of
+    // the other. The base location must survive rather than both being dropped.
+    Assertions.assertThat(
+            StorageUtil.getLocationsUsedByTable(
+                "s3://bucket/table",
+                Map.of(
+                    IcebergTableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY,
+                    "s3://bucket/table/")))
+        .containsExactly("s3://bucket/table");
+  }
+
+  @Test
+  public void getLocationsUsedByTableDeduplicatesEquivalentMetadataLocation() {
+    // Same as above but via the metadata-location key: it denotes the same place as the base
+    // location (differing only by a trailing slash), so only the base location survives.
+    Assertions.assertThat(
+            StorageUtil.getLocationsUsedByTable(
+                "s3://bucket/table",
+                Map.of(
+                    IcebergTableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY,
+                    "s3://bucket/table/")))
+        .containsExactly("s3://bucket/table");
   }
 }

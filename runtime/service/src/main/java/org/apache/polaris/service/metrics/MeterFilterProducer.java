@@ -49,13 +49,12 @@ public class MeterFilterProducer {
   @Singleton
   public MeterFilter maxRealmIdTagsInHttpMetricsFilter() {
     MeterFilter denyFilter =
-        new OnlyOnceLoggingDenyMeterFilter(
-            () ->
-                String.format(
-                    "Reached the maximum number (%s) of '%s' tags for '%s'",
-                    metricsConfiguration.realmIdTag().httpMetricsMaxCardinality(),
-                    RealmIdTagContributor.TAG_REALM,
-                    binderConfiguration.getHttpServerRequestsName()));
+        new OnlyOnceLoggingDenyMeterFilter(() ->
+            String.format(
+                "Reached the maximum number (%s) of '%s' tags for '%s'",
+                metricsConfiguration.realmIdTag().httpMetricsMaxCardinality(),
+                RealmIdTagContributor.TAG_REALM,
+                binderConfiguration.getHttpServerRequestsName()));
     return MeterFilter.maximumAllowableTags(
         binderConfiguration.getHttpServerRequestsName(),
         RealmIdTagContributor.TAG_REALM,

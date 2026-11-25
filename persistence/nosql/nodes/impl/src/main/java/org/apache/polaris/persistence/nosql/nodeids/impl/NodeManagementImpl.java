@@ -257,13 +257,12 @@ class NodeManagementImpl implements NodeManagement {
 
     return nodeStore
         .fetch(nodeId)
-        .map(
-            nodeObj ->
-                ImmutableNode.builder()
-                    .id(nodeId)
-                    .leaseTimestamp(nodeObj.leaseTimestamp())
-                    .expirationTimestamp(nodeObj.expirationTimestamp())
-                    .build());
+        .map(nodeObj ->
+            ImmutableNode.builder()
+                .id(nodeId)
+                .leaseTimestamp(nodeObj.leaseTimestamp())
+                .expirationTimestamp(nodeObj.expirationTimestamp())
+                .build());
   }
 
   @Override
@@ -289,23 +288,19 @@ class NodeManagementImpl implements NodeManagement {
     try {
       var hashOverNetworkInterfaces =
           NetworkInterface.networkInterfaces()
-              .mapToInt(
-                  ni -> {
-                    try {
-                      if (ni.isUp()
-                          && !ni.isLoopback()
-                          && !ni.isVirtual()
-                          && !ni.isPointToPoint()) {
-                        return ni.getInterfaceAddresses().stream()
-                            .mapToInt(InterfaceAddress::hashCode)
-                            .reduce((a, b) -> 31 * a + b)
-                            .orElse(0);
-                      }
-                    } catch (SocketException e) {
-                      // ignore
-                    }
-                    return 0;
-                  })
+              .mapToInt(ni -> {
+                try {
+                  if (ni.isUp() && !ni.isLoopback() && !ni.isVirtual() && !ni.isPointToPoint()) {
+                    return ni.getInterfaceAddresses().stream()
+                        .mapToInt(InterfaceAddress::hashCode)
+                        .reduce((a, b) -> 31 * a + b)
+                        .orElse(0);
+                  }
+                } catch (SocketException e) {
+                  // ignore
+                }
+                return 0;
+              })
               .reduce((a, b) -> 31 * a + b)
               .orElse(0);
 

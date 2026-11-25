@@ -65,11 +65,10 @@ final class PolicyMappingSerializer implements IndexValueSerializer<PolicyMappin
 
     var params = value.parameters();
     putVarInt(target, params.size());
-    params.forEach(
-        (k, v) -> {
-          IndexKey.key(k).serialize(target);
-          IndexKey.key(v).serialize(target);
-        });
+    params.forEach((k, v) -> {
+      IndexKey.key(k).serialize(target);
+      IndexKey.key(v).serialize(target);
+    });
 
     var ext = value.externalMapping();
     if (ext.isPresent()) {

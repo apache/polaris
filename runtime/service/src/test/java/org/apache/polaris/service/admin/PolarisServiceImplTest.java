@@ -38,8 +38,10 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
+import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthorizationDecision;
+import org.apache.polaris.core.auth.AuthorizationRequest;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -55,6 +57,8 @@ import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.storage.S3CredentialVendingMechanisms;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
 public class PolarisServiceImplTest {
@@ -104,7 +108,8 @@ public class PolarisServiceImplTest {
             principal,
             polarisAuthorizer,
             reservedProperties,
-            vendingMechanisms);
+            vendingMechanisms,
+            new CatalogConfigValidators(List.of()));
     polarisService =
         new PolarisServiceImpl(
             realmConfig, reservedProperties, adminService, serviceIdentityProvider);
@@ -118,7 +123,7 @@ public class PolarisServiceImplTest {
   void deniedCreateCatalogThroughTheResourceNeverConsultsTheAllowlist() {
     PolarisResolutionManifest manifest = Mockito.mock(PolarisResolutionManifest.class);
     when(resolutionManifestFactory.createResolutionManifest(any(), any())).thenReturn(manifest);
-    when(polarisAuthorizer.authorize(any(), any()))
+    when(polarisAuthorizer.authorize(any(), any(AuthorizationRequest.class)))
         .thenReturn(AuthorizationDecision.deny("denied"));
     when(realmConfig.getConfig(FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES))
         .thenReturn(List.of("S3"));
@@ -243,7 +248,7 @@ public class PolarisServiceImplTest {
             .build();
 
     assertThatThrownBy(() -> invokeValidateExternalCatalog(polarisService, externalCatalog))
-        .isInstanceOf(IllegalStateException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Unsupported connection type: HADOOP");
   }
 
@@ -273,8 +278,126 @@ public class PolarisServiceImplTest {
             .build();
 
     assertThatThrownBy(() -> invokeValidateExternalCatalog(polarisService, externalCatalog))
-        .isInstanceOf(IllegalStateException.class)
+        .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Unsupported authentication type: BEARER");
+  }
+
+  @Test
+  void testValidateExternalCatalog_MissingAuthenticationParameters() {
+    StorageConfigInfo storageConfig =
+        FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
+            .setAllowedLocations(List.of("file://tmp"))
+            .build();
+
+    ConnectionConfigInfo connectionConfigInfo = Mockito.mock(ConnectionConfigInfo.class);
+    when(connectionConfigInfo.getConnectionType())
+        .thenReturn(ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST);
+    when(connectionConfigInfo.getAuthenticationParameters()).thenReturn(null);
+
+    ExternalCatalog externalCatalog =
+        ExternalCatalog.builder()
+            .setType(Catalog.TypeEnum.EXTERNAL)
+            .setName("test-catalog")
+            .setProperties(new CatalogProperties("file://tmp"))
+            .setStorageConfigInfo(storageConfig)
+            .setConnectionConfigInfo(connectionConfigInfo)
+            .build();
+
+    assertThatThrownBy(() -> invokeValidateExternalCatalog(polarisService, externalCatalog))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("authenticationParameters is required for an external catalog");
+  }
+
+  @Test
+  void testValidateExternalCatalog_SigV4WithoutStsEndpointAllowedWhenS3EndpointsDisabled() {
+    when(realmConfig.getConfig(
+            FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES))
+        .thenReturn(List.of("SIGV4"));
+    when(realmConfig.getConfig(FeatureConfiguration.ALLOW_SETTING_S3_ENDPOINTS)).thenReturn(false);
+
+    assertThatCode(() -> invokeValidateExternalCatalog(polarisService, sigV4ExternalCatalog(null)))
+        .doesNotThrowAnyException();
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "https://sts.us-west-2.amazonaws.com",
+        "http://sts.example.com:9000",
+        "https://user@sts.example.com",
+        "https://sts.example.com/?token=1",
+        "https://sts.example.com/#fragment"
+      })
+  void testValidateExternalCatalog_SigV4StsEndpointAllowed(String stsEndpoint) {
+    when(realmConfig.getConfig(
+            FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES))
+        .thenReturn(List.of("SIGV4"));
+    when(realmConfig.getConfig(FeatureConfiguration.ALLOW_SETTING_S3_ENDPOINTS)).thenReturn(true);
+
+    assertThatCode(
+            () -> invokeValidateExternalCatalog(polarisService, sigV4ExternalCatalog(stsEndpoint)))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  void testValidateExternalCatalog_SigV4StsEndpointRejectedWhenS3EndpointsDisabled() {
+    when(realmConfig.getConfig(
+            FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES))
+        .thenReturn(List.of("SIGV4"));
+    when(realmConfig.getConfig(FeatureConfiguration.ALLOW_SETTING_S3_ENDPOINTS)).thenReturn(false);
+
+    assertThatThrownBy(() ->
+            invokeValidateExternalCatalog(
+                polarisService, sigV4ExternalCatalog("https://sts.us-west-2.amazonaws.com")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Explicitly setting STS endpoints is not allowed.");
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "sts.us-west-2.amazonaws.com",
+        "ftp://sts.example.com",
+        "file:///tmp/sts",
+        "",
+        "not a uri"
+      })
+  void testValidateExternalCatalog_SigV4InvalidStsEndpointRejected(String stsEndpoint) {
+    when(realmConfig.getConfig(
+            FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES))
+        .thenReturn(List.of("SIGV4"));
+    when(realmConfig.getConfig(FeatureConfiguration.ALLOW_SETTING_S3_ENDPOINTS)).thenReturn(true);
+
+    assertThatThrownBy(
+            () -> invokeValidateExternalCatalog(polarisService, sigV4ExternalCatalog(stsEndpoint)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("stsEndpoint");
+  }
+
+  private ExternalCatalog sigV4ExternalCatalog(String stsEndpoint) {
+    StorageConfigInfo storageConfig =
+        FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
+            .setAllowedLocations(List.of("file://tmp"))
+            .build();
+    SigV4AuthenticationParameters authenticationParameters =
+        SigV4AuthenticationParameters.builder()
+            .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.SIGV4)
+            .setRoleArn("arn:aws:iam::123456789012:role/customer-role")
+            .setSigningRegion("us-west-2")
+            .setStsEndpoint(stsEndpoint)
+            .build();
+    ConnectionConfigInfo connectionConfigInfo = Mockito.mock(ConnectionConfigInfo.class);
+    when(connectionConfigInfo.getConnectionType())
+        .thenReturn(ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST);
+    when(connectionConfigInfo.getAuthenticationParameters()).thenReturn(authenticationParameters);
+
+    return ExternalCatalog.builder()
+        .setType(Catalog.TypeEnum.EXTERNAL)
+        .setName("test-catalog")
+        .setProperties(new CatalogProperties("file://tmp"))
+        .setStorageConfigInfo(storageConfig)
+        .setConnectionConfigInfo(connectionConfigInfo)
+        .build();
   }
 
   private void invokeValidateExternalCatalog(PolarisServiceImpl service, Catalog catalog)

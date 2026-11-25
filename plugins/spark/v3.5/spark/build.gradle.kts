@@ -24,7 +24,10 @@ import org.gradle.api.plugins.jvm.JvmTestSuite
 plugins {
   id("polaris-client")
   id("polaris-server-test-runner")
+  id("polaris-spark-license-checks")
 }
+
+apply(from = "../../licensee.gradle.kts")
 
 checkstyle {
   configProperties =
@@ -116,6 +119,14 @@ testing {
 
         implementation("io.delta:delta-spark_${scalaVersion}:3.3.1")
         implementation("org.apache.hudi:hudi-spark3.5-bundle_${scalaVersion}:1.1.1")
+        // Paimon 1.4.1 does not publish a Spark 3.5 runtime for Scala 2.13.
+        if (scalaVersion == "2.12") {
+          implementation("org.apache.paimon:paimon-spark-3.5_${scalaVersion}:1.4.1") {
+            exclude(group = "org.apache.spark")
+            // Avoid the Quarkus BOM replacing Paimon's Scala 2.12 compiler with Scala 2.13.
+            exclude("org.scala-lang", "scala-compiler")
+          }
+        }
 
         // The hudi-spark-bundle includes most Hive libraries but excludes hive-exec to keep size
         // manageable
@@ -207,6 +218,12 @@ listOf("intTestCompileClasspath", "intTestRuntimeClasspath").forEach {
   // compatibility.
   configurations.named(it).configure {
     attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, intTestJvmVersion)
+    if (scalaVersion == "2.12") {
+      // Resolve at.yawk.lz4:lz4-java from Paimon against org.lz4:lz4-java from Spark.
+      resolutionStrategy.capabilitiesResolution.withCapability("org.lz4:lz4-java") {
+        select("org.lz4:lz4-java:1.8.1")
+      }
+    }
   }
 }
 
@@ -245,6 +262,10 @@ val createPolarisSparkJar =
 
       // From Hive/Hadoop - exclude those to not confuse people.
       "META-INF/DEPENDENCIES",
+
+      // JSpecify only contains compile-time annotations; Iceberg's Spark runtime jar bundles an
+      // unrelocated copy that is not needed at runtime.
+      "org/jspecify/**",
     )
 
     // add polaris customized LICENSE and NOTICE for the bundle jar under META-INF. Note that the
@@ -272,9 +293,8 @@ tasks.named("build") { dependsOn(createPolarisSparkJar) }
 // bundle jar is intentionally left untouched here).
 listOf("jar", "sourcesJar", "javadocJar").forEach { jarTask ->
   tasks.named<Jar>(jarTask) {
-    from(layout.settingsDirectory) {
-      include("gradle/jar-licenses/LICENSE", "gradle/jar-licenses/NOTICE")
-      eachFile { path = "META-INF/$sourceName" }
+    into("META-INF") {
+      from(layout.settingsDirectory.dir("gradle/jar-licenses")) { include("LICENSE", "NOTICE") }
     }
   }
 }

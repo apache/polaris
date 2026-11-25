@@ -150,19 +150,16 @@ public class DocGenDoclet implements Doclet {
 
     sectionPages.values().stream()
         .filter(p -> !p.isEmpty())
-        .forEach(
-            page -> {
-              System.out.printf(
-                  "... generating smallrye config page for section %s%n", page.section);
-              var file = outputDirectory.resolve("smallrye-" + safeFileName(page.section) + ".md");
-              try (var pw =
-                  new PrintWriter(
-                      Files.newBufferedWriter(file, UTF_8, CREATE, TRUNCATE_EXISTING))) {
-                page.writeTo(pw);
-              } catch (IOException e) {
-                throw new RuntimeException(e);
-              }
-            });
+        .forEach(page -> {
+          System.out.printf("... generating smallrye config page for section %s%n", page.section);
+          var file = outputDirectory.resolve("smallrye-" + safeFileName(page.section) + ".md");
+          try (var pw =
+              new PrintWriter(Files.newBufferedWriter(file, UTF_8, CREATE, TRUNCATE_EXISTING))) {
+            page.writeTo(pw);
+          } catch (IOException e) {
+            throw new RuntimeException(e);
+          }
+        });
   }
 
   private void polarisConfigPages(PolarisConfigurationConfigs polarisConfigs) {
@@ -261,17 +258,16 @@ public class DocGenDoclet implements Doclet {
 
     mappingInfo
         .properties(environment)
-        .forEach(
-            prop ->
-                smallryeProcessProperty(
-                    logIndent,
-                    environment,
-                    smallryeConfigs,
-                    mappingInfo,
-                    effectiveSection,
-                    prop,
-                    propertyNamePrefix,
-                    sectionPages));
+        .forEach(prop ->
+            smallryeProcessProperty(
+                logIndent,
+                environment,
+                smallryeConfigs,
+                mappingInfo,
+                effectiveSection,
+                prop,
+                propertyNamePrefix,
+                sectionPages));
   }
 
   private void smallryeProcessProperty(
@@ -314,34 +310,32 @@ public class DocGenDoclet implements Doclet {
 
     propertyInfo
         .groupType()
-        .ifPresent(
-            groupType -> {
-              var groupMappingInfo = smallryeConfigs.getConfigMappingInfo(groupType);
+        .ifPresent(groupType -> {
+          var groupMappingInfo = smallryeConfigs.getConfigMappingInfo(groupType);
 
-              propertyInfo
-                  .unnamedKey()
-                  .ifPresent(
-                      unnamedKey -> {
-                        var unnamedFullName = concatWithDot(propertyNamePrefix, md.propertyName());
-                        smallryeProcessPropertyMappingInfo(
-                            logIndent + "  ",
-                            environment,
-                            smallryeConfigs,
-                            effectiveSection,
-                            groupMappingInfo,
-                            unnamedFullName,
-                            sectionPages);
-                      });
+          propertyInfo
+              .unnamedKey()
+              .ifPresent(unnamedKey -> {
+                var unnamedFullName = concatWithDot(propertyNamePrefix, md.propertyName());
+                smallryeProcessPropertyMappingInfo(
+                    logIndent + "  ",
+                    environment,
+                    smallryeConfigs,
+                    effectiveSection,
+                    groupMappingInfo,
+                    unnamedFullName,
+                    sectionPages);
+              });
 
-              smallryeProcessPropertyMappingInfo(
-                  logIndent + "  ",
-                  environment,
-                  smallryeConfigs,
-                  effectiveSection,
-                  groupMappingInfo,
-                  fullName,
-                  sectionPages);
-            });
+          smallryeProcessPropertyMappingInfo(
+              logIndent + "  ",
+              environment,
+              smallryeConfigs,
+              effectiveSection,
+              groupMappingInfo,
+              fullName,
+              sectionPages);
+        });
   }
 
   private String formatPropertyName(

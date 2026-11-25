@@ -73,6 +73,23 @@ public class AzureLocationTest {
   }
 
   @Test
+  public void testLocationComparisonsWithEmptyPathSegment() {
+    StorageLocation root = AzureLocation.of("abfss://container@acc.dfs.core.windows.net/");
+    StorageLocation emptySegment = AzureLocation.of("abfss://container@acc.dfs.core.windows.net//");
+    StorageLocation location =
+        AzureLocation.of("abfss://container@acc.dfs.core.windows.net/some_file/metadata");
+    StorageLocation locationUnderEmptySegment =
+        AzureLocation.of("abfss://container@acc.dfs.core.windows.net//some_file/metadata");
+
+    Assertions.assertThat(emptySegment.isChildOf(root)).isTrue();
+    Assertions.assertThat(root.isChildOf(emptySegment)).isFalse();
+    Assertions.assertThat(location.isChildOf(emptySegment)).isFalse();
+    Assertions.assertThat(locationUnderEmptySegment.isChildOf(emptySegment)).isTrue();
+    Assertions.assertThat(locationUnderEmptySegment.isChildOf(location)).isFalse();
+    Assertions.assertThat(location.isChildOf(locationUnderEmptySegment)).isFalse();
+  }
+
+  @Test
   public void testLocation_negative_cases() {
     Assertions.assertThatThrownBy(
             () -> new AzureLocation("abfss://storageaccount.blob.core.windows.net/myfile"))

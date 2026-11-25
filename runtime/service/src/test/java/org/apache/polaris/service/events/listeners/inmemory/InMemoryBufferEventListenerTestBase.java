@@ -87,15 +87,14 @@ abstract class InMemoryBufferEventListenerTestBase {
     String query = "SELECT COUNT(*) FROM events WHERE realm_id = '" + realmId + "'";
     await()
         .atMost(Duration.ofSeconds(10))
-        .untilAsserted(
-            () -> {
-              try (Connection connection = dataSource.get().getConnection();
-                  Statement statement = connection.createStatement();
-                  ResultSet rs = statement.executeQuery(query)) {
-                rs.next();
-                assertThat(rs.getInt(1)).isEqualTo(expected);
-              }
-            });
+        .untilAsserted(() -> {
+          try (Connection connection = dataSource.get().getConnection();
+              Statement statement = connection.createStatement();
+              ResultSet rs = statement.executeQuery(query)) {
+            rs.next();
+            assertThat(rs.getInt(1)).isEqualTo(expected);
+          }
+        });
   }
 
   static EventEntity event() {

@@ -569,6 +569,39 @@ public class PolarisPolicyServiceIntegrationTest {
   }
 
   @Test
+  public void testUpdatePolicyWithoutCurrentPolicyVersion() {
+    restCatalog.createNamespace(NS1);
+    policyApi.createPolicy(
+        currentCatalogName,
+        NS1_P1,
+        PredefinedPolicyTypes.DATA_COMPACTION,
+        EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT,
+        "test policy");
+
+    UpdatePolicyRequest request =
+        UpdatePolicyRequest.builder()
+            .setContent("{\"enable\":false}")
+            .setDescription("updated test policy")
+            .build();
+    try (Response res =
+        policyApi
+            .request(
+                "polaris/v1/{cat}/namespaces/{ns}/policies/{policy}",
+                Map.of("cat", currentCatalogName, "ns", NS1_NAME, "policy", NS1_P1.name()))
+            .put(Entity.json(request))) {
+      Assertions.assertThat(res.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      Assertions.assertThat(res.readEntity(String.class))
+          .contains("current-policy-version is required to update a policy");
+    }
+
+    Policy policy = policyApi.loadPolicy(currentCatalogName, NS1_P1);
+    Assertions.assertThat(policy.getVersion()).isEqualTo(0);
+    Assertions.assertThat(policy.getContent()).isEqualTo(EXAMPLE_TABLE_MAINTENANCE_POLICY_CONTENT);
+
+    policyApi.dropPolicy(currentCatalogName, NS1_P1);
+  }
+
+  @Test
   public void testListPolicies() {
     restCatalog.createNamespace(NS1);
     policyApi.createPolicy(
@@ -885,13 +918,12 @@ public class PolarisPolicyServiceIntegrationTest {
       managementApi.createCatalogRole(currentCatalogName, CATALOG_ROLE_2);
       Stream<PolicyGrant> policyGrants =
           Arrays.stream(PolicyPrivilege.values())
-              .map(
-                  p ->
-                      new PolicyGrant(
-                          Arrays.asList(NS1.levels()),
-                          NS1_P1.name(),
-                          p,
-                          GrantResource.TypeEnum.POLICY));
+              .map(p ->
+                  new PolicyGrant(
+                      Arrays.asList(NS1.levels()),
+                      NS1_P1.name(),
+                      p,
+                      GrantResource.TypeEnum.POLICY));
       policyGrants.forEach(g -> managementApi.addGrant(currentCatalogName, CATALOG_ROLE_2, g));
 
       Assertions.assertThat(managementApi.listGrants(currentCatalogName, CATALOG_ROLE_2))
@@ -926,25 +958,23 @@ public class PolarisPolicyServiceIntegrationTest {
       managementApi.createCatalogRole(currentCatalogName, CATALOG_ROLE_2);
       Stream<PolicyGrant> policyGrants =
           Arrays.stream(PolicyPrivilege.values())
-              .map(
-                  p ->
-                      new PolicyGrant(
-                          Arrays.asList(NS1.levels()),
-                          NS1_P1.name(),
-                          p,
-                          GrantResource.TypeEnum.POLICY));
-      policyGrants.forEach(
-          g -> {
-            try (Response response =
-                managementApi
-                    .request(
-                        "v1/catalogs/{cat}/catalog-roles/{role}/grants",
-                        Map.of("cat", currentCatalogName, "role", "catalogrole2"))
-                    .put(Entity.json(g))) {
+              .map(p ->
+                  new PolicyGrant(
+                      Arrays.asList(NS1.levels()),
+                      NS1_P1.name(),
+                      p,
+                      GrantResource.TypeEnum.POLICY));
+      policyGrants.forEach(g -> {
+        try (Response response =
+            managementApi
+                .request(
+                    "v1/catalogs/{cat}/catalog-roles/{role}/grants",
+                    Map.of("cat", currentCatalogName, "role", "catalogrole2"))
+                .put(Entity.json(g))) {
 
-              assertThat(response.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
-            }
-          });
+          assertThat(response.getStatus()).isEqualTo(NOT_FOUND.getStatusCode());
+        }
+      });
     } finally {
       policyApi.purge(currentCatalogName, NS1);
     }
@@ -967,10 +997,9 @@ public class PolarisPolicyServiceIntegrationTest {
               NamespacePrivilege.NAMESPACE_DETACH_POLICY);
       Stream<NamespaceGrant> namespaceGrants =
           policyPrivilegesOnNamespace.stream()
-              .map(
-                  p ->
-                      new NamespaceGrant(
-                          Arrays.asList(NS1.levels()), p, GrantResource.TypeEnum.NAMESPACE));
+              .map(p ->
+                  new NamespaceGrant(
+                      Arrays.asList(NS1.levels()), p, GrantResource.TypeEnum.NAMESPACE));
       namespaceGrants.forEach(g -> managementApi.addGrant(currentCatalogName, CATALOG_ROLE_2, g));
 
       Assertions.assertThat(managementApi.listGrants(currentCatalogName, CATALOG_ROLE_2))
@@ -1023,13 +1052,9 @@ public class PolarisPolicyServiceIntegrationTest {
 
       Stream<TableGrant> tableGrants =
           policyPrivilegesOnTable.stream()
-              .map(
-                  p ->
-                      new TableGrant(
-                          Arrays.asList(NS2.levels()),
-                          NS2_T1.name(),
-                          p,
-                          GrantResource.TypeEnum.TABLE));
+              .map(p ->
+                  new TableGrant(
+                      Arrays.asList(NS2.levels()), NS2_T1.name(), p, GrantResource.TypeEnum.TABLE));
       tableGrants.forEach(g -> managementApi.addGrant(currentCatalogName, CATALOG_ROLE_2, g));
 
       Assertions.assertThat(managementApi.listGrants(currentCatalogName, CATALOG_ROLE_2))

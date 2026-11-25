@@ -24,7 +24,7 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "polaris.labels" . | nindent 4 }}
-    {{- with .Values.service.labels }}
+    {{- with .Values.managementService.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
   {{- with .Values.managementService.annotations }}

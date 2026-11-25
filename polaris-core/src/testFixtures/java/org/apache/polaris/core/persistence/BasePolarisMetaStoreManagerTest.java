@@ -39,6 +39,7 @@ import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
@@ -185,6 +186,63 @@ public abstract class BasePolarisMetaStoreManagerTest {
             .getEntity();
 
     Assertions.assertThat(principalEntity).isEqualTo(fetchedPrincipal);
+  }
+
+  @Test
+  protected void testReadEntityByNameRequiresMatchingSubType() {
+    PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
+    PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
+
+    PolarisBaseEntity catalog =
+        new PolarisBaseEntity(
+            PolarisEntityConstants.getNullId(),
+            metaStoreManager.generateNewEntityId(callCtx).getId(),
+            PolarisEntityType.CATALOG,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootEntityId(),
+            "subTypeCatalog");
+    catalog = metaStoreManager.createCatalog(callCtx, catalog, List.of()).getCatalog();
+
+    PolarisBaseEntity namespace =
+        polarisTestMetaStoreManager.createEntity(
+            List.of(catalog), PolarisEntityType.NAMESPACE, "ns");
+    polarisTestMetaStoreManager.createEntity(
+        List.of(catalog, namespace),
+        PolarisEntityType.TABLE_LIKE,
+        PolarisEntitySubType.ICEBERG_TABLE,
+        "tbl");
+
+    List<PolarisEntityCore> path = List.of(catalog, namespace);
+    Assertions.assertThat(
+            metaStoreManager
+                .readEntityByName(
+                    callCtx,
+                    path,
+                    PolarisEntityType.TABLE_LIKE,
+                    PolarisEntitySubType.ICEBERG_TABLE,
+                    "tbl")
+                .isSuccess())
+        .isTrue();
+    Assertions.assertThat(
+            metaStoreManager
+                .readEntityByName(
+                    callCtx,
+                    path,
+                    PolarisEntityType.TABLE_LIKE,
+                    PolarisEntitySubType.ICEBERG_VIEW,
+                    "tbl")
+                .getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.ENTITY_NOT_FOUND);
+    Assertions.assertThat(
+            metaStoreManager
+                .readEntityByName(
+                    callCtx,
+                    path,
+                    PolarisEntityType.TABLE_LIKE,
+                    PolarisEntitySubType.ANY_SUBTYPE,
+                    "tbl")
+                .isSuccess())
+        .isTrue();
   }
 
   @Test
@@ -367,14 +425,13 @@ public abstract class BasePolarisMetaStoreManagerTest {
         .isNotNull()
         .isNotEmpty()
         .hasSize(5)
-        .allSatisfy(
-            entry ->
-                Assertions.assertThat(entry)
-                    .extracting(
-                        PolarisBaseEntity::getPropertiesAsMap,
-                        InstanceOfAssertFactories.map(String.class, String.class))
-                    .containsEntry(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, executorId)
-                    .containsEntry(PolarisTaskConstants.ATTEMPT_COUNT, "1"));
+        .allSatisfy(entry ->
+            Assertions.assertThat(entry)
+                .extracting(
+                    PolarisBaseEntity::getPropertiesAsMap,
+                    InstanceOfAssertFactories.map(String.class, String.class))
+                .containsEntry(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, executorId)
+                .containsEntry(PolarisTaskConstants.ATTEMPT_COUNT, "1"));
     Set<String> firstTasks =
         taskList.stream().map(PolarisBaseEntity::getName).collect(Collectors.toSet());
 
@@ -451,25 +508,24 @@ public abstract class BasePolarisMetaStoreManagerTest {
         final String executorId = "taskExecutor_" + i;
 
         futureList.add(
-            executorService.submit(
-                () -> {
-                  Set<String> taskNames = new HashSet<>();
-                  List<PolarisBaseEntity> taskList = List.of();
-                  boolean retry = false;
-                  do {
-                    retry = false;
-                    try {
-                      taskList =
-                          metaStoreManager
-                              .loadTasks(callCtx, executorId, PageToken.fromLimit(5))
-                              .getEntities();
-                      taskList.stream().map(PolarisBaseEntity::getName).forEach(taskNames::add);
-                    } catch (RetryOnConcurrencyException e) {
-                      retry = true;
-                    }
-                  } while (retry || !taskList.isEmpty());
-                  return taskNames;
-                }));
+            executorService.submit(() -> {
+              Set<String> taskNames = new HashSet<>();
+              List<PolarisBaseEntity> taskList = List.of();
+              boolean retry = false;
+              do {
+                retry = false;
+                try {
+                  taskList =
+                      metaStoreManager
+                          .loadTasks(callCtx, executorId, PageToken.fromLimit(5))
+                          .getEntities();
+                  taskList.stream().map(PolarisBaseEntity::getName).forEach(taskNames::add);
+                } catch (RetryOnConcurrencyException e) {
+                  retry = true;
+                }
+              } while (retry || !taskList.isEmpty());
+              return taskNames;
+            }));
       }
     } finally {
       executorService.shutdown();
@@ -477,14 +533,13 @@ public abstract class BasePolarisMetaStoreManagerTest {
     }
     List<Set<String>> responses =
         futureList.stream()
-            .map(
-                f -> {
-                  try {
-                    return f.get(30, TimeUnit.SECONDS);
-                  } catch (Exception e) {
-                    throw new RuntimeException(e);
-                  }
-                })
+            .map(f -> {
+              try {
+                return f.get(30, TimeUnit.SECONDS);
+              } catch (Exception e) {
+                throw new RuntimeException(e);
+              }
+            })
             .collect(Collectors.toList());
     Assertions.assertThat(responses)
         .hasSize(3)
@@ -492,7 +547,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
     Map<String, Integer> taskCounts =
         responses.stream()
             .flatMap(Set::stream)
-            .collect(Collectors.toMap(Function.identity(), (val) -> 1, Integer::sum));
+            .collect(Collectors.toMap(Function.identity(), val -> 1, Integer::sum));
     Assertions.assertThat(taskCounts)
         .hasSize(100)
         .allSatisfy((k, v) -> Assertions.assertThat(v).isEqualTo(1));
@@ -507,33 +562,31 @@ public abstract class BasePolarisMetaStoreManagerTest {
     try {
       for (int threadId = 0; threadId < 10; threadId++) {
         Future<List<Long>> future =
-            executorService.submit(
-                () -> {
-                  List<Long> list = new ArrayList<>();
-                  for (int i = 0; i < 10; i++) {
-                    var entity =
-                        polarisTestMetaStoreManager.createEntity(
-                            null,
-                            PolarisEntityType.TASK,
-                            PolarisEntitySubType.NULL_SUBTYPE,
-                            "task_" + rand.nextLong() + i);
-                    list.add(entity.getId());
-                  }
-                  return list;
-                });
+            executorService.submit(() -> {
+              List<Long> list = new ArrayList<>();
+              for (int i = 0; i < 10; i++) {
+                var entity =
+                    polarisTestMetaStoreManager.createEntity(
+                        null,
+                        PolarisEntityType.TASK,
+                        PolarisEntitySubType.NULL_SUBTYPE,
+                        "task_" + rand.nextLong() + i);
+                list.add(entity.getId());
+              }
+              return list;
+            });
         futureList.add(future);
       }
 
       List<List<Long>> responses =
           futureList.stream()
-              .map(
-                  f -> {
-                    try {
-                      return f.get();
-                    } catch (Exception e) {
-                      throw new RuntimeException(e);
-                    }
-                  })
+              .map(f -> {
+                try {
+                  return f.get();
+                } catch (Exception e) {
+                  throw new RuntimeException(e);
+                }
+              })
               .collect(Collectors.toList());
 
       Assertions.assertThat(responses)
@@ -542,7 +595,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
       Map<Long, Integer> idCounts =
           responses.stream()
               .flatMap(List::stream)
-              .collect(Collectors.toMap(Function.identity(), (val) -> 1, Integer::sum));
+              .collect(Collectors.toMap(Function.identity(), val -> 1, Integer::sum));
       Assertions.assertThat(idCounts)
           .hasSize(100)
           .allSatisfy((k, v) -> Assertions.assertThat(v).isEqualTo(1));
@@ -562,10 +615,9 @@ public abstract class BasePolarisMetaStoreManagerTest {
 
     String principalAClientId = principalA.getClientId();
 
-    Assertions.assertThatThrownBy(
-            () ->
-                metaStoreManager.resetPrincipalSecrets(
-                    callCtx, principalB.getId(), principalAClientId, null))
+    Assertions.assertThatThrownBy(() ->
+            metaStoreManager.resetPrincipalSecrets(
+                callCtx, principalB.getId(), principalAClientId, null))
         .isInstanceOf(AlreadyExistsException.class);
   }
 

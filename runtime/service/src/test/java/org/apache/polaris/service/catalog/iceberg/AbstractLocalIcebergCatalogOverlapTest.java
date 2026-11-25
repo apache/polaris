@@ -19,8 +19,13 @@
 package org.apache.polaris.service.catalog.iceberg;
 
 import static org.apache.polaris.service.admin.PolarisAuthzTestBase.SCHEMA;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.AdditionalAnswers.delegatesTo;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
@@ -30,39 +35,55 @@ import jakarta.inject.Inject;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.time.Clock;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.Table;
+import org.apache.iceberg.TableProperties;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
+import org.apache.iceberg.view.ViewProperties;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.auth.PolarisPrincipalAttributes;
+import org.apache.polaris.core.collection.ImmutableAttributeMap;
+import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
+import org.apache.polaris.core.persistence.LocationOverlapResult;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.resolver.ResolutionManifestFactory;
+import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.persistence.resolver.ResolverFactory;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
+import org.apache.polaris.service.catalog.common.LocationOverlapValidator;
+import org.apache.polaris.service.catalog.generic.PolarisGenericTableCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.StorageAccessConfigProvider;
 import org.apache.polaris.service.context.catalog.RealmContextHolder;
@@ -72,11 +93,15 @@ import org.apache.polaris.service.events.listeners.PolarisEventListener;
 import org.apache.polaris.service.events.listeners.TestPolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
@@ -85,9 +110,8 @@ import software.amazon.awssdk.services.sts.model.Credentials;
 
 /**
  * Base class for persistence-backend-agnostic overlap tests. Concrete subclasses provide a Quarkus
- * test profile with location-overlap enforcement and the optimized sibling check enabled, so the
- * tests exercise the {@code hasOverlappingSiblings} path of whichever metastore implementation the
- * profile wires in.
+ * test profile with location-overlap enforcement enabled, exercising both the optimized and
+ * list-based sibling checks across metastore implementations.
  */
 public abstract class AbstractLocalIcebergCatalogOverlapTest {
 
@@ -122,6 +146,7 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
   @Inject PolarisEventDispatcher polarisEventDispatcher;
 
   private LocalIcebergCatalog catalog;
+  private PolarisGenericTableCatalog genericCatalog;
   private String realmName;
   protected PolarisCallContext polarisContext;
   private InMemoryFileIO fileIO;
@@ -174,6 +199,9 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
                         "true")
                     .addProperty(
                         FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "true")
+                    .addProperty(
+                        BehaviorChangeConfiguration.ALLOW_NAMESPACE_CUSTOM_LOCATION.catalogConfig(),
+                        "true")
                     .setStorageConfigurationInfo(realmConfig, storageConfigModel)
                     .build()
                     .asCatalog(serviceIdentityProvider)));
@@ -195,7 +223,7 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
             .build();
     AwsCredentialsStorageIntegration storageIntegration =
         new AwsCredentialsStorageIntegration(
-            (destination) -> stsClient,
+            destination -> stsClient,
             config -> Optional.empty(),
             storageCredentialCache,
             mockAwsConfig,
@@ -204,6 +232,7 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
         .thenReturn(storageIntegration);
 
     this.catalog = initCatalog("my-catalog", ImmutableMap.of());
+    this.genericCatalog = newGenericCatalog();
     ((TestPolarisEventListener) polarisEventListener).clear();
   }
 
@@ -241,6 +270,14 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
 
   protected LocalIcebergCatalog newIcebergCatalog(
       String catalogName, PolarisMetaStoreManager metaStoreManager, FileIOFactory fileIOFactory) {
+    return newIcebergCatalog(catalogName, metaStoreManager, fileIOFactory, authenticatedRoot);
+  }
+
+  private LocalIcebergCatalog newIcebergCatalog(
+      String catalogName,
+      PolarisMetaStoreManager metaStoreManager,
+      FileIOFactory fileIOFactory,
+      PolarisPrincipal catalogPrincipal) {
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
             resolutionManifestFactory, authenticatedRoot, catalogName);
@@ -251,12 +288,358 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
         metaStoreManager,
         polarisContext,
         passthroughView,
-        authenticatedRoot,
+        catalogPrincipal,
         taskExecutor,
         storageAccessConfigProvider,
         fileIOFactory,
         polarisEventDispatcher,
         eventMetadataFactory);
+  }
+
+  @Test
+  public void testSiblingWritePathCheckForExternalPrincipal() {
+    Namespace ns = Namespace.of("ns");
+    catalog().createNamespace(ns);
+    String writePath = STORAGE_LOCATION + "/ns/t2";
+    catalog()
+        .buildTable(TableIdentifier.of(ns, "t1"), SCHEMA)
+        .withProperty(TableProperties.WRITE_DATA_LOCATION, writePath)
+        .create();
+
+    // The caller is an external principal that does not exist in the metastore: sibling location
+    // validation must not try to resolve it.
+    PolarisPrincipal externalPrincipal =
+        PolarisPrincipal.of(
+            "external-user",
+            ImmutableAttributeMap.builder()
+                .put(PolarisPrincipalAttributes.EXTERNAL_PRINCIPAL_ATTRIBUTE_KEY, true)
+                .build(),
+            Set.of("external-role"));
+    LocalIcebergCatalog externalCatalog =
+        newIcebergCatalog(CATALOG_NAME, metaStoreManager, fileIOFactory, externalPrincipal);
+    externalCatalog.setCatalogFileIo(fileIO);
+    externalCatalog.initialize(
+        CATALOG_NAME,
+        Map.of(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    // t2's default location is t1's write path.
+    assertThatThrownBy(
+            () -> externalCatalog.buildTable(TableIdentifier.of(ns, "t2"), SCHEMA).create())
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace")
+        .hasMessageContaining(writePath);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {TableProperties.WRITE_DATA_LOCATION, TableProperties.WRITE_METADATA_LOCATION})
+  public void testTableAtSiblingWritePathIsRejected(String writePathProperty) {
+    Namespace ns = Namespace.of("ns");
+    catalog().createNamespace(ns);
+    String writePath = STORAGE_LOCATION + "/ns/t2";
+    catalog()
+        .buildTable(TableIdentifier.of(ns, "t1"), SCHEMA)
+        .withProperty(writePathProperty, writePath)
+        .create();
+
+    // t2's default location is t1's write path.
+    assertThatThrownBy(() -> catalog().buildTable(TableIdentifier.of(ns, "t2"), SCHEMA).create())
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace")
+        .hasMessageContaining(writePath);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {TableProperties.WRITE_DATA_LOCATION, TableProperties.WRITE_METADATA_LOCATION})
+  public void testGenericTableAtSiblingWritePathIsRejected(String writePathProperty) {
+    Namespace ns = Namespace.of("generic-write-path-overlap");
+    catalog().createNamespace(ns);
+    String writePath = STORAGE_LOCATION + "/generic-write-path-overlap/shared";
+    catalog()
+        .buildTable(TableIdentifier.of(ns, "iceberg"), SCHEMA)
+        .withProperty(writePathProperty, writePath)
+        .create();
+
+    TableIdentifier generic = TableIdentifier.of(ns, "generic");
+    assertThatThrownBy(() -> createTable(generic, writePath, true))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace")
+        .hasMessageContaining(writePath);
+    assertThatThrownBy(() -> loadTableLocation(generic, true))
+        .isInstanceOf(NoSuchTableException.class);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {TableProperties.WRITE_DATA_LOCATION, TableProperties.WRITE_METADATA_LOCATION})
+  public void testNamespaceContainingSiblingWritePathIsRejected(String writePathProperty) {
+    Namespace ns = Namespace.of("ns");
+    catalog().createNamespace(ns);
+    String writePath = STORAGE_LOCATION + "/ns/child/t2";
+    catalog()
+        .buildTable(TableIdentifier.of(ns, "t1"), SCHEMA)
+        .withProperty(writePathProperty, writePath)
+        .create();
+
+    // The child namespace's default location contains t1's write path.
+    assertThatThrownBy(() -> catalog().createNamespace(Namespace.of("ns", "child")))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace")
+        .hasMessageContaining(writePath);
+  }
+
+  @Test
+  public void testTableAtSiblingViewMetadataPathIsRejected() {
+    Namespace ns = Namespace.of("ns");
+    catalog().createNamespace(ns);
+    String metadataPath = STORAGE_LOCATION + "/ns/t2";
+    catalog()
+        .buildView(TableIdentifier.of(ns, "v1"))
+        .withSchema(SCHEMA)
+        .withDefaultNamespace(ns)
+        .withQuery("spark", "SELECT * FROM ns.source")
+        .withProperty(ViewProperties.WRITE_METADATA_LOCATION, metadataPath)
+        .create();
+
+    // t2's default location overlaps only the existing view's custom metadata path.
+    assertThatThrownBy(() -> catalog().buildTable(TableIdentifier.of(ns, "t2"), SCHEMA).create())
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace")
+        .hasMessageContaining(metadataPath);
+  }
+
+  @Test
+  public void testTablesSharingWritePathAreRejected() {
+    Namespace ns = Namespace.of("ns");
+    catalog().createNamespace(ns);
+    String writePath = STORAGE_LOCATION + "/ns/data";
+    catalog()
+        .buildTable(TableIdentifier.of(ns, "t1"), SCHEMA)
+        .withProperty(TableProperties.WRITE_DATA_LOCATION, writePath)
+        .create();
+
+    assertThatThrownBy(() ->
+            catalog()
+                .buildTable(TableIdentifier.of(ns, "t2"), SCHEMA)
+                .withProperty(TableProperties.WRITE_DATA_LOCATION, writePath)
+                .create())
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace")
+        .hasMessageContaining(writePath);
+  }
+
+  @Test
+  public void testWritePathUnderOwnLocationDoesNotBlockSiblings() {
+    Namespace ns = Namespace.of("ns");
+    catalog().createNamespace(ns);
+    catalog()
+        .buildTable(TableIdentifier.of(ns, "t1"), SCHEMA)
+        .withProperty(TableProperties.WRITE_DATA_LOCATION, STORAGE_LOCATION + "/ns/t1/files")
+        .create();
+
+    assertThatCode(() -> catalog().buildTable(TableIdentifier.of(ns, "t2"), SCHEMA).create())
+        .doesNotThrowAnyException();
+    assertThatCode(() -> catalog().createNamespace(Namespace.of("ns", "child")))
+        .doesNotThrowAnyException();
+  }
+
+  private PolarisGenericTableCatalog newGenericCatalog() {
+    return new PolarisGenericTableCatalog(
+        metaStoreManager,
+        polarisContext,
+        new PolarisPassthroughResolutionView(
+            resolutionManifestFactory, authenticatedRoot, CATALOG_NAME),
+        resolutionManifestFactory,
+        authenticatedRoot);
+  }
+
+  @ParameterizedTest
+  @CsvSource({"true,true", "false,true", "true,false"})
+  public void testGenericLocationOverlap(boolean firstGeneric, boolean secondGeneric) {
+    Namespace ns = Namespace.of("generic-overlap");
+    catalog().createNamespace(ns);
+    TableIdentifier first = TableIdentifier.of(ns, "first");
+    String parentLocation = STORAGE_LOCATION + "/generic-overlap/orders/";
+    String location = parentLocation + "current/";
+    createTable(first, location, firstGeneric);
+    String originalLocation = loadTableLocation(first, firstGeneric);
+
+    TableIdentifier second = TableIdentifier.of(ns, "second");
+    for (String conflictingLocation :
+        List.of(
+            location.substring(0, location.length() - 1), location + "daily/", parentLocation)) {
+      assertThatThrownBy(() -> createTable(second, conflictingLocation, secondGeneric))
+          .isInstanceOf(ForbiddenException.class)
+          .hasMessageContaining("conflicts with existing table or namespace");
+      assertThatThrownBy(() -> loadTableLocation(second, secondGeneric))
+          .isInstanceOf(NoSuchTableException.class);
+      assertThat(loadTableLocation(first, firstGeneric)).isEqualTo(originalLocation);
+    }
+    assertThatCode(() -> createTable(second, parentLocation + "current_backup/", secondGeneric))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  public void testCreateNamespaceWithGenericTableElsewhereInCatalog() {
+    Namespace existing = Namespace.of("generic-namespace");
+    catalog().createNamespace(existing);
+    String location = STORAGE_LOCATION + "/generic-namespace/generic/";
+    TableIdentifier generic = TableIdentifier.of(existing, "generic");
+    createTable(generic, location, true);
+
+    Namespace unrelated = Namespace.of("unrelated");
+    catalog().createNamespace(unrelated);
+
+    assertThat(catalog().namespaceExists(unrelated)).isTrue();
+    assertThat(loadTableLocation(generic, true)).isEqualTo(location);
+  }
+
+  @Test
+  public void testUnindexedGenericOverlapAcrossNamespaces() {
+    Namespace legacyParent = Namespace.of("legacy");
+    Namespace legacyNamespace = Namespace.of("legacy", "nested");
+    Namespace destination = Namespace.of("destination");
+    catalog().createNamespace(legacyParent);
+    catalog().createNamespace(legacyNamespace);
+    catalog().createNamespace(destination);
+
+    var view =
+        new PolarisPassthroughResolutionView(
+            resolutionManifestFactory, authenticatedRoot, CATALOG_NAME);
+    var legacyPath = view.getResolvedPath(ResolvedPathKey.ofNamespace(legacyNamespace));
+    var destinationPath = view.getResolvedPath(ResolvedPathKey.ofNamespace(destination));
+    TableIdentifier first = TableIdentifier.of(legacyNamespace, "first");
+    TableIdentifier second = TableIdentifier.of(destination, "second");
+    String location = STORAGE_LOCATION + "/destination/orders/";
+
+    // Seed a Generic Table in its pre-overlap format, outside its logical namespace location.
+    GenericTableEntity legacy =
+        new GenericTableEntity.Builder(first, "delta")
+            .setId(metaStoreManager.generateNewEntityId(polarisContext).getId())
+            .setCatalogId(catalogEntity.getId())
+            .setParentId(legacyPath.getRawLeafEntity().getId())
+            .setBaseLocation(location)
+            .setCreateTimestamp(clock.millis())
+            .build();
+    assertThat(
+            metaStoreManager
+                .createEntityIfNotExists(
+                    polarisContext, PolarisEntity.toCoreList(legacyPath.getRawFullPath()), legacy)
+                .isSuccess())
+        .isTrue();
+
+    if (realmConfig.getConfig(FeatureConfiguration.OPTIMIZED_SIBLING_CHECK)) {
+      GenericTableEntity candidate =
+          new GenericTableEntity.Builder(second, "delta")
+              .setCatalogId(catalogEntity.getId())
+              .setParentId(destinationPath.getRawLeafEntity().getId())
+              .setBaseLocation(location)
+              .build();
+      assertThat(
+              metaStoreManager.hasOverlappingSiblings(
+                  polarisContext,
+                  candidate,
+                  Set.of(catalogEntity.getId(), destinationPath.getRawLeafEntity().getId()),
+                  null))
+          .isInstanceOf(LocationOverlapResult.NoOverlap.class);
+
+      assertThatThrownBy(() -> createTable(second, location, false))
+          .isInstanceOf(ForbiddenException.class)
+          .hasMessageContaining("conflicts with existing table or namespace");
+      assertThatThrownBy(() -> loadTableLocation(second, false))
+          .isInstanceOf(NoSuchTableException.class);
+
+      var validator =
+          new LocationOverlapValidator(
+              polarisContext, resolutionManifestFactory, authenticatedRoot);
+      var monitoredMetastore =
+          Mockito.mock(PolarisMetaStoreManager.class, delegatesTo(metaStoreManager));
+      assertThatCode(() ->
+              validator.validate(
+                  monitoredMetastore,
+                  candidate,
+                  destinationPath.getRawFullPath(),
+                  StorageLocation.of(STORAGE_LOCATION + "/legacy/")))
+          .doesNotThrowAnyException();
+      verify(monitoredMetastore, never()).listFullEntitiesAll(any(), any(), any(), any());
+      assertThatThrownBy(() ->
+              validator.validate(
+                  metaStoreManager,
+                  candidate,
+                  destinationPath.getRawFullPath(),
+                  StorageLocation.of(STORAGE_LOCATION + "/destination/")))
+          .isInstanceOf(ForbiddenException.class);
+    } else {
+      // List mode checks only siblings under the same parent.
+      createTable(second, location, false);
+      assertThat(
+              StorageLocation.of(loadTableLocation(second, false))
+                  .isSameLocation(StorageLocation.of(location)))
+          .isTrue();
+    }
+    assertThat(loadTableLocation(first, true)).isEqualTo(location);
+  }
+
+  @Test
+  public void testGenericOverlapCatalogOverrideStillValidatesAllowedLocations() {
+    Map<String, String> properties = new HashMap<>(catalogEntity.getPropertiesAsMap());
+    properties.put(FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP.catalogConfig(), "true");
+    adminService.updateCatalog(
+        CATALOG_NAME,
+        UpdateCatalogRequest.builder()
+            .setCurrentEntityVersion(catalogEntity.getEntityVersion())
+            .setProperties(properties)
+            .build());
+    genericCatalog = newGenericCatalog();
+
+    Namespace ns = Namespace.of("overlap-allowed");
+    catalog().createNamespace(ns);
+    String location = STORAGE_LOCATION + "/overlap-allowed/orders/";
+    createTable(TableIdentifier.of(ns, "first"), location, true);
+    createTable(TableIdentifier.of(ns, "second"), location, true);
+    assertThat(loadTableLocation(TableIdentifier.of(ns, "second"), true)).isEqualTo(location);
+    assertThatThrownBy(
+            () -> createTable(TableIdentifier.of(ns, "invalid"), "s3://disallowed/orders/", true))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Invalid locations");
+  }
+
+  @Test
+  public void testGenericOptionalLocationsAndNameConflictPrecedence() {
+    Namespace ns = Namespace.of("optional-location");
+    catalog().createNamespace(ns);
+    TableIdentifier absent = TableIdentifier.of(ns, "absent");
+    TableIdentifier empty = TableIdentifier.of(ns, "empty");
+    TableIdentifier explicit = TableIdentifier.of(ns, "explicit");
+    createTable(absent, null, true);
+    createTable(empty, "", true);
+    createTable(explicit, STORAGE_LOCATION + "/optional-location/orders/", true);
+    assertThat(loadTableLocation(absent, true)).isNull();
+    assertThat(loadTableLocation(empty, true)).isEmpty();
+    assertThatThrownBy(() -> createTable(explicit, "s3://disallowed/orders/", true))
+        .isInstanceOf(AlreadyExistsException.class);
+    assertThatThrownBy(() ->
+            createTable(
+                TableIdentifier.of(ns, "namespace_root"),
+                STORAGE_LOCATION + "/optional-location/",
+                true))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace");
+  }
+
+  private void createTable(TableIdentifier identifier, @Nullable String location, boolean generic) {
+    if (generic) {
+      genericCatalog.createGenericTable(identifier, "delta", location, null, Map.of());
+    } else {
+      catalog().buildTable(identifier, SCHEMA).withLocation(location).create();
+    }
+  }
+
+  private String loadTableLocation(TableIdentifier identifier, boolean generic) {
+    return generic
+        ? genericCatalog.loadGenericTable(identifier).getBaseLocation()
+        : catalog().loadTable(identifier).location();
   }
 
   @Test
@@ -288,12 +671,8 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
 
     TableIdentifier anotherChildTable = TableIdentifier.of(ns, "another-child-table");
     String anotherChildLoc = STORAGE_LOCATION + "/overlap-parent-2/child";
-    assertThatThrownBy(
-            () ->
-                catalog()
-                    .buildTable(anotherChildTable, SCHEMA)
-                    .withLocation(anotherChildLoc)
-                    .create())
+    assertThatThrownBy(() ->
+            catalog().buildTable(anotherChildTable, SCHEMA).withLocation(anotherChildLoc).create())
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Unable to create entity at location")
         .hasMessageContaining("conflicts with existing table or namespace");
@@ -333,12 +712,10 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
     // A new namespace at the existing namespace's location is still an overlap.
     Namespace intruder = Namespace.of("overlap-recreate-intruder");
     String parentLocation = STORAGE_LOCATION + "/overlap-recreate-parent";
-    assertThatThrownBy(
-            () ->
-                catalog()
-                    .createNamespace(
-                        intruder,
-                        Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, parentLocation)))
+    assertThatThrownBy(() ->
+            catalog()
+                .createNamespace(
+                    intruder, Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, parentLocation)))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("conflicts with existing table or namespace");
   }
@@ -363,12 +740,11 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
     TableIdentifier tableAtNamespaceLocation =
         TableIdentifier.of(grandchild, "table-at-namespace-location");
     String grandchildLocation = STORAGE_LOCATION + "/overlap-ancestor-parent/child/grandchild";
-    assertThatThrownBy(
-            () ->
-                catalog()
-                    .buildTable(tableAtNamespaceLocation, SCHEMA)
-                    .withLocation(grandchildLocation)
-                    .create())
+    assertThatThrownBy(() ->
+            catalog()
+                .buildTable(tableAtNamespaceLocation, SCHEMA)
+                .withLocation(grandchildLocation)
+                .create())
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("conflicts with existing table or namespace")
         .hasMessageContaining(grandchildLocation);
@@ -380,12 +756,78 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
     // location sits inside the child's default location.
     Namespace intruder = Namespace.of("overlap-ancestor-parent", "intruder");
     String childLocation = STORAGE_LOCATION + "/overlap-ancestor-parent/child/intruder";
+    assertThatThrownBy(() ->
+            catalog()
+                .createNamespace(
+                    intruder, Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, childLocation)))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace");
+  }
+
+  @Test
+  public void testSiblingNameConflictPrecedesLocationOverlap() {
+    Namespace parent = Namespace.of("overlap-same-name-parent");
+    catalog().createNamespace(parent);
+
+    // Namespace first, then a table with the same name.
+    catalog().createNamespace(Namespace.of("overlap-same-name-parent", "ns-first"));
     assertThatThrownBy(
-            () ->
-                catalog()
-                    .createNamespace(
-                        intruder,
-                        Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, childLocation)))
+            () -> catalog().buildTable(TableIdentifier.of(parent, "ns-first"), SCHEMA).create())
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessageContaining("Namespace with same name already exists");
+
+    // Table first, then a namespace with the same name.
+    catalog().buildTable(TableIdentifier.of(parent, "table-first"), SCHEMA).create();
+    assertThatThrownBy(() ->
+            catalog().createNamespace(Namespace.of("overlap-same-name-parent", "table-first")))
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessageContaining("Table with same name already exists");
+  }
+
+  @Test
+  public void testMovingNamespaceUnderItsOldLocationIsNotOverlap() {
+    // A namespace whose location is updated must not conflict with its own persisted location, so
+    // moving it to a subpath of its old location is allowed.
+    Namespace ns = Namespace.of("overlap-move-namespace");
+    String oldLocation = STORAGE_LOCATION + "/overlap-move-namespace-old";
+    catalog().createNamespace(ns, Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, oldLocation));
+
+    String newLocation = oldLocation + "/moved";
+    assertThatCode(() ->
+            catalog()
+                .setProperties(
+                    ns, Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, newLocation)))
+        .doesNotThrowAnyException();
+
+    // Other namespaces still conflict with the new location.
+    Namespace conflicting = Namespace.of("overlap-move-namespace-conflicting");
+    assertThatThrownBy(() ->
+            catalog()
+                .createNamespace(
+                    conflicting, Map.of(PolarisEntityConstants.ENTITY_BASE_LOCATION, newLocation)))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("conflicts with existing table or namespace");
+  }
+
+  @Test
+  public void testMovingTableUnderItsOldLocationIsNotOverlap() {
+    // Same as above for a table whose location is updated by a commit.
+    Namespace ns = Namespace.of("overlap-move-table-ns");
+    catalog().createNamespace(ns);
+    TableIdentifier identifier = TableIdentifier.of(ns, "t");
+    String oldLocation = STORAGE_LOCATION + "/overlap-move-table-old";
+    Table table = catalog().buildTable(identifier, SCHEMA).withLocation(oldLocation).create();
+
+    String newLocation = oldLocation + "/moved";
+    assertThatCode(() -> table.updateLocation().setLocation(newLocation).commit())
+        .doesNotThrowAnyException();
+
+    // Other tables still conflict with the new location.
+    assertThatThrownBy(() ->
+            catalog()
+                .buildTable(TableIdentifier.of(ns, "conflicting"), SCHEMA)
+                .withLocation(newLocation)
+                .create())
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("conflicts with existing table or namespace");
   }

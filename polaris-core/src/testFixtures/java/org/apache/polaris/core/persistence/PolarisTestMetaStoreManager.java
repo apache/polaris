@@ -235,13 +235,12 @@ public class PolarisTestMetaStoreManager {
     // ensure that this grant record is present
     long grantCount =
         grantRecords.stream()
-            .filter(
-                gr ->
-                    gr.getSecurableCatalogId() == securable.getCatalogId()
-                        && gr.getSecurableId() == securable.getId()
-                        && gr.getGranteeCatalogId() == grantee.getCatalogId()
-                        && gr.getGranteeId() == grantee.getId()
-                        && gr.getPrivilegeCode() == priv.getCode())
+            .filter(gr ->
+                gr.getSecurableCatalogId() == securable.getCatalogId()
+                    && gr.getSecurableId() == securable.getId()
+                    && gr.getGranteeCatalogId() == grantee.getCatalogId()
+                    && gr.getGranteeId() == grantee.getId()
+                    && gr.getPrivilegeCode() == priv.getCode())
             .count();
     return grantCount == 1;
   }
@@ -500,6 +499,13 @@ public class PolarisTestMetaStoreManager {
                 secrets.getMainSecretHash())
             .getPrincipalSecrets();
     Assertions.assertThat(secrets.getMainSecret()).isNotEqualTo(reloadSecrets.getMainSecret());
+
+    PolarisPrincipalSecrets afterRequiredRotation =
+        polarisMetaStoreManager
+            .loadPrincipalSecrets(this.polarisCallContext, clientId)
+            .getPrincipalSecrets();
+    Assertions.assertThat(afterRequiredRotation.getSecondarySecretHash())
+        .isNotEqualTo(reloadSecrets.getMainSecretHash());
 
     PrincipalEntity reloadPrincipal =
         polarisMetaStoreManager
@@ -1188,13 +1194,12 @@ public class PolarisTestMetaStoreManager {
       PolicyEntity policy) {
     long policyMappingCount =
         policyMappingRecords.stream()
-            .filter(
-                record ->
-                    record.getPolicyCatalogId() == policy.getCatalogId()
-                        && record.getPolicyId() == policy.getId()
-                        && record.getTargetCatalogId() == target.getCatalogId()
-                        && record.getTargetId() == target.getId()
-                        && record.getPolicyTypeCode() == policy.getPolicyTypeCode())
+            .filter(record ->
+                record.getPolicyCatalogId() == policy.getCatalogId()
+                    && record.getPolicyId() == policy.getId()
+                    && record.getTargetCatalogId() == target.getCatalogId()
+                    && record.getTargetId() == target.getId()
+                    && record.getPolicyTypeCode() == policy.getPolicyTypeCode())
             .count();
     return policyMappingCount == 1;
   }
@@ -2514,22 +2519,20 @@ public class PolarisTestMetaStoreManager {
         polarisMetaStoreManager.loadGrantsOnSecurable(this.polarisCallContext, namespace);
     Assertions.assertThat(grantsOnSecurable.isSuccess()).isTrue();
     Assertions.assertThat(grantsOnSecurable.getGrantRecords())
-        .filteredOn(
-            grant ->
-                grant.getGranteeId() == role.getId()
-                    && grant.getSecurableId() == namespace.getId()
-                    && grant.getPrivilegeCode() == privilege.getCode())
+        .filteredOn(grant ->
+            grant.getGranteeId() == role.getId()
+                && grant.getSecurableId() == namespace.getId()
+                && grant.getPrivilegeCode() == privilege.getCode())
         .hasSize(1);
 
     LoadGrantsResult grantsOnGrantee =
         polarisMetaStoreManager.loadGrantsToGrantee(this.polarisCallContext, role);
     Assertions.assertThat(grantsOnGrantee.isSuccess()).isTrue();
     Assertions.assertThat(grantsOnGrantee.getGrantRecords())
-        .filteredOn(
-            grant ->
-                grant.getGranteeId() == role.getId()
-                    && grant.getSecurableId() == namespace.getId()
-                    && grant.getPrivilegeCode() == privilege.getCode())
+        .filteredOn(grant ->
+            grant.getGranteeId() == role.getId()
+                && grant.getSecurableId() == namespace.getId()
+                && grant.getPrivilegeCode() == privilege.getCode())
         .hasSize(1);
   }
 
@@ -2717,14 +2720,9 @@ public class PolarisTestMetaStoreManager {
     PolarisEntity renamedEntityInput =
         new PolarisEntity(new PolarisBaseEntity.Builder(table).parentId(targetN1.getId()).build());
 
-    Assertions.assertThatThrownBy(
-            () ->
-                polarisMetaStoreManager.renameEntity(
-                    this.polarisCallContext,
-                    sourcePath,
-                    table,
-                    crossCatalogPath,
-                    renamedEntityInput))
+    Assertions.assertThatThrownBy(() ->
+            polarisMetaStoreManager.renameEntity(
+                this.polarisCallContext, sourcePath, table, crossCatalogPath, renamedEntityInput))
         .isInstanceOf(IllegalArgumentException.class);
 
     // the entity is untouched: still resolvable where it started, and absent from the target
@@ -2753,14 +2751,9 @@ public class PolarisTestMetaStoreManager {
     PolarisEntity promotedInput =
         new PolarisEntity(
             new PolarisBaseEntity.Builder(principalRole).parentId(targetN1.getId()).build());
-    Assertions.assertThatThrownBy(
-            () ->
-                polarisMetaStoreManager.renameEntity(
-                    this.polarisCallContext,
-                    List.of(),
-                    principalRole,
-                    crossCatalogPath,
-                    promotedInput))
+    Assertions.assertThatThrownBy(() ->
+            polarisMetaStoreManager.renameEntity(
+                this.polarisCallContext, List.of(), principalRole, crossCatalogPath, promotedInput))
         .isInstanceOf(IllegalArgumentException.class);
 
     Assertions.assertThat(
@@ -2773,10 +2766,9 @@ public class PolarisTestMetaStoreManager {
     // newCatalogPath is different and stays allowed, since it means no re-parenting was asked for.
     PolarisEntity demotedInput =
         new PolarisEntity(new PolarisBaseEntity.Builder(table).parentId(0L).build());
-    Assertions.assertThatThrownBy(
-            () ->
-                polarisMetaStoreManager.renameEntity(
-                    this.polarisCallContext, sourcePath, table, List.of(), demotedInput))
+    Assertions.assertThatThrownBy(() ->
+            polarisMetaStoreManager.renameEntity(
+                this.polarisCallContext, sourcePath, table, List.of(), demotedInput))
         .isInstanceOf(IllegalArgumentException.class);
 
     Assertions.assertThat(
@@ -3005,24 +2997,22 @@ public class PolarisTestMetaStoreManager {
     // grantee records: R1 was granted TABLE_READ_DATA on N1, so granteeId must be R1
     Assertions.assertThat(resolved.getGrantRecordsAsGrantee())
         .isNotEmpty()
-        .allSatisfy(
-            g -> {
-              Assertions.assertThat(g.getGranteeId()).isEqualTo(R1.getId());
-              Assertions.assertThat(g.getSecurableId()).isEqualTo(N1.getId());
-              Assertions.assertThat(g.getPrivilegeCode())
-                  .isEqualTo(PolarisPrivilege.TABLE_READ_DATA.getCode());
-            });
+        .allSatisfy(g -> {
+          Assertions.assertThat(g.getGranteeId()).isEqualTo(R1.getId());
+          Assertions.assertThat(g.getSecurableId()).isEqualTo(N1.getId());
+          Assertions.assertThat(g.getPrivilegeCode())
+              .isEqualTo(PolarisPrivilege.TABLE_READ_DATA.getCode());
+        });
 
     // securable records: PR1 was granted CATALOG_ROLE_USAGE on R1, so securableId must be R1
     Assertions.assertThat(resolved.getGrantRecordsAsSecurable())
         .isNotEmpty()
-        .allSatisfy(
-            g -> {
-              Assertions.assertThat(g.getSecurableId()).isEqualTo(R1.getId());
-              Assertions.assertThat(g.getGranteeId()).isEqualTo(PR1.getId());
-              Assertions.assertThat(g.getPrivilegeCode())
-                  .isEqualTo(PolarisPrivilege.CATALOG_ROLE_USAGE.getCode());
-            });
+        .allSatisfy(g -> {
+          Assertions.assertThat(g.getSecurableId()).isEqualTo(R1.getId());
+          Assertions.assertThat(g.getGranteeId()).isEqualTo(PR1.getId());
+          Assertions.assertThat(g.getPrivilegeCode())
+              .isEqualTo(PolarisPrivilege.CATALOG_ROLE_USAGE.getCode());
+        });
 
     Assertions.assertThat(resolved.getGrantRecordsAsGrantee())
         .doesNotContainAnyElementsOf(resolved.getGrantRecordsAsSecurable());
@@ -3089,12 +3079,10 @@ public class PolarisTestMetaStoreManager {
             PolarisEntityType.CATALOG_ROLE);
     Assertions.assertThat(beforeDrop.isSuccess()).isTrue();
     Assertions.assertThat(beforeDrop.getEntityGrantRecords())
-        .anySatisfy(
-            grantRecord -> {
-              Assertions.assertThat(grantRecord.getSecurableId())
-                  .isEqualTo(catalogAdminRole.getId());
-              Assertions.assertThat(grantRecord.getGranteeId()).isEqualTo(principalRoleId);
-            });
+        .anySatisfy(grantRecord -> {
+          Assertions.assertThat(grantRecord.getSecurableId()).isEqualTo(catalogAdminRole.getId());
+          Assertions.assertThat(grantRecord.getGranteeId()).isEqualTo(principalRoleId);
+        });
 
     // drop the principal role (grantee)
     Assertions.assertThat(
@@ -3113,9 +3101,8 @@ public class PolarisTestMetaStoreManager {
             PolarisEntityType.CATALOG_ROLE);
     Assertions.assertThat(afterDrop.isSuccess()).isTrue();
     Assertions.assertThat(afterDrop.getEntityGrantRecords())
-        .noneSatisfy(
-            grantRecord ->
-                Assertions.assertThat(grantRecord.getGranteeId()).isEqualTo(principalRoleId));
+        .noneSatisfy(grantRecord ->
+            Assertions.assertThat(grantRecord.getGranteeId()).isEqualTo(principalRoleId));
   }
 
   /**
@@ -3156,16 +3143,13 @@ public class PolarisTestMetaStoreManager {
     Assertions.assertThat(catalogAdminAsGrantee.isSuccess()).isTrue();
     Assertions.assertThat(catalogAdminAsGrantee.getGrantRecords())
         .isNotEmpty()
-        .allSatisfy(
-            g -> {
-              Assertions.assertThat(g.getGranteeCatalogId()).isEqualTo(catalogAdmin.getCatalogId());
-              Assertions.assertThat(g.getGranteeId()).isEqualTo(catalogAdmin.getId());
-            });
+        .allSatisfy(g -> {
+          Assertions.assertThat(g.getGranteeCatalogId()).isEqualTo(catalogAdmin.getCatalogId());
+          Assertions.assertThat(g.getGranteeId()).isEqualTo(catalogAdmin.getId());
+        });
     Assertions.assertThat(catalogAdminAsGrantee.getEntities())
-        .allSatisfy(
-            entity ->
-                Assertions.assertThat(entity.getType())
-                    .isNotEqualTo(PolarisEntityType.CATALOG_ROLE));
+        .allSatisfy(entity ->
+            Assertions.assertThat(entity.getType()).isNotEqualTo(PolarisEntityType.CATALOG_ROLE));
 
     // now set up an explicit scenario to validate both directions thoroughly:
     // create a namespace and a catalog role CR1 with grants in both directions
@@ -3184,36 +3168,32 @@ public class PolarisTestMetaStoreManager {
         polarisMetaStoreManager.loadGrantsToGrantee(this.polarisCallContext, CR1);
     Assertions.assertThat(granteeResult.getGrantRecords())
         .isNotEmpty()
-        .allSatisfy(
-            g -> {
-              Assertions.assertThat(g.getGranteeId()).isEqualTo(CR1.getId());
-              Assertions.assertThat(g.getSecurableId()).isNotEqualTo(CR1.getId());
-            });
+        .allSatisfy(g -> {
+          Assertions.assertThat(g.getGranteeId()).isEqualTo(CR1.getId());
+          Assertions.assertThat(g.getSecurableId()).isNotEqualTo(CR1.getId());
+        });
     Assertions.assertThat(granteeResult.getGrantRecords())
-        .anySatisfy(
-            g -> {
-              Assertions.assertThat(g.getSecurableId()).isEqualTo(N1.getId());
-              Assertions.assertThat(g.getPrivilegeCode())
-                  .isEqualTo(PolarisPrivilege.TABLE_READ_DATA.getCode());
-            });
+        .anySatisfy(g -> {
+          Assertions.assertThat(g.getSecurableId()).isEqualTo(N1.getId());
+          Assertions.assertThat(g.getPrivilegeCode())
+              .isEqualTo(PolarisPrivilege.TABLE_READ_DATA.getCode());
+        });
 
     // loadGrantsOnSecurable(CR1): all records must have securableId == CR1
     LoadGrantsResult securableResult =
         polarisMetaStoreManager.loadGrantsOnSecurable(this.polarisCallContext, CR1);
     Assertions.assertThat(securableResult.getGrantRecords())
         .isNotEmpty()
-        .allSatisfy(
-            g -> {
-              Assertions.assertThat(g.getSecurableId()).isEqualTo(CR1.getId());
-              Assertions.assertThat(g.getGranteeId()).isNotEqualTo(CR1.getId());
-            });
+        .allSatisfy(g -> {
+          Assertions.assertThat(g.getSecurableId()).isEqualTo(CR1.getId());
+          Assertions.assertThat(g.getGranteeId()).isNotEqualTo(CR1.getId());
+        });
     Assertions.assertThat(securableResult.getGrantRecords())
-        .anySatisfy(
-            g -> {
-              Assertions.assertThat(g.getGranteeId()).isEqualTo(PR1.getId());
-              Assertions.assertThat(g.getPrivilegeCode())
-                  .isEqualTo(PolarisPrivilege.CATALOG_ROLE_USAGE.getCode());
-            });
+        .anySatisfy(g -> {
+          Assertions.assertThat(g.getGranteeId()).isEqualTo(PR1.getId());
+          Assertions.assertThat(g.getPrivilegeCode())
+              .isEqualTo(PolarisPrivilege.CATALOG_ROLE_USAGE.getCode());
+        });
 
     // the two result sets must not overlap
     Assertions.assertThat(granteeResult.getGrantRecords())

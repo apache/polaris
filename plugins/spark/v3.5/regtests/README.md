@@ -124,8 +124,8 @@ You can manually run `setup.sh` with a specific table format:
 
 ```bash
 # Setup for Delta tables (default)
-./plugins/spark/v3.5/regtests/setup.sh --sparkVersion 3.5.6 --scalaVersion 2.12 --polarisVersion 0.1.0 --tableFormat delta
+./plugins/spark/v3.5/regtests/setup.sh --sparkVersion 3.5.9 --scalaVersion 2.12 --polarisVersion 0.1.0 --tableFormat delta
 
 # Setup for Hudi tables
-./plugins/spark/v3.5/regtests/setup.sh --sparkVersion 3.5.6 --scalaVersion 2.12 --polarisVersion 0.1.0 --tableFormat hudi
+./plugins/spark/v3.5/regtests/setup.sh --sparkVersion 3.5.9 --scalaVersion 2.12 --polarisVersion 0.1.0 --tableFormat hudi
 ```

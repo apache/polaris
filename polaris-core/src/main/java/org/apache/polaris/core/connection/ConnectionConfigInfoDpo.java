@@ -26,6 +26,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.util.Collection;
 import java.util.Map;
 import org.apache.polaris.core.admin.model.BigQueryMetastoreConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
@@ -64,8 +65,8 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
   // The type of the connection
   private final int connectionTypeCode;
 
-  // The URI of the remote catalog
-  private final String uri;
+  // The URI of the remote catalog; null only for connection types that do not use one
+  private final @Nullable String uri;
 
   // The authentication parameters for the connection
   private final AuthenticationParametersDpo authenticationParameters;
@@ -78,7 +79,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
 
   public ConnectionConfigInfoDpo(
       @JsonProperty(value = "connectionTypeCode", required = true) int connectionTypeCode,
-      @JsonProperty(value = "uri", required = true) @NonNull String uri,
+      @JsonProperty(value = "uri", required = false) @Nullable String uri,
       @JsonProperty(value = "authenticationParameters", required = true)
           @Nullable AuthenticationParametersDpo authenticationParameters,
       @JsonProperty(value = "serviceIdentity", required = false)
@@ -90,7 +91,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
 
   public ConnectionConfigInfoDpo(
       int connectionTypeCode,
-      @NonNull String uri,
+      @Nullable String uri,
       @Nullable AuthenticationParametersDpo authenticationParameters,
       @Nullable ServiceIdentityInfoDpo serviceIdentity) {
     this(connectionTypeCode, uri, authenticationParameters, serviceIdentity, null);
@@ -98,7 +99,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
 
   protected ConnectionConfigInfoDpo(
       int connectionTypeCode,
-      @NonNull String uri,
+      @Nullable String uri,
       @Nullable AuthenticationParametersDpo authenticationParameters,
       @Nullable ServiceIdentityInfoDpo serviceIdentity,
       @Nullable Map<String, String> properties,
@@ -122,7 +123,7 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     return ConnectionType.fromCode(connectionTypeCode);
   }
 
-  public String getUri() {
+  public @Nullable String getUri() {
     return uri;
   }
 
@@ -139,15 +140,27 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     return properties;
   }
 
+  /**
+   * Copies the connection properties whose keys are in {@code allowedKeys} into {@code target}.
+   * Connection properties are set by catalog administrators, so each connection type forwards only
+   * an explicit allow-list to the Iceberg catalog client instead of every key.
+   */
+  protected void copyAllowedProperties(Map<String, String> target, Collection<String> allowedKeys) {
+    for (String key : allowedKeys) {
+      if (properties.containsKey(key)) {
+        target.put(key, properties.get(key));
+      }
+    }
+  }
+
   private static final ObjectMapper DEFAULT_MAPPER;
 
   static {
     DEFAULT_MAPPER =
         JsonMapper.builder()
-            .changeDefaultPropertyInclusion(
-                incl ->
-                    incl.withValueInclusion(JsonInclude.Include.NON_NULL)
-                        .withContentInclusion(JsonInclude.Include.NON_NULL))
+            .changeDefaultPropertyInclusion(incl ->
+                incl.withValueInclusion(JsonInclude.Include.NON_NULL)
+                    .withContentInclusion(JsonInclude.Include.NON_NULL))
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .build();
   }
@@ -164,12 +177,20 @@ public abstract class ConnectionConfigInfoDpo implements IcebergCatalogPropertie
     return DEFAULT_MAPPER.readValue(jsonStr, ConnectionConfigInfoDpo.class);
   }
 
-  /** Validates the remote URI. */
-  protected void validateUri(String uri) {
+  /**
+   * Validates the remote URI. The connection types that connect to a remote service require a URI
+   * that is a {@link URL} (or a {@code thrift://} URI for Hive); a type that does not use the URI
+   * overrides this method.
+   */
+  protected void validateUri(@Nullable String uri) {
+    if (uri == null) {
+      throw new IllegalArgumentException(
+          "uri is required for " + getConnectionType().name() + " connections");
+    }
     try {
       URI uriObj = URI.create(uri);
       if (connectionTypeCode == ConnectionType.HIVE.getCode()
-          && uriObj.getScheme().equals("thrift")) {
+          && "thrift".equalsIgnoreCase(uriObj.getScheme())) {
         // Hive metastore runs a thrift server.
         return;
       }

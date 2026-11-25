@@ -170,14 +170,13 @@ public abstract class BaseCorrectness {
                                 refObj
                                     .map(SimpleCommitObj::commitSeqPerThread)
                                     .map(ArrayList::new)
-                                    .orElseGet(
-                                        () -> {
-                                          var initial = new ArrayList<Integer>(numThreads);
-                                          for (int i = 0; i < numThreads; i++) {
-                                            initial.add(-1);
-                                          }
-                                          return initial;
-                                        });
+                                    .orElseGet(() -> {
+                                      var initial = new ArrayList<Integer>(numThreads);
+                                      for (int i = 0; i < numThreads; i++) {
+                                        initial.add(-1);
+                                      }
+                                      return initial;
+                                    });
 
                             commitSeqPerThread.set(thread, commitSeqPerThread.get(thread) + 1);
 
@@ -210,22 +209,21 @@ public abstract class BaseCorrectness {
                 executor));
       }
 
-      soft.assertThatCode(
-              () ->
-                  CompletableFuture.allOf(futures.toArray(new CompletableFuture<?>[0]))
-                      .get(5, TimeUnit.MINUTES))
+      soft.assertThatCode(() ->
+              CompletableFuture.allOf(futures.toArray(new CompletableFuture<?>[0]))
+                  .get(5, TimeUnit.MINUTES))
           .doesNotThrowAnyException();
     }
 
     System.out.printf(
         """
-            Threads: %d
-            Commits per thread: %d
-            Retry timeouts: %d
-            Total retries: %d
-            Total sleep time: %s
-            Total work duration: %s
-            """,
+        Threads: %d
+        Commits per thread: %d
+        Retry timeouts: %d
+        Total retries: %d
+        Total sleep time: %s
+        Total work duration: %s
+        """,
         numThreads,
         numCommitsPerThread,
         totalTimeouts.get(),
@@ -247,17 +245,16 @@ public abstract class BaseCorrectness {
 
     Streams.stream(
             persistence.commits().commitLog(refName, OptionalLong.empty(), SimpleCommitObj.class))
-        .forEach(
-            co -> {
-              var expected = commitThreadSeqDesc.get(co.thread());
-              var expectedSeq = expected.get();
-              var commitSeq = co.commitSeqPerThread().get(co.thread());
-              soft.assertThat(commitSeq)
-                  .describedAs(
-                      "Descending (normal order) - thread %d, commit %d", co.thread(), commitSeq)
-                  .isEqualTo(expectedSeq);
-              expected.set(commitSeq - 1);
-            });
+        .forEach(co -> {
+          var expected = commitThreadSeqDesc.get(co.thread());
+          var expectedSeq = expected.get();
+          var commitSeq = co.commitSeqPerThread().get(co.thread());
+          soft.assertThat(commitSeq)
+              .describedAs(
+                  "Descending (normal order) - thread %d, commit %d", co.thread(), commitSeq)
+              .isEqualTo(expectedSeq);
+          expected.set(commitSeq - 1);
+        });
 
     soft.assertThat(commitThreadSeqDesc.values().stream().map(AtomicInteger::get))
         .describedAs("Descending (normal order)")
@@ -269,17 +266,16 @@ public abstract class BaseCorrectness {
             .collect(Collectors.toMap(t -> t, t -> new AtomicInteger(0)));
 
     Streams.stream(persistence.commits().commitLogReversed(refName, -1L, SimpleCommitObj.class))
-        .forEach(
-            co -> {
-              var expected = commitThreadSeq.get(co.thread());
-              var expectedSeq = expected.get();
-              var commitSeq = co.commitSeqPerThread().get(co.thread());
-              soft.assertThat(commitSeq)
-                  .describedAs(
-                      "Ascending (reverse order) - thread %d, commit %d", co.thread(), commitSeq)
-                  .isEqualTo(expectedSeq);
-              expected.set(commitSeq + 1);
-            });
+        .forEach(co -> {
+          var expected = commitThreadSeq.get(co.thread());
+          var expectedSeq = expected.get();
+          var commitSeq = co.commitSeqPerThread().get(co.thread());
+          soft.assertThat(commitSeq)
+              .describedAs(
+                  "Ascending (reverse order) - thread %d, commit %d", co.thread(), commitSeq)
+              .isEqualTo(expectedSeq);
+          expected.set(commitSeq + 1);
+        });
 
     soft.assertThat(commitThreadSeq.values().stream().map(AtomicInteger::get))
         .describedAs("Ascending (reverse order)")
@@ -304,30 +300,26 @@ public abstract class BaseCorrectness {
 
       var off = table;
 
-      committer.commit(
-          (state, refObjSupplier) -> {
-            var refObj = refObjSupplier.get();
+      committer.commit((state, refObjSupplier) -> {
+        var refObj = refObjSupplier.get();
 
-            var index =
-                refObj
-                    .map(
-                        r ->
-                            requireNonNull(r.index())
-                                .asUpdatableIndex(persistence, OBJ_REF_SERIALIZER))
-                    .orElseGet(
-                        () -> IndexContainer.newUpdatableIndex(persistence, OBJ_REF_SERIALIZER));
+        var index =
+            refObj
+                .map(r ->
+                    requireNonNull(r.index()).asUpdatableIndex(persistence, OBJ_REF_SERIALIZER))
+                .orElseGet(() -> IndexContainer.newUpdatableIndex(persistence, OBJ_REF_SERIALIZER));
 
-            for (var t = off; t < off + additionsPerCommit; t++) {
-              index.put(keyGen.apply(t), objIdGen.apply(t));
-            }
+        for (var t = off; t < off + additionsPerCommit; t++) {
+          index.put(keyGen.apply(t), objIdGen.apply(t));
+        }
 
-            var newRefObj =
-                ImmutableSimpleCommitObj.builder()
-                    .index(index.toIndexed("idx-", state::writeOrReplace))
-                    .thread(0);
+        var newRefObj =
+            ImmutableSimpleCommitObj.builder()
+                .index(index.toIndexed("idx-", state::writeOrReplace))
+                .thread(0);
 
-            return state.commitResult("result", newRefObj, refObj);
-          });
+        return state.commitResult("result", newRefObj, refObj);
+      });
 
       var head = persistence.fetchReferenceHead(refName, SimpleCommitObj.class);
       assertThat(head).isNotEmpty();
