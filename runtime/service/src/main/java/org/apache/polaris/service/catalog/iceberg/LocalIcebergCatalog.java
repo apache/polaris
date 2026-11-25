@@ -2224,7 +2224,18 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
 
         persistenceAttempted = true;
         if (null == existingLocation) {
-          createTableLike(tableIdentifier, entity);
+          PolarisEntity createdEntity = createTableLike(tableIdentifier, entity);
+          if (tableLocationsChanged) {
+            // A concurrent create can pass its overlap check before this table is persisted, so
+            // check again now that it is visible and undo the create unless the check passes.
+            try {
+              validateNoLocationsOverlap(
+                  tableIdentifier, requestedLocations, resolvedNamespace, createdEntity);
+            } catch (RuntimeException e) {
+              dropCreatedTableLike(tableIdentifier, resolvedNamespace, createdEntity, e);
+              throw e;
+            }
+          }
         } else {
           updateTableLike(tableIdentifier, entity);
         }
@@ -3165,7 +3176,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
    * duplicate the logic to try to resolve parentIds before constructing the proposed entity. This
    * method will fill in the parentId if needed upon resolution.
    */
-  private void createTableLike(TableIdentifier identifier, PolarisEntity entity) {
+  private PolarisEntity createTableLike(TableIdentifier identifier, PolarisEntity entity) {
     PolarisResolvedPathWrapper resolvedParent =
         resolvedEntityView.getResolvedPath(ResolvedPathKey.ofNamespace(identifier.namespace()));
     if (resolvedParent == null) {
@@ -3174,10 +3185,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           String.format("Failed to fetch resolved parent for TableIdentifier '%s'", identifier));
     }
 
-    createTableLike(identifier, entity, resolvedParent);
+    return createTableLike(identifier, entity, resolvedParent);
   }
 
-  private void createTableLike(
+  private PolarisEntity createTableLike(
       TableIdentifier identifier, PolarisEntity entity, PolarisResolvedPathWrapper resolvedParent) {
     IcebergTableLikeEntity icebergTableLikeEntity = IcebergTableLikeEntity.of(entity);
     if (icebergTableLikeEntity.getBaseLocation() != null) {
@@ -3225,6 +3236,35 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
     PolarisEntity resultEntity = PolarisEntity.of(res);
     LOGGER.debug("Created TableLike entity {} with TableIdentifier {}", resultEntity, identifier);
+    return resultEntity;
+  }
+
+  /**
+   * Drops a table this commit created but could not keep. If the drop fails, the table still
+   * references its metadata file, so fail with an exception that does not clean it up.
+   */
+  private void dropCreatedTableLike(
+      TableIdentifier identifier,
+      List<PolarisEntity> catalogPath,
+      PolarisEntity entity,
+      RuntimeException cause) {
+    DropEntityResult result =
+        getMetaStoreManager()
+            .dropEntityIfExists(
+                getCurrentPolarisContext(),
+                PolarisEntity.toCoreList(catalogPath),
+                entity,
+                Map.of(),
+                false);
+    if (!result.isSuccess()) {
+      IllegalStateException failure =
+          new IllegalStateException(
+              String.format(
+                  "Failed to drop table %s after its location check failed: %s",
+                  identifier, result.getReturnStatus()));
+      failure.addSuppressed(cause);
+      throw failure;
+    }
   }
 
   private void updateTableLike(TableIdentifier identifier, PolarisEntity entity) {

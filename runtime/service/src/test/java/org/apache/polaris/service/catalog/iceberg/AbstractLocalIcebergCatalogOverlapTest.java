@@ -22,6 +22,7 @@ import static org.apache.polaris.service.admin.PolarisAuthzTestBase.SCHEMA;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.AdditionalAnswers.delegatesTo;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -40,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableProperties;
@@ -49,6 +51,7 @@ import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
+import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.view.ViewProperties;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -832,5 +835,50 @@ public abstract class AbstractLocalIcebergCatalogOverlapTest {
                 .create())
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("conflicts with existing table or namespace");
+  }
+
+  @Test
+  public void testTableCreatedAtSameLocationDuringCreateIsRejected() throws IOException {
+    Namespace ns = Namespace.of("overlap-race-ns");
+    catalog().createNamespace(ns);
+    String location = STORAGE_LOCATION + "/overlap-race/shared";
+    TableIdentifier first = TableIdentifier.of(ns, "first");
+    TableIdentifier second = TableIdentifier.of(ns, "second");
+    LocalIcebergCatalog otherCatalog = initCatalog(CATALOG_NAME, Map.of());
+
+    // Create the second table while the first one writes its metadata file: after the first one
+    // passed its overlap check, but before it is persisted.
+    AtomicBoolean createdSecond = new AtomicBoolean();
+    FileIOFactory racingFileIOFactory =
+        (storageAccessConfig, ioImplClassName, properties) ->
+            new InMemoryFileIO() {
+              @Override
+              public OutputFile newOutputFile(String path) {
+                if (path.startsWith(location) && createdSecond.compareAndSet(false, true)) {
+                  otherCatalog.buildTable(second, SCHEMA).withLocation(location).create();
+                }
+                return super.newOutputFile(path);
+              }
+            };
+    LocalIcebergCatalog racingCatalog =
+        newIcebergCatalog(CATALOG_NAME, metaStoreManager, racingFileIOFactory);
+    racingCatalog.setCatalogFileIo(new InMemoryFileIO());
+    racingCatalog.initialize(
+        CATALOG_NAME,
+        Map.of(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    try (otherCatalog;
+        racingCatalog) {
+      Throwable failure =
+          catchThrowable(
+              () -> racingCatalog.buildTable(first, SCHEMA).withLocation(location).create());
+      assertThat(createdSecond).isTrue();
+      assertThat(failure)
+          .isInstanceOf(ForbiddenException.class)
+          .hasMessageContaining("conflicts with existing table or namespace");
+      assertThat(catalog().tableExists(first)).isFalse();
+      assertThat(catalog().tableExists(second)).isTrue();
+      assertThat(catalog().loadTable(second).location()).isEqualTo(location);
+    }
   }
 }
