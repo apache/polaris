@@ -26,6 +26,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
@@ -86,6 +87,7 @@ public class IcebergCatalogAdapter
   private final ReservedProperties reservedProperties;
   private final IcebergCatalogHandlerFactory handlerFactory;
   private final CatalogConfigHandler configHandler;
+  private final UriInfo uriInfo;
 
   @Inject
   public IcebergCatalogAdapter(
@@ -93,12 +95,14 @@ public class IcebergCatalogAdapter
       CatalogPrefixParser prefixParser,
       ReservedProperties reservedProperties,
       IcebergCatalogHandlerFactory handlerFactory,
-      CatalogConfigHandler configHandler) {
+      CatalogConfigHandler configHandler,
+      UriInfo uriInfo) {
     this.realmConfig = callContext.getRealmConfig();
     this.prefixParser = prefixParser;
     this.reservedProperties = reservedProperties;
     this.handlerFactory = handlerFactory;
     this.configHandler = configHandler;
+    this.uriInfo = uriInfo;
   }
 
   /**
@@ -610,7 +614,10 @@ public class IcebergCatalogAdapter
 
   private List<TableIdentifier> parseReferencedBy(String referencedBy, TableIdentifier target) {
     return ReferencedByChain.parse(
-        referencedBy, target, realmConfig.getConfig(FeatureConfiguration.REFERENCED_BY_MAX_DEPTH));
+        referencedBy,
+        uriInfo,
+        target,
+        realmConfig.getConfig(FeatureConfiguration.REFERENCED_BY_MAX_DEPTH));
   }
 
   @Override

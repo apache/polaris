@@ -31,6 +31,10 @@ import org.jspecify.annotations.NonNull;
  * no chain. The chain is not visited by {@link #visitSecurables(Consumer)}: an authorizer that
  * wants the chain entities resolved must register them itself in {@code
  * resolveAuthorizationInputs}.
+ *
+ * <p>The entries of the chain are always mapped into the catalog of the target: the Iceberg REST
+ * parameter carries the namespace and the view name but no catalog part, the catalog of the request
+ * is the one named by its prefix.
  */
 public record SingleTargetAuthorizationIntent(
     @NonNull PolarisAuthorizableOperation operation,
