@@ -82,8 +82,11 @@ The property `polaris.authentication.token-broker.max-token-generation` specifie
 - Default: `PT1H`. 
 
 {{< alert note >}}
-Tokens issued by the internal `TokenBroker` are stateless bearer tokens. Their lifetime is set at
-issuance from `max-token-generation`, so changing this property only affects new tokens.
+Tokens issued by the internal `TokenBroker` are stateless bearer tokens: Polaris does not keep a
+record of the tokens it issues. It does, however, load the principal and its role grants on every
+request, so changes to the principal and its grants apply to tokens that were already issued. A
+token's lifetime is set at issuance from `max-token-generation`, so changing this property only
+affects new tokens.
 
 Resetting a principal's credentials replaces its previous client secrets: they can no longer be used
 to request tokens, and tokens issued with them can no longer be exchanged for new tokens. A routine
