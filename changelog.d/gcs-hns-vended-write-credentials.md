@@ -7,5 +7,9 @@
   vending write credentials, Polaris creates the missing parent folders of each write location
   itself, with the identity it downscopes from. That identity must hold the `storage.folders.*`
   permissions on the bucket (for example through `roles/storage.objectAdmin`). Folder creation never
-  blocks vending: buckets without HNS reject it and Polaris ignores that, and other failures are
-  logged once per bucket. On buckets without HNS the vended credentials grant nothing extra.
+  blocks vending. Buckets without HNS reject it with 409, which is ignored, or with 403 when the
+  identity lacks `storage.folders.create`; every failure other than 409 is logged as a warning. The
+  new realm-level feature flag `GCS_HNS_PARENT_FOLDER_CREATION_ENABLED` (default `true`) turns folder
+  creation off. File cleanup tasks now request read, list and delete access instead of all access,
+  which yields the same credentials on every storage type and creates no GCS folders. On buckets
+  without HNS the vended credentials grant nothing extra.
