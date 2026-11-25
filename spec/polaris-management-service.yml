@@ -962,9 +962,9 @@ paths:
         A mapping whose namespace or table does not exist is listed too, with `targetExists` set to
         false: a mapping created ahead of its target, or one left behind when its namespace was
         dropped. With the `targetExists` filter, only the mappings whose target exists (true) or does
-        not exist (false) are listed. Listing with `namespace` requires that namespace to exist, so the mappings left
-        behind by a dropped namespace are found with `storageConfigurationName`. A client removes the
-        mappings it no longer wants one at a time, with removeStorageMapping.
+        not exist (false) are listed. Listing with `namespace` requires that namespace to exist, so
+        the mappings left behind by a dropped namespace are found with `storageConfigurationName`. A
+        client removes the mappings it no longer wants one at a time, with removeStorageMapping.
 
         Results are paginated. A client follows `nextPageToken` until it is absent. A server
         may return fewer results than `pageSize`, and may paginate even when `pageSize` is not set.
@@ -2090,10 +2090,9 @@ components:
 
             The same rule applies to objects created on the catalog's own `storageConfigInfo` or on a
             snapshot of it, with the catalog's `default-base-location` in place of `baseLocation`.
-            For example, after the
-            mapping is removed from a namespace that was placed in another storage configuration's
-            bucket, a new table in it is placed at the catalog's `default-base-location` plus its
-            namespace path and name.
+            For example, after the mapping is removed from a namespace that was placed in another
+            storage configuration's bucket, a new table in it is placed at the catalog's
+            `default-base-location` plus its namespace path and name.
         createTimestamp:
           type: integer
           format: "int64"
