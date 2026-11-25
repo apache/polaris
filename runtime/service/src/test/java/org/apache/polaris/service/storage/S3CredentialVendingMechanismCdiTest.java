@@ -431,7 +431,10 @@ class S3CredentialVendingMechanismCdiTest {
           assertThat(loaded.config())
               .containsEntry(StorageAccessProperty.CLIENT_REGION.getPropertyName(), region)
               .containsEntry(StorageAccessProperty.AWS_ENDPOINT.getPropertyName(), endpoint)
-              .doesNotContainKey(StorageAccessProperty.AWS_KEY_ID.getPropertyName());
+              .doesNotContainKeys(
+                  StorageAccessProperty.AWS_KEY_ID.getPropertyName(),
+                  StorageAccessProperty.AWS_SECRET_KEY.getPropertyName(),
+                  StorageAccessProperty.AWS_TOKEN.getPropertyName());
         }
       }
     }
