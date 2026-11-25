@@ -4,9 +4,11 @@
 -->
 
 ## Checklist
+- [ ] 🙋 I am the human author: I understand this change and can explain it
 - [ ] 🛡️ Don't disclose security issues! (contact security@apache.org)
 - [ ] 🔗 Clearly explained why the changes are needed, or linked related issues: Fixes #
 - [ ] 🧪 Added/updated tests with good coverage, or manually tested (and explained how)
 - [ ] 💡 Added comments for complex logic
 - [ ] 🧾 Added a changelog entry in `changelog.d/` (if needed, see `changelog.d/README.md`)
 - [ ] 📚 Updated documentation in `site/content/in-dev/unreleased` (if needed)
+- [ ] 🤖 Disclosed significant AI usage (recommended if AI was used, see `CONTRIBUTING.md`)
