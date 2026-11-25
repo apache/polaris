@@ -512,9 +512,10 @@ jobs:
           name: polaris-image
       - name: Load image into Minikube
         run: |
-          zstd -d -c polaris-image.tar.zst | minikube image load -
           APP_VERSION=$(grep '^appVersion:' helm/polaris/Chart.yaml | awk '{print $2}')
-          minikube image tag apache/polaris:latest apache/polaris:${APP_VERSION}
+          zstd -d -c polaris-image.tar.zst | docker load
+          docker tag apache/polaris:latest apache/polaris:${APP_VERSION}
+          docker save apache/polaris:latest apache/polaris:${APP_VERSION} | minikube image load -
           echo "Available images:"
           minikube image ls
       - name: Install fixtures
