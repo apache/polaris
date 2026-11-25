@@ -49,7 +49,6 @@ import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.catalog.policy.PolicyEndpoints;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
@@ -207,7 +206,7 @@ public class GetConfigTest {
   }
 
   @Test
-  public void testIcebergDefaultsEmptyWhenClientKeysUnset() {
+  public void testIcebergDefaultsEmptyWhenCatalogKeysUnset() {
     ConfigResponse configResponse = getConfig(Map.of(), Map.of("custom-property", "custom-value"));
 
     assertThat(configResponse.defaults()).isEmpty();
@@ -215,19 +214,8 @@ public class GetConfigTest {
         .containsKeys("prefix", RESTCatalogProperties.NAMESPACE_SEPARATOR);
   }
 
-  @ParameterizedTest
-  @CsvSource({
-    RESTCatalogProperties.PAGE_SIZE + ", 50",
-    RESTCatalogProperties.METRICS_REPORTING_ENABLED + ", false"
-  })
-  public void testIcebergDefaultsIncludeClientKeyWhenPresent(String key, String value) {
-    ConfigResponse configResponse = getConfig(Map.of(), Map.of(key, value));
-
-    assertThat(configResponse.defaults()).containsExactly(Map.entry(key, value));
-  }
-
   @Test
-  public void testIcebergDefaultsIncludeClientKeysWhenPresentAndOmitServerKeys() {
+  public void testIcebergDefaultsOmitCatalogEntityProperties() {
     Map<String, String> catalogProperties = new HashMap<>();
     catalogProperties.put("custom-property", "custom-value");
     catalogProperties.put("polaris.config.drop-with-purge.enabled", "true");
@@ -240,13 +228,7 @@ public class GetConfigTest {
 
     ConfigResponse configResponse = getConfig(Map.of(), catalogProperties);
 
-    assertThat(configResponse.defaults())
-        .containsExactlyInAnyOrderEntriesOf(
-            Map.of(
-                RESTCatalogProperties.PAGE_SIZE,
-                "50",
-                RESTCatalogProperties.METRICS_REPORTING_ENABLED,
-                "false"));
+    assertThat(configResponse.defaults()).isEmpty();
     assertThat(configResponse.overrides())
         .containsKeys("prefix", RESTCatalogProperties.NAMESPACE_SEPARATOR);
   }

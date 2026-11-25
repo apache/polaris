@@ -67,8 +67,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
   /**
    * When false (default), Iceberg REST {@code GET /v1/config} is not authorization-gated. When
    * true, {@code CATALOG_READ_CONFIG} (or a catalog-level privilege that subsumes it) is required
-   * for the whole endpoint (403 if missing). Namespace- or table-scoped grants are not enough. A
-   * 200 includes Iceberg REST client keys in {@code defaults} when they are set on the catalog.
+   * for the whole endpoint (403 if missing). Namespace- or table-scoped grants are not enough.
    * Grant privileges (and update Ranger/OPA policies) before enabling. The default will not flip
    * until client-facing catalog configuration is defined.
    */
@@ -80,9 +79,7 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "catalog-level privilege that subsumes it); unauthorized callers get 403. "
                   + "Namespace- or table-scoped grants are not enough; grant CATALOG_READ_CONFIG "
                   + "on the catalog. When false (default), the endpoint is not authorization-gated "
-                  + "so upgrades do not 403 bootstrap. On a 200, defaults include Iceberg REST "
-                  + "client keys (rest-page-size, rest-metrics-reporting-enabled) when set on the "
-                  + "catalog. Enable after granting CATALOG_READ_CONFIG "
+                  + "so upgrades do not 403 bootstrap. Enable after granting CATALOG_READ_CONFIG "
                   + "(or catalog-level content privileges) and after updating Ranger/OPA policies "
                   + "for GET_CATALOG_CONFIG. Ranger maps GET_CATALOG_CONFIG to catalog-config-read; "
                   + "catalog-properties-read implies catalog-config-read. Ranger operators must "

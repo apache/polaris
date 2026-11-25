@@ -26,10 +26,10 @@ import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Instance.Handle;
 import jakarta.inject.Inject;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.rest.Endpoint;
@@ -43,8 +43,6 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
@@ -58,9 +56,6 @@ import org.apache.polaris.service.idempotency.IdempotencyConfiguration;
 
 @RequestScoped
 public class CatalogConfigHandler {
-  private static final List<String> ICEBERG_REST_CONFIG_DEFAULT_KEYS =
-      List.of(RESTCatalogProperties.PAGE_SIZE, RESTCatalogProperties.METRICS_REPORTING_ENABLED);
-
   private final CatalogPrefixParser prefixParser;
   private final ResolutionManifestFactory resolutionManifestFactory;
   private final PolarisAuthorizer authorizer;
@@ -108,23 +103,20 @@ public class CatalogConfigHandler {
     if (resolvedCatalog == null) {
       throw new NotFoundException("Unable to find warehouse %s", catalogName);
     }
-    PolarisBaseEntity catalogEntity = resolvedCatalog.getResolvedLeafEntity().getEntity();
-
     // GET_CATALOG_CONFIG is opt-in via ENFORCE_CATALOG_CONFIG_AUTHORIZATION (default false).
     // When false, the endpoint is not authorization-gated so upgrades do not 403 bootstrap.
-    // When true, CATALOG_READ_CONFIG is required for the whole endpoint. A 200 includes Iceberg
-    // REST client keys in defaults when they are set on the catalog.
+    // When true, CATALOG_READ_CONFIG is required for the whole endpoint.
+    // Catalog entity properties are not copied into Iceberg defaults. prefix and
+    // namespace-separator stay in overrides. Pagination stays on LIST_PAGINATION_* server flags.
     boolean enforceAccessChecks =
         realmConfig.getConfig(FeatureConfiguration.ENFORCE_CATALOG_CONFIG_AUTHORIZATION);
     if (enforceAccessChecks) {
       authorizer.authorize(authorizationState, configAuthzRequest).throwIfDenied();
     }
 
-    Map<String, String> catalogProperties = PolarisEntity.of(catalogEntity).getPropertiesAsMap();
-
     ConfigResponse.Builder builder =
         ConfigResponse.builder()
-            .withDefaults(icebergRestConfigDefaults(catalogProperties))
+            .withDefaults(Collections.emptyMap())
             .withOverrides(
                 ImmutableMap.of(
                     "prefix",
@@ -143,23 +135,6 @@ public class CatalogConfigHandler {
     }
 
     return builder.build();
-  }
-
-  /**
-   * Iceberg REST {@code GET /v1/config} defaults copy {@code rest-page-size} and {@code
-   * rest-metrics-reporting-enabled} when present on the catalog. Other catalog properties remain on
-   * Management GET catalog.
-   */
-  private static Map<String, String> icebergRestConfigDefaults(
-      Map<String, String> catalogProperties) {
-    ImmutableMap.Builder<String, String> defaults = ImmutableMap.builder();
-    for (String key : ICEBERG_REST_CONFIG_DEFAULT_KEYS) {
-      String value = catalogProperties.get(key);
-      if (value != null) {
-        defaults.put(key, value);
-      }
-    }
-    return defaults.build();
   }
 
   private Set<Endpoint> supportedEndpoints() {
