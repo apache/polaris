@@ -25,10 +25,14 @@ import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.A_ID
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.PK;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.SK;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.SK_ENTITY;
+import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.SK_GRANT_ON_PREFIX;
+import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.SK_GRANT_TO_PREFIX;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.SK_NAME;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.childPk;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.childSk;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.entityPk;
+import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.grantOnSk;
+import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.grantToSk;
 import static org.apache.polaris.persistence.atomic.dynamodb.DynamoDbLayout.sentinelPk;
 import static org.apache.polaris.persistence.atomic.dynamodb.TransactionFailures.conditionFailedAt;
 import static org.apache.polaris.persistence.atomic.dynamodb.TransactionFailures.onlyConflicts;
@@ -41,6 +45,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -71,13 +76,16 @@ import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.persistence.atomic.dynamodb.models.ChildItem;
 import org.apache.polaris.persistence.atomic.dynamodb.models.EntityItem;
+import org.apache.polaris.persistence.atomic.dynamodb.models.GrantItem;
 import org.apache.polaris.persistence.atomic.dynamodb.models.NameSentinelItem;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.BatchWriteItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
 import software.amazon.awssdk.services.dynamodb.model.Delete;
+import software.amazon.awssdk.services.dynamodb.model.DeleteRequest;
 import software.amazon.awssdk.services.dynamodb.model.Get;
 import software.amazon.awssdk.services.dynamodb.model.ItemResponse;
 import software.amazon.awssdk.services.dynamodb.model.Put;
@@ -86,6 +94,7 @@ import software.amazon.awssdk.services.dynamodb.model.TransactGetItem;
 import software.amazon.awssdk.services.dynamodb.model.TransactWriteItem;
 import software.amazon.awssdk.services.dynamodb.model.TransactionCanceledException;
 import software.amazon.awssdk.services.dynamodb.model.TransactionConflictException;
+import software.amazon.awssdk.services.dynamodb.model.WriteRequest;
 
 /**
  * DynamoDB implementation of {@link BasePersistence}, meant to run under {@code
@@ -117,9 +126,14 @@ import software.amazon.awssdk.services.dynamodb.model.TransactionConflictExcepti
  * and pages with a single {@link EntityIdToken}. Each entity is re-checked against the queried
  * parent, so one that moved out by a concurrent re-parent is not listed.
  *
- * <p>This class currently covers entity writes, lookups, listing and multi-entity writes. Grant
- * records and realm teardown throw {@link UnsupportedOperationException} until they are
- * implemented.
+ * <p>Grants are stored as two base-table items per grant — one in the securable's partition and a
+ * mirror in the grantee's — so "grants on a securable" and "grants held by a grantee" are each a
+ * strongly-consistent {@code Query} of one partition, with no secondary index. A single grant's two
+ * items are written or deleted in one transaction; the bulk cleanup when an entity is dropped is a
+ * chunked, best-effort {@code BatchWriteItem}.
+ *
+ * <p>This class currently covers entity writes, lookups, listing, multi-entity writes and grants.
+ * Realm teardown and events throw {@link UnsupportedOperationException} until they are implemented.
  */
 public class DynamoDbBasePersistence implements BasePersistence {
 
@@ -133,6 +147,17 @@ public class DynamoDbBasePersistence implements BasePersistence {
    *     href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_TransactWriteItems.html">TransactWriteItems</a>
    */
   private static final int MAX_TRANSACT_WRITE_ITEMS = 100;
+
+  /**
+   * DynamoDB's limit on items in one {@code BatchWriteItem} request.
+   *
+   * @see <a
+   *     href="https://docs.aws.amazon.com/amazondynamodb/latest/APIReference/API_BatchWriteItem.html">BatchWriteItem</a>
+   */
+  private static final int MAX_BATCH_WRITE_ITEMS = 25;
+
+  /** Attempts a grant-cleanup batch makes before a hard failure, re-submitting unprocessed keys. */
+  private static final int MAX_BATCH_WRITE_ATTEMPTS = 5;
 
   /** Actions a create writes per entity: the entity item, its name sentinel, its child record. */
   private static final int CREATE_ACTIONS_PER_ENTITY = 3;
@@ -564,7 +589,18 @@ public class DynamoDbBasePersistence implements BasePersistence {
   @Override
   public void writeToGrantRecords(
       @NonNull PolarisCallContext callCtx, @NonNull PolarisGrantRecord grantRec) {
-    throw notYetImplemented("writeToGrantRecords");
+    // Write the securable-side item and the grantee-side mirror in one transaction, so the two
+    // authorization reads can never see half a grant. Every field is part of the key, so re-writing
+    // the same grant is a no-op overwrite, matching the single-backend "existing record is a
+    // no-op".
+    List<TransactWriteItem> items =
+        grantItems(grantRec).stream()
+            .map(item ->
+                TransactWriteItem.builder()
+                    .put(Put.builder().tableName(tableName).item(item).build())
+                    .build())
+            .toList();
+    client.transactWriteItems(b -> b.transactItems(items));
   }
 
   @Override
@@ -575,7 +611,16 @@ public class DynamoDbBasePersistence implements BasePersistence {
   @Override
   public void deleteFromGrantRecords(
       @NonNull PolarisCallContext callCtx, @NonNull PolarisGrantRecord grantRec) {
-    throw notYetImplemented("deleteFromGrantRecords");
+    // Remove both the securable-side item and the grantee-side mirror in one transaction. Deleting
+    // an absent item is a no-op, so a repeated delete is idempotent.
+    List<TransactWriteItem> items =
+        grantKeys(grantRec).stream()
+            .map(keyItem ->
+                TransactWriteItem.builder()
+                    .delete(Delete.builder().tableName(tableName).key(keyItem).build())
+                    .build())
+            .toList();
+    client.transactWriteItems(b -> b.transactItems(items));
   }
 
   @Override
@@ -584,7 +629,21 @@ public class DynamoDbBasePersistence implements BasePersistence {
       @NonNull PolarisEntityCore entity,
       @NonNull List<PolarisGrantRecord> grantsOnGrantee,
       @NonNull List<PolarisGrantRecord> grantsOnSecurable) {
-    throw notYetImplemented("deleteAllEntityGrantRecords");
+    // Best-effort cleanup when an entity is dropped: remove both mirror items of every grant on it
+    // (as securable) and to it (as grantee). The entity row is already gone, so a dangling grant is
+    // ignored on lookup; the count can exceed a transaction's 100-action cap, so this is a chunked
+    // BatchWriteItem rather than an atomic transaction. A key set de-duplicates a grant that names
+    // this entity on both sides, so it appears in both input lists (a self-grant).
+    LinkedHashSet<Map<String, AttributeValue>> keys = new LinkedHashSet<>();
+    grantsOnSecurable.forEach(grant -> keys.addAll(grantKeys(grant)));
+    grantsOnGrantee.forEach(grant -> keys.addAll(grantKeys(grant)));
+    if (keys.isEmpty()) {
+      return;
+    }
+    List<Map<String, AttributeValue>> all = new ArrayList<>(keys);
+    for (int i = 0; i < all.size(); i += MAX_BATCH_WRITE_ITEMS) {
+      batchDeleteGrants(all.subList(i, Math.min(i + MAX_BATCH_WRITE_ITEMS, all.size())));
+    }
   }
 
   @Override
@@ -629,19 +688,23 @@ public class DynamoDbBasePersistence implements BasePersistence {
       long granteeCatalogId,
       long granteeId,
       int privilegeCode) {
-    throw notYetImplemented("lookupGrantRecord");
+    // One grant is one securable-side item; a strongly-consistent GetItem is the authoritative
+    // read.
+    Map<String, AttributeValue> item =
+        readItem(entityPk(realmId, securableId), grantOnSk(granteeId, privilegeCode));
+    return item == null ? null : GrantItem.toGrantRecord(item);
   }
 
   @Override
   public @NonNull List<PolarisGrantRecord> loadAllGrantRecordsOnSecurable(
       @NonNull PolarisCallContext callCtx, long securableCatalogId, long securableId) {
-    throw notYetImplemented("loadAllGrantRecordsOnSecurable");
+    return queryGrants(entityPk(realmId, securableId), SK_GRANT_ON_PREFIX);
   }
 
   @Override
   public @NonNull List<PolarisGrantRecord> loadAllGrantRecordsOnGrantee(
       @NonNull PolarisCallContext callCtx, long granteeCatalogId, long granteeId) {
-    throw notYetImplemented("loadAllGrantRecordsOnGrantee");
+    return queryGrants(entityPk(realmId, granteeId), SK_GRANT_TO_PREFIX);
   }
 
   @Override
@@ -1105,6 +1168,76 @@ public class DynamoDbBasePersistence implements BasePersistence {
     return Map.of(
         ":ev", numberValue(expected.getEntityVersion()),
         ":grv", numberValue(expected.getGrantRecordsVersion()));
+  }
+
+  /**
+   * The items a grant is stored as: the securable-side item and the grantee-side mirror. A
+   * self-grant (securableId == granteeId) collapses onto one key, so it is returned once, which
+   * keeps {@code TransactWriteItems} from acting on the same item twice.
+   */
+  private List<Map<String, AttributeValue>> grantItems(PolarisGrantRecord grant) {
+    return List.of(GrantItem.securableItem(realmId, grant), GrantItem.granteeItem(realmId, grant));
+  }
+
+  /** The {@code (PK, SK)} keys of a grant's two items. */
+  private List<Map<String, AttributeValue>> grantKeys(PolarisGrantRecord grant) {
+    return List.of(
+        key(
+            entityPk(realmId, grant.getSecurableId()),
+            grantOnSk(grant.getGranteeId(), grant.getPrivilegeCode())),
+        key(
+            entityPk(realmId, grant.getGranteeId()),
+            grantToSk(grant.getSecurableId(), grant.getPrivilegeCode())));
+  }
+
+  /**
+   * Strongly-consistent query of one partition for its grant items under {@code prefix}, each
+   * rebuilt into a {@link PolarisGrantRecord}. The securable side ({@code GRANT#ON#}) serves
+   * "grants on a securable" and the grantee side ({@code GRANT#TO#}) "grants held by a grantee";
+   * the prefix keeps the two apart when one entity's partition holds both.
+   */
+  private List<PolarisGrantRecord> queryGrants(String partitionKey, String prefix) {
+    QueryRequest request =
+        QueryRequest.builder()
+            .tableName(tableName)
+            .keyConditionExpression("#pk = :pk AND begins_with(#sk, :grant)")
+            .expressionAttributeNames(Map.of("#pk", PK, "#sk", SK))
+            .expressionAttributeValues(
+                Map.of(
+                    ":pk", AttributeValue.fromS(partitionKey),
+                    ":grant", AttributeValue.fromS(prefix)))
+            .consistentRead(true)
+            .build();
+    return client.queryPaginator(request).items().stream().map(GrantItem::toGrantRecord).toList();
+  }
+
+  /**
+   * Deletes up to {@value #MAX_BATCH_WRITE_ITEMS} grant keys with one {@code BatchWriteItem},
+   * re-submitting any {@code UnprocessedItems} with backoff. A hard failure after {@value
+   * #MAX_BATCH_WRITE_ATTEMPTS} attempts throws, as the JDBC backend does on a failed grant delete;
+   * the entity is already gone, so a partial delete leaves only ignorable orphans.
+   */
+  private void batchDeleteGrants(List<Map<String, AttributeValue>> keys) {
+    List<WriteRequest> writes =
+        keys.stream()
+            .map(k ->
+                WriteRequest.builder()
+                    .deleteRequest(DeleteRequest.builder().key(k).build())
+                    .build())
+            .toList();
+    Map<String, List<WriteRequest>> pending = new HashMap<>();
+    pending.put(tableName, new ArrayList<>(writes));
+    for (int attempt = 0; attempt < MAX_BATCH_WRITE_ATTEMPTS; attempt++) {
+      Map<String, List<WriteRequest>> request = pending;
+      BatchWriteItemResponse response = client.batchWriteItem(b -> b.requestItems(request));
+      if (!response.hasUnprocessedItems() || response.unprocessedItems().isEmpty()) {
+        return;
+      }
+      pending = new HashMap<>(response.unprocessedItems());
+      backOff(attempt);
+    }
+    throw new RuntimeException(
+        "Failed to delete grant records after " + MAX_BATCH_WRITE_ATTEMPTS + " attempts");
   }
 
   private static RetryOnConcurrencyException concurrentModification(

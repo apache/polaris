@@ -43,6 +43,11 @@ public final class DynamoDbLayout {
   public static final String SK_ENTITY = "ENTITY";
   public static final String SK_NAME = "NAME";
   public static final String SK_CHILD_PREFIX = "CHILD#";
+  // A grant is stored twice. The two items can share a partition (an entity that is a securable in
+  // one grant and a grantee in another), so each side has its own sort-key prefix; otherwise a
+  // begins_with query could not tell "grants on this securable" from "grants held by this grantee".
+  public static final String SK_GRANT_ON_PREFIX = "GRANT#ON#";
+  public static final String SK_GRANT_TO_PREFIX = "GRANT#TO#";
 
   // ---- Entity item attributes ------------------------------------------------------------------
   public static final String A_CATALOG_ID = "catalogId";
@@ -62,6 +67,13 @@ public final class DynamoDbLayout {
 
   // ---- Name-sentinel attributes ----------------------------------------------------------------
   public static final String A_ID = "id";
+
+  // ---- Grant-record attributes -----------------------------------------------------------------
+  public static final String A_SECURABLE_CATALOG_ID = "securableCatalogId";
+  public static final String A_SECURABLE_ID = "securableId";
+  public static final String A_GRANTEE_CATALOG_ID = "granteeCatalogId";
+  public static final String A_GRANTEE_ID = "granteeId";
+  public static final String A_PRIVILEGE_CODE = "privilegeCode";
 
   private static final String SEP = "#";
 
@@ -113,5 +125,32 @@ public final class DynamoDbLayout {
    */
   public static String childSk(long id) {
     return SK_CHILD_PREFIX + String.format(Locale.ROOT, "%019d", id);
+  }
+
+  /**
+   * Securable-side grant sort key: {@code GRANT#ON#}, the grantee id zero-padded to 19 digits, and
+   * the privilege code. This item lives in the securable's partition ({@link #entityPk} of the
+   * securable), so {@code begins_with(GRANT#ON#)} on that partition is a strongly-consistent read
+   * of all grants on the securable, with no secondary index.
+   */
+  public static String grantOnSk(long granteeId, int privilegeCode) {
+    return SK_GRANT_ON_PREFIX
+        + String.format(Locale.ROOT, "%019d", granteeId)
+        + SEP
+        + privilegeCode;
+  }
+
+  /**
+   * Grantee-side grant sort key: {@code GRANT#TO#}, the securable id zero-padded to 19 digits, and
+   * the privilege code. This item lives in the grantee's partition, so {@code
+   * begins_with(GRANT#TO#)} on that partition is a strongly-consistent read of all grants held by
+   * the grantee. The distinct prefix keeps it apart from any securable-side grant that shares the
+   * partition.
+   */
+  public static String grantToSk(long securableId, int privilegeCode) {
+    return SK_GRANT_TO_PREFIX
+        + String.format(Locale.ROOT, "%019d", securableId)
+        + SEP
+        + privilegeCode;
   }
 }
