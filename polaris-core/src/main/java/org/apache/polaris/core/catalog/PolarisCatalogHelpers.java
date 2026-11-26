@@ -24,6 +24,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.polaris.core.admin.model.AuthenticationParameters;
+import org.apache.polaris.core.admin.model.Catalog;
+import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
+import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.entity.PolarisEntity;
 
 /**
@@ -33,6 +37,35 @@ import org.apache.polaris.core.entity.PolarisEntity;
 public class PolarisCatalogHelpers {
   /** Not intended for instantiation. */
   private PolarisCatalogHelpers() {}
+
+  /**
+   * Requires {@code IMPLICIT} authentication when the given catalog is an external catalog that
+   * uses the given connection type. Other catalogs are not checked.
+   *
+   * @throws IllegalArgumentException if the catalog requests another authentication type
+   */
+  public static void requireImplicitAuthentication(
+      Catalog catalog, ConnectionConfigInfo.ConnectionTypeEnum connectionType) {
+    if (!(catalog instanceof ExternalCatalog externalCatalog)) {
+      return;
+    }
+    ConnectionConfigInfo connection = externalCatalog.getConnectionConfigInfo();
+    if (connection == null || connection.getConnectionType() != connectionType) {
+      return;
+    }
+    // A missing value is reported by the request validation that requires it.
+    AuthenticationParameters authentication = connection.getAuthenticationParameters();
+    if (authentication == null
+        || authentication.getAuthenticationType()
+            == AuthenticationParameters.AuthenticationTypeEnum.IMPLICIT) {
+      return;
+    }
+    throw new IllegalArgumentException(
+        connectionType.name()
+            + " connections only support IMPLICIT authentication, but "
+            + authentication.getAuthenticationType().name()
+            + " was requested");
+  }
 
   public static List<String> tableIdentifierToList(TableIdentifier identifier) {
     return identifierToList(identifier.namespace(), identifier.name());

@@ -47,7 +47,8 @@ public class BigQueryMetastoreFederatedCatalogFactory implements FederatedCatalo
 
     // Currently, Polaris supports BigQuery Metastore federation only via IMPLICIT authentication.
     // Hence, prior to initializing the configuration, ensure that the catalog uses
-    // IMPLICIT authentication.
+    // IMPLICIT authentication. BigQueryMetastoreCatalogValidator rejects other types when the
+    // catalog is created or updated; keep both in sync.
     AuthenticationParametersDpo authenticationParametersDpo =
         connectionConfigInfoDpo.getAuthenticationParameters();
     if (authenticationParametersDpo.getAuthenticationTypeCode()

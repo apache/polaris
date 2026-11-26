@@ -16,11 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.admin;
+package org.apache.polaris.extensions.federation.hive;
 
+import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.polaris.core.admin.model.Catalog;
+import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
+import org.apache.polaris.core.catalog.CatalogConfigValidator;
+import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 
-/** Validates catalog configuration before it is created or updated. */
-public interface CatalogConfigValidator {
-  void validate(Catalog catalog);
+/**
+ * Rejects Hive federated catalogs that request an authentication type other than {@code IMPLICIT}.
+ * {@link HiveFederatedCatalogFactory} refuses any other type when the catalog is first used, so
+ * such a catalog could be created but never used.
+ */
+@ApplicationScoped
+public class HiveCatalogValidator implements CatalogConfigValidator {
+
+  @Override
+  public void validate(Catalog catalog) {
+    PolarisCatalogHelpers.requireImplicitAuthentication(
+        catalog, ConnectionConfigInfo.ConnectionTypeEnum.HIVE);
+  }
 }

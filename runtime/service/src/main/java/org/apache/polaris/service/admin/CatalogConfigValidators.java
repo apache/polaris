@@ -25,6 +25,7 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import java.util.List;
 import org.apache.polaris.core.admin.model.Catalog;
+import org.apache.polaris.core.catalog.CatalogConfigValidator;
 
 /**
  * Catalog configuration validators installed in this server, resolved once at startup. Only bean
