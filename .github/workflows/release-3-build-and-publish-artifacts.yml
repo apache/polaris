@@ -48,7 +48,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
+        uses: $/.github/actions/setup-test-env
 
       - name: Set up environment variables
         id: set-outputs
@@ -139,7 +139,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
+        uses: $/.github/actions/setup-test-env
 
       - name: Set up environment variables
         run: |
@@ -295,7 +295,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
+        uses: $/.github/actions/setup-test-env
 
       - name: Set up environment variables
         run: |
@@ -376,7 +376,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
+        uses: $/.github/actions/setup-test-env
 
       - name: Set up environment variables
         run: |
@@ -695,7 +695,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
+        uses: $/.github/actions/setup-test-env
 
       - name: Set up environment variables
         run: |

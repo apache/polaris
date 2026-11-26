@@ -60,7 +60,7 @@ jobs:
           path: site/content/releases
           persist-credentials: false
       - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
+        uses: $/.github/actions/setup-test-env
 
       - name: Install docker-compose
         run: |

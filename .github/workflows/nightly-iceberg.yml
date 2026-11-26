@@ -88,10 +88,10 @@ jobs:
           distribution: 'temurin'
 
       - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
+        uses: $/.github/actions/setup-test-env
 
       - name: Prepare Gradle build cache
-        uses: ./.github/actions/ci-incr-build-cache-prepare
+        uses: $/.github/actions/ci-incr-build-cache-prepare
 
       - name: Override Iceberg version in version catalog
         env:
