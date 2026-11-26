@@ -3274,14 +3274,14 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                   .getLastAdmittedNotificationTimestamp()
                   .equals(icebergTableLikeEntity.getLastAdmittedNotificationTimestamp())) {
             LOGGER.info(
-                "Recovered ambiguous table or view update for {} with metadata location {}",
+                "Recovered unknown-outcome table or view update for {} with metadata location {}",
                 identifier,
                 icebergTableLikeEntity.getMetadataLocation());
             return;
           }
           LOGGER.warn(
-              "Could not confirm ambiguous table or view update for {}: expected metadata location {}"
-                  + " and notification timestamp {}, found {} and {}",
+              "Could not confirm unknown-outcome table or view update for {}: expected metadata"
+                  + " location {} and notification timestamp {}, found {} and {}",
               identifier,
               icebergTableLikeEntity.getMetadataLocation(),
               icebergTableLikeEntity.getLastAdmittedNotificationTimestamp(),
@@ -3289,8 +3289,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               stored.getLastAdmittedNotificationTimestamp());
         } else {
           LOGGER.warn(
-              "Could not confirm ambiguous table or view update for {}: entity not found on reload"
-                  + " (status {})",
+              "Could not confirm unknown-outcome table or view update for {}: entity not found on"
+                  + " reload (status {})",
               identifier,
               persisted.getReturnStatus());
         }
