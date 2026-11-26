@@ -85,6 +85,7 @@ leading comment block. The script behind the target is `spec/bundle.sh`.
 ### Updating the Iceberg specification
 
 The file `iceberg-rest-catalog-open-api.yaml` is copied from the upstream Iceberg REST catalog spec.
+`make spec-bundle` fixes the upstream indentation in a temporary copy for the docs build.
 
 However, when copying it, you may need to make some nonfunctional changes to ensure that the generated Python types
 still allow all tests to pass. You can regenerate the Python client by running:
