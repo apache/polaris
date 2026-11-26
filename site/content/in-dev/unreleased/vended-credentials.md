@@ -51,8 +51,15 @@ client.
 
 Polaris generates a
 [User Delegation SAS token](https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blob-user-delegation-sas-create-dotnet)
-scoped to the container and path prefix the caller is authorized to access. Azure limits the
-maximum validity of a User Delegation SAS token to **seven days**.
+for the container of the table. Azure limits the maximum validity of a User Delegation SAS token
+to **seven days**.
+
+The token is narrowed to the directory of the requested namespace or table only when the storage
+configuration sets `hierarchical` to `true` (hierarchical namespace enabled). Otherwise, including
+for `blob.core.windows.net` locations, the token applies to the whole container: it carries the
+permissions of the grant (read, plus add, write and delete when the caller may write) on every
+object in the container, not only under the table location. See
+[SAS token scoping and HNS ACLs]({{% relref "./configuration/configuring-polaris-for-production/configuring-azure-blob-cloud-storage-specific#sas-token-scoping-and-hns-acls" %}}).
 
 {{% include-config-section "storage-azure" %}}
 

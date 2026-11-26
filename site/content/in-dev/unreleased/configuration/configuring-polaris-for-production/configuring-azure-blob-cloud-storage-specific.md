@@ -204,7 +204,10 @@ that exact prefix to recover.
 
 When HNS is disabled, set `hierarchical: false`. Polaris will then issue SAS tokens scoped at the
 container level rather than per-directory; this is acceptable for small deployments but does not
-restrict cross-namespace access.
+restrict cross-namespace access. The token carries the permissions of the grant on every object in
+the container, so a principal that may write to one table receives a token that can also add,
+overwrite and delete objects under every other table in that container. Use one container per
+trust boundary, or enable HNS, when catalogs or namespaces must be isolated from each other.
 
 ## Client configuration
 
