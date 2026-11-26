@@ -67,6 +67,7 @@ openApiGenerate {
   configOptions.put("generateBuilders", "true")
   configOptions.put("generateConstructorWithAllArgs", "true")
   configOptions.put("hideGenerationTimestamp", "true")
+  configOptions.put("openApiNullable", "false")
   additionalProperties.put("apiNamePrefix", "Polaris")
   additionalProperties.put("apiNameSuffix", "Api")
   additionalProperties.put("metricsPrefix", "polaris")

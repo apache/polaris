@@ -21,6 +21,7 @@ package org.apache.polaris.core.admin.model;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -178,5 +179,21 @@ public class CatalogSerializationTest {
                             .build())));
 
     return Stream.concat(basicCases, arnCases);
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("updateCatalogRequestPropertiesCases")
+  public void testUpdateCatalogRequestProperties(String json, Map<String, String> expected) {
+    UpdateCatalogRequest request = mapper.readValue(json, UpdateCatalogRequest.class);
+    assertThat(request.getProperties()).isEqualTo(expected);
+  }
+
+  private static Stream<Arguments> updateCatalogRequestPropertiesCases() {
+    return Stream.of(
+        Arguments.of("{\"currentEntityVersion\":1}", null),
+        Arguments.of("{\"currentEntityVersion\":1,\"properties\":null}", null),
+        Arguments.of("{\"currentEntityVersion\":1,\"properties\":{}}", Map.of()),
+        Arguments.of(
+            "{\"currentEntityVersion\":1,\"properties\":{\"k\":\"v\"}}", Map.of("k", "v")));
   }
 }
