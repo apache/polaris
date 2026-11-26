@@ -21,6 +21,9 @@ package org.apache.polaris.core.storage.azure;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public class AzureLocationTest {
 
@@ -46,14 +49,42 @@ public class AzureLocationTest {
     Assertions.assertThat(azureLocation.getFilePath()).isEqualTo("myfile");
   }
 
-  @Test
-  public void testCrossSchemeComparisons() {
+  @ParameterizedTest
+  @ValueSource(strings = {"abfs", "abfss", "wasb", "wasbs"})
+  public void testCrossSchemeComparisons(String scheme) {
     StorageLocation abfsLocation =
-        AzureLocation.of("abfss://container@acc.dev.core.windows.net/some/file/x");
-    StorageLocation wasbLocation =
-        AzureLocation.of("wasb://container@acc.blob.core.windows.net/some/file");
-    Assertions.assertThat(abfsLocation).isNotEqualTo(wasbLocation);
-    Assertions.assertThat(abfsLocation.isChildOf(wasbLocation)).isTrue();
+        AzureLocation.of("abfss://container@acc.blob.core.windows.net/some/file/x");
+    StorageLocation parentAnotherScheme =
+        AzureLocation.of(scheme + "://container@acc.blob.core.windows.net/some/file");
+    StorageLocation sameLocation =
+        AzureLocation.of(scheme + "://container@acc.blob.core.windows.net/some/file/x");
+    Assertions.assertThat(abfsLocation).isNotEqualTo(parentAnotherScheme);
+    Assertions.assertThat(abfsLocation.isChildOf(parentAnotherScheme)).isTrue();
+    Assertions.assertThat(abfsLocation).isEqualTo(sameLocation);
+    Assertions.assertThat(abfsLocation.hashCode()).isEqualTo(sameLocation.hashCode());
+    Assertions.assertThat(abfsLocation.isSameLocation(sameLocation)).isTrue();
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "blob.core.windows.net, dfs.core.windows.net",
+    "blob.core.windows.net, blob.core.usgovcloudapi.net",
+    "dfs.core.windows.net, dfs.core.chinacloudapi.cn",
+    "blob.core.windows.net, custom.example.com"
+  })
+  public void testDifferentEndpointComparisons(String endpoint, String otherEndpoint) {
+    StorageLocation location = AzureLocation.of("abfss://container@acc." + endpoint + "/some/file");
+    StorageLocation otherLocation =
+        AzureLocation.of("abfss://container@acc." + otherEndpoint + "/some/file");
+    StorageLocation otherParent =
+        AzureLocation.of("abfss://container@acc." + otherEndpoint + "/some");
+
+    Assertions.assertThat(location).isNotEqualTo(otherLocation);
+    Assertions.assertThat(otherLocation).isNotEqualTo(location);
+    Assertions.assertThat(location.isSameLocation(otherLocation)).isFalse();
+    Assertions.assertThat(location.isChildOf(otherLocation)).isFalse();
+    Assertions.assertThat(otherLocation.isChildOf(location)).isFalse();
+    Assertions.assertThat(location.isChildOf(otherParent)).isFalse();
   }
 
   @Test
