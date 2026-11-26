@@ -42,4 +42,4 @@ jobs:
     permissions:
       contents: read
       security-events: write
-    uses: ./.github/workflows/ci.yml
+    uses: $/.github/workflows/ci.yml
