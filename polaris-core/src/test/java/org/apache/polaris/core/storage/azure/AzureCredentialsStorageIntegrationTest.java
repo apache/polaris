@@ -35,6 +35,7 @@ import com.azure.storage.blob.BlobContainerClientBuilder;
 import com.azure.storage.blob.BlobServiceClient;
 import com.azure.storage.blob.BlobServiceClientBuilder;
 import com.azure.storage.blob.models.UserDelegationKey;
+import com.azure.storage.blob.sas.BlobSasPermission;
 import com.azure.storage.blob.sas.BlobServiceSasSignatureValues;
 import java.time.Duration;
 import java.time.Instant;
@@ -62,6 +63,9 @@ import org.mockito.Mockito;
 import reactor.core.publisher.Mono;
 
 public class AzureCredentialsStorageIntegrationTest {
+
+  private static final String BLOB_LOCATION =
+      "wasbs://container@account.blob.core.windows.net/path";
 
   @Test
   public void testAzureCredentialFormatting() {
@@ -249,7 +253,53 @@ public class AzureCredentialsStorageIntegrationTest {
         .isNotEqualTo(cacheKey(null, credential));
   }
 
+  @Test
+  void readOnlyGrantYieldsReadOnlyBlobSas() {
+    BlobSasPermission permissions =
+        vendCredentials(3600, false, Set.of(BLOB_LOCATION), Set.of()).permissions();
+
+    assertPermissions(permissions, true, false, false, false, false);
+  }
+
+  @Test
+  void writeGrantYieldsReadAddWriteAndDeleteButNotListBlobSas() {
+    BlobSasPermission permissions =
+        vendCredentials(3600, false, Set.of(BLOB_LOCATION), Set.of(BLOB_LOCATION)).permissions();
+
+    assertPermissions(permissions, true, true, true, true, false);
+  }
+
+  @Test
+  void listGrantAddsListToBlobSas() {
+    BlobSasPermission permissions =
+        vendCredentials(3600, true, Set.of(BLOB_LOCATION), Set.of()).permissions();
+
+    assertPermissions(permissions, true, false, false, false, true);
+  }
+
+  private static void assertPermissions(
+      BlobSasPermission permissions,
+      boolean read,
+      boolean add,
+      boolean write,
+      boolean delete,
+      boolean list) {
+    Assertions.assertThat(permissions.hasReadPermission()).as("read").isEqualTo(read);
+    Assertions.assertThat(permissions.hasAddPermission()).as("add").isEqualTo(add);
+    Assertions.assertThat(permissions.hasWritePermission()).as("write").isEqualTo(write);
+    Assertions.assertThat(permissions.hasDeletePermission()).as("delete").isEqualTo(delete);
+    Assertions.assertThat(permissions.hasListPermission()).as("list").isEqualTo(list);
+  }
+
   private static VendedCredentials vendCredentials(int configuredDurationSeconds) {
+    return vendCredentials(configuredDurationSeconds, false, Set.of(BLOB_LOCATION), Set.of());
+  }
+
+  private static VendedCredentials vendCredentials(
+      int configuredDurationSeconds,
+      boolean allowList,
+      Set<String> readLocations,
+      Set<String> writeLocations) {
     DefaultAzureCredential credential = Mockito.mock(DefaultAzureCredential.class);
     Mockito.when(credential.getToken(Mockito.any(TokenRequestContext.class)))
         .thenReturn(
@@ -270,16 +320,16 @@ public class AzureCredentialsStorageIntegrationTest {
     RealmConfig realmConfig = realmConfigWithDuration(configuredDurationSeconds);
     AzureStorageConfigurationInfo storageConfig =
         AzureStorageConfigurationInfo.builder()
-            .addAllowedLocation("wasbs://container@account.blob.core.windows.net/path")
+            .addAllowedLocation(BLOB_LOCATION)
             .tenantId("tenant-id")
             .build();
     AzureStorageCredentialCacheKey key =
         AzureStorageCredentialCacheKey.of(
             "realm",
             storageConfig,
-            false,
-            Set.of("wasbs://container@account.blob.core.windows.net/path"),
-            Set.of(),
+            allowList,
+            readLocations,
+            writeLocations,
             credential,
             realmConfig);
 
@@ -309,6 +359,7 @@ public class AzureCredentialsStorageIntegrationTest {
           keyStartCaptor.getValue(),
           keyEndCaptor.getValue(),
           sasValuesCaptor.getValue().getExpiryTime(),
+          BlobSasPermission.parse(sasValuesCaptor.getValue().getPermissions()),
           accessConfig);
     }
   }
@@ -328,5 +379,6 @@ public class AzureCredentialsStorageIntegrationTest {
       OffsetDateTime keyStart,
       OffsetDateTime keyEnd,
       OffsetDateTime sasExpiry,
+      BlobSasPermission permissions,
       StorageAccessConfig accessConfig) {}
 }
