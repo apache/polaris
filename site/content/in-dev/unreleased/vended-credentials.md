@@ -83,6 +83,31 @@ The endpoint is only returned together with credentials: a response that carries
 credentials, for example because the request included `none` or because the storage configuration
 does not vend credentials, does not contain it.
 
+## Revoking table access
+
+Polaris checks the principal's current table privileges whenever a client requests or refreshes
+vended credentials. Once the principal loses all privileges that allow read or write delegation
+for a table, Polaris denies new credential requests for that table.
+
+Clients use the credentials they already hold directly with the storage provider. For example,
+if you revoke read access in Polaris at 10:15 UTC and the credential expires at 11:00 UTC,
+the client may still read for the remaining 45 minutes if the provider allows it. The credential
+response reports the expiration in milliseconds since the Unix epoch.
+
+* AWS S3 and Cloudflare R2, `s3.session-token-expires-at-ms`
+* Azure ADLS, `adls.sas-token-expires-at-ms.<account-host>`
+* GCS, `gcs.oauth2.token-expires-at`
+
+To shorten the lifetime of new AWS STS sessions, Azure SAS tokens, or Cloudflare R2 temporary
+credentials, lower `STORAGE_CREDENTIAL_DURATION_SECONDS` within the provider's supported range.
+If credential caching is enabled, keep `STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS` strictly below
+`STORAGE_CREDENTIAL_DURATION_SECONDS`. Changing the cache duration has no effect on credentials
+that clients already hold.
+
+GCS ignores the credential duration setting. With service account impersonation, Polaris requests
+one hour for the source token. The downscoped token uses the lifetime returned by Google, or the
+source token's expiration if Google omits the lifetime.
+
 ## When delegation cannot be satisfied
 
 `X-Iceberg-Access-Delegation` tells Polaris which access mechanisms the client supports. If the
