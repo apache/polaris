@@ -360,6 +360,17 @@ public class DatasourceOperationsTest {
   }
 
   @Test
+  void testZeroMaxRetriesStillExecutesOnce() throws SQLException {
+    // max-retries=0 means "do not retry"; the operation must still run once
+    when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(0));
+    when(mockOperation.execute()).thenReturn("Success!");
+
+    String result = datasourceOperations.withRetries(mockOperation);
+    assertEquals("Success!", result);
+    verify(mockOperation, times(1)).execute();
+  }
+
+  @Test
   void testDefaultConfigurationValues() throws SQLException {
     when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.empty()); // Defaults to 1
     when(relationalJdbcConfiguration.maxDurationInMs())
