@@ -18,24 +18,24 @@
  */
 package org.apache.polaris.persistence.relational.jdbc.models;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectReader;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.ObjectReader;
+import tools.jackson.databind.json.JsonMapper;
 
 /** Shared utilities for metrics model classes. */
 public final class MetricsModelUtils {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(MetricsModelUtils.class);
 
-  public static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  public static final JsonMapper OBJECT_MAPPER = JsonMapper.shared();
 
   // Rejects trailing content after the first JSON value, so a legacy value such as
   // ["id"],name is not silently truncated to its leading JSON-looking prefix.
@@ -52,7 +52,7 @@ public final class MetricsModelUtils {
     }
     try {
       return OBJECT_MAPPER.readValue(json, new TypeReference<Map<String, String>>() {});
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       LOGGER.warn("Failed to parse metadata JSON: {}", e.getMessage());
       return Map.of();
     }
@@ -68,7 +68,7 @@ public final class MetricsModelUtils {
     }
     try {
       return OBJECT_MAPPER.writeValueAsString(list);
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       LOGGER.warn("Failed to serialize list to JSON: {}", e.getMessage());
       return null;
     }
@@ -95,7 +95,7 @@ public final class MetricsModelUtils {
       if (parsed != null && parsed.stream().noneMatch(Objects::isNull)) {
         return parsed;
       }
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       // fall through to the legacy comma-delimited decoder
     }
     return List.of(value.split(",", -1));

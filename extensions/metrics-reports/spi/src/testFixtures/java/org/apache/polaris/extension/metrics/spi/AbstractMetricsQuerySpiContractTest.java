@@ -87,6 +87,7 @@ public abstract class AbstractMetricsQuerySpiContractTest {
 
   @Test
   void realmIsolationForIdenticalCatalogAndTableIds() {
+    assumeTrue(supportsPersistence(), "backend does not persist data");
     String realmA = realm();
     String realmB = realm();
 
@@ -102,17 +103,15 @@ public abstract class AbstractMetricsQuerySpiContractTest {
             PageToken.fromLimit(10));
     assertThat(otherRealmPage.items()).isEmpty();
 
-    if (supportsPersistence()) {
-      Page<MetricsRecordIdentity> ownRealmPage =
-          list(
-              querySpi(realmA),
-              Set.of(MetricsQuerySpi.MetricType.SCAN),
-              ALL_SNAPSHOTS,
-              PageToken.fromLimit(10));
-      assertThat(ownRealmPage.items())
-          .extracting(MetricsRecordIdentity::reportId)
-          .contains(record.reportId());
-    }
+    Page<MetricsRecordIdentity> ownRealmPage =
+        list(
+            querySpi(realmA),
+            Set.of(MetricsQuerySpi.MetricType.SCAN),
+            ALL_SNAPSHOTS,
+            PageToken.fromLimit(10));
+    assertThat(ownRealmPage.items())
+        .extracting(MetricsRecordIdentity::reportId)
+        .contains(record.reportId());
   }
 
   @Test

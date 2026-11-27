@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.persistence.relational.jdbc.models;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -30,6 +29,7 @@ import org.apache.polaris.core.persistence.metrics.CommitMetricsRecord;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.apache.polaris.persistence.relational.jdbc.DatabaseType;
 import org.jspecify.annotations.Nullable;
+import tools.jackson.core.JacksonException;
 
 /** JDBC model for the {@code COMMIT_METRICS_REPORT} table. */
 @PolarisImmutable
@@ -365,7 +365,7 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
     if (map == null || map.isEmpty()) return "{}";
     try {
       return MetricsModelUtils.OBJECT_MAPPER.writeValueAsString(map);
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       return "{}";
     }
   }
