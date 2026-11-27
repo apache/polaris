@@ -40,7 +40,7 @@ public class CassandraBackendTestFactory implements BackendTestFactory {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(CassandraBackendTestFactory.class);
 
-  public static final Integer CQL_PORT = 9042;
+  public static final int CQL_PORT = 9042;
 
   private static final String JVM_OPTS_TEST =
       "-Dcassandra.skip_wait_for_gossip_to_settle=0 "
