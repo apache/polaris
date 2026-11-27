@@ -47,14 +47,14 @@ public class CassandraBackendTestFactory implements BackendTestFactory {
           + "-Dcassandra.num_tokens=1 "
           + "-Dcassandra.initial_token=0";
 
-  public static final String NAME = "Cassandra";
+  public static final String NAME = CassandraBackendFactory.NAME;
 
   private final Duration timeout;
 
   private CassandraContainer container;
   private String localDc;
   private String host;
-  private Integer port;
+  private int port;
 
   public CassandraBackendTestFactory() {
     // Increase some timeouts to avoid flakiness
