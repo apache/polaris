@@ -17,13 +17,6 @@
  * under the License.
  */
 
-pluginManagement {
-  repositories {
-    mavenCentral() // prefer Maven Central, in case Gradle's repo has issues
-    gradlePluginPortal()
-  }
-}
-
 dependencyResolutionManagement { repositories { mavenCentral() } }
 
 rootProject.name = "polaris-server-test-runner"

@@ -111,13 +111,6 @@ for (sparkVersion in sparkVersions) {
   }
 }
 
-pluginManagement {
-  repositories {
-    mavenCentral() // prefer Maven Central, in case Gradle's repo has issues
-    gradlePluginPortal()
-  }
-}
-
 plugins {
   // When updating the develocity plugin version, verify that the version that
   // https://develocity.apache.org/ runs is compatible with the plugin version

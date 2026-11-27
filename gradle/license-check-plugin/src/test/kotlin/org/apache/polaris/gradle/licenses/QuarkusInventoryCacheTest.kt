@@ -84,7 +84,6 @@ class QuarkusInventoryCacheTest {
     File(dir, "settings.gradle")
       .writeText(
         """
-        pluginManagement { repositories { mavenCentral(); gradlePluginPortal() } }
         rootProject.name = 'quarkus-cache-fixture'
         buildCache { local { directory = file('cache') } }
         """
