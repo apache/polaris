@@ -183,6 +183,26 @@ The following properties must hold:
 - Token issuance, token exchange, credential reset, and credential rotation must
   preserve the intended principal, realm, role scope, expiration, and revocation
   semantics.
+
+  With the built-in token broker, a reset replaces the previous client secrets.
+  Tokens issued with those secrets can no longer be exchanged for new tokens.
+  Reset the credentials if a client secret may have been exposed.
+
+  A routine rotation keeps the previous primary secret valid for requesting
+  tokens until the next rotation or reset. Unexpired tokens issued with that
+  secret can still be exchanged during that time, except for legacy tokens
+  without the `polaris-cv` claim. The broker rejects those exchanges with
+  `invalid_grant`. For a principal created with `credentialRotationRequired`,
+  the first rotation invalidates the initial secret immediately.
+
+  After either operation, an existing bearer token can still authenticate to
+  Polaris until it expires, as long as the principal exists and still meets the
+  authentication requirements. At issuance, the broker sets the token's
+  lifetime using `polaris.authentication.token-broker.max-token-generation`
+  (one hour by default). To remove access granted by a role, revoke that
+  role from the principal. Deleting the principal blocks authentication to
+  Polaris with its existing tokens. Any storage credentials already issued
+  follow the storage provider's expiration and revocation rules.
 - Tokens, credentials, and secrets must not be logged, returned in API
   responses, or persisted in plaintext unless explicitly required and protected
   by deployment controls.

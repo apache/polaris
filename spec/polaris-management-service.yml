@@ -253,8 +253,20 @@ paths:
           pattern: '^(?!\s*[sS][yY][sS][tT][eE][mM]\$).*$'
     post:
       operationId: rotateCredentials
-      description: Rotate a principal's credentials. The new credentials will be returned in the response. This is the only
-        API, aside from createPrincipal, that returns the user's credentials. This API is *not* idempotent.
+      description: >-
+        Rotate a principal's credentials and return the new credentials. This operation is *not* idempotent.
+
+        With the built-in token broker, the previous primary client secret can still be used to request
+        tokens until the next rotation or reset. Unexpired tokens issued with that secret can still be
+        exchanged during that time, except for legacy tokens without the `polaris-cv` claim. The broker
+        rejects those exchanges with `invalid_grant`. If the principal was created with
+        `credentialRotationRequired`, its first rotation invalidates the initial secret immediately.
+
+        If a client secret may have been exposed, use `resetCredentials` to replace the previous secrets.
+
+        Existing bearer tokens can still authenticate to the Polaris API until they expire, subject to
+        the usual authentication checks. To remove access granted by a role, revoke that role from the
+        principal. To block authentication to Polaris with its existing tokens, delete the principal.
       responses:
         200:
           description: The principal details along with the newly rotated credentials
@@ -281,9 +293,14 @@ paths:
     post:
       operationId: resetCredentials
       description: >-
-        Reset a principal's credentials to a new set. By default, the system generates random credentials unless
-        explicitly allowed to accept user-provided credentials via configuration.  
-        This API is *not* idempotent and will return the newly created credentials.
+        Replace a principal's credentials and return the new credentials. Polaris generates them by default.
+        If the deployment allows it, the caller can supply credential values. This operation is *not* idempotent.
+
+        With the built-in token broker, tokens issued with the previous credentials can no longer be
+        exchanged for new tokens. Existing bearer tokens can still authenticate to the Polaris API until
+        they expire, subject to the usual authentication checks. To remove access granted by a role,
+        revoke that role from the principal. To block authentication to Polaris with its existing tokens,
+        delete the principal.
       requestBody:
         required: false
         content:
