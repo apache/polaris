@@ -21,6 +21,7 @@ package org.apache.polaris.persistence.nosql.cassandra.quarkus;
 import com.datastax.oss.driver.api.core.CqlSession;
 import io.smallrye.health.api.AsyncHealthCheck;
 import io.smallrye.mutiny.Uni;
+import io.smallrye.mutiny.infrastructure.Infrastructure;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
@@ -55,7 +56,9 @@ class CassandraAsyncReadinessHealthCheck implements AsyncHealthCheck {
       return Uni.createFrom().item(down("Cassandra session is unavailable"));
     }
     return Uni.createFrom()
-        .completionStage(cqlSession.get().executeAsync(HEALTH_CHECK_QUERY))
+        .deferred(() ->
+            Uni.createFrom().completionStage(cqlSession.get().executeAsync(HEALTH_CHECK_QUERY)))
+        .runSubscriptionOn(Infrastructure.getDefaultWorkerPool())
         .onItem()
         .transform(
             resultSet -> resultSet.one() == null ? down("system.local returned no row") : up())
