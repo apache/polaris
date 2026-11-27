@@ -53,7 +53,7 @@ import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.PersistenceCommitStateUnknownException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
-import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWriteResult;
 import org.apache.polaris.service.TestServices;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -76,7 +76,7 @@ public class CommitTransactionMetadataCleanupTest {
   @Test
   void testCommitTransactionCleansUpMetadataOnFailure(@TempDir Path tempDir) throws Exception {
     String location = catalogLocation(tempDir);
-    // The spy fails updateEntitiesPropertiesIfNotChanged only once the tables are created.
+    // The spy fails writeEntitiesIfConditionsHold only once the tables are created.
     AtomicBoolean shouldFail = new AtomicBoolean(false);
     TestServices testServices =
         servicesBuilder()
@@ -85,14 +85,15 @@ public class CommitTransactionMetadataCleanupTest {
               Mockito.doAnswer(
                       invocation -> {
                         if (shouldFail.get()) {
-                          return new EntitiesResult(
-                              BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED,
-                              "simulated CAS failure");
+                          return new ConditionalEntityWriteResult(
+                              BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED,
+                              "simulated CAS failure",
+                              null);
                         }
                         return invocation.callRealMethod();
                       })
                   .when(spy)
-                  .updateEntitiesPropertiesIfNotChanged(Mockito.any(), Mockito.any());
+                  .writeEntitiesIfConditionsHold(Mockito.any(), Mockito.any());
               return spy;
             })
             .build();
@@ -233,7 +234,7 @@ public class CommitTransactionMetadataCleanupTest {
                         return invocation.callRealMethod();
                       })
                   .when(spy)
-                  .updateEntitiesPropertiesIfNotChanged(Mockito.any(), Mockito.any());
+                  .writeEntitiesIfConditionsHold(Mockito.any(), Mockito.any());
               return spy;
             })
             .build();

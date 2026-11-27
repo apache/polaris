@@ -33,6 +33,11 @@ public record EntityUpdate(
   public enum Operation {
     CREATE,
     UPDATE,
-    DELETE
+    DELETE,
+    /**
+     * Verifies that the entity is still at its version, without changing it. A mismatch fails the
+     * whole mutation. Only the identity and the entity version of the entity are used.
+     */
+    CHECK
   }
 }

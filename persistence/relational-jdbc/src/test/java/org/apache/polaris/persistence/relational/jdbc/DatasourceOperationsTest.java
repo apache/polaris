@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atMost;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -191,6 +192,33 @@ public class DatasourceOperationsTest {
     assertEquals(
         List.of("third", "fourth"),
         datasourceOperations.executeSelect(mockConnection, query, mockConverter));
+  }
+
+  /**
+   * A statement of a transaction is not retried on its own: the transaction is aborted after the
+   * failure, so the original error must reach the caller, which retries the whole transaction.
+   */
+  @Test
+  void testExecuteSelectOverStreamOnce_doesNotRetry() throws Exception {
+    QueryGenerator.PreparedQuery query =
+        new QueryGenerator.PreparedQuery("SELECT * FROM users FOR SHARE", List.of());
+    // Retries are configured, but must not be used: lenient because they are never read.
+    lenient().when(relationalJdbcConfiguration.maxRetries()).thenReturn(Optional.of(3));
+    lenient().when(relationalJdbcConfiguration.maxDurationInMs()).thenReturn(Optional.of(1000L));
+    lenient().when(relationalJdbcConfiguration.initialDelayInMs()).thenReturn(Optional.of(0L));
+    when(mockConnection.prepareStatement(query.sql())).thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.executeQuery())
+        .thenThrow(new SQLException("could not serialize access", "40001"));
+
+    SQLException e =
+        assertThrows(
+            SQLException.class,
+            () ->
+                datasourceOperations.executeSelectOverStreamOnce(
+                    mockConnection, query, mockConverter, stream -> stream.forEach(r -> {})));
+
+    assertEquals("40001", e.getSQLState());
+    verify(mockConnection, times(1)).prepareStatement(query.sql());
   }
 
   @Test

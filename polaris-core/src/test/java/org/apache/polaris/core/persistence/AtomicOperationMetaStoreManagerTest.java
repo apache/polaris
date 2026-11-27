@@ -39,6 +39,8 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWrite;
+import org.apache.polaris.core.persistence.dao.entity.ConditionalEntityWriteResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.junit.jupiter.api.BeforeEach;
@@ -211,5 +213,43 @@ public class AtomicOperationMetaStoreManagerTest {
 
     assertThat(result.getReturnStatus())
         .isEqualTo(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED);
+  }
+
+  /**
+   * A backend that reports a concurrency failure without naming an entity, such as a database
+   * deadlock or a serialization failure, is a conflict for the caller, not an error.
+   */
+  @Test
+  public void testConditionalWriteReportsAnUnattributedConcurrencyFailureAsConflict() {
+    PolarisBaseEntity entity = buildEntity(2, 3);
+    Mockito.doThrow(new RetryOnConcurrencyException("database rejected the write"))
+        .when(metaStore)
+        .checkAndWriteEntities(any(), any(), any());
+
+    ConditionalEntityWriteResult result =
+        manager.writeEntitiesIfConditionsHold(
+            callCtx, ConditionalEntityWrite.builder().update(null, entity).build());
+
+    assertThat(result.isSuccess()).isFalse();
+    assertThat(result.getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED);
+    assertThat(result.getFailedEntity()).isNull();
+  }
+
+  /** A failure that names the entity is reported with that entity. */
+  @Test
+  public void testConditionalWriteReportsTheEntityThatFailed() {
+    PolarisBaseEntity checked = buildEntity(2, 3);
+    Mockito.doThrow(new EntityConcurrentlyModifiedException(checked, "modified"))
+        .when(metaStore)
+        .checkAndWriteEntities(any(), any(), any());
+
+    ConditionalEntityWriteResult result =
+        manager.writeEntitiesIfConditionsHold(
+            callCtx, ConditionalEntityWrite.builder().unchanged(null, checked).build());
+
+    assertThat(result.getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED);
+    assertThat(result.getFailedEntity().getId()).isEqualTo(checked.getId());
   }
 }
