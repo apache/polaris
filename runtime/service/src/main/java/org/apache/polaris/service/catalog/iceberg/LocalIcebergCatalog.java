@@ -3267,7 +3267,8 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
         if (persisted.isSuccess() && persisted.getEntity() != null) {
           IcebergTableLikeEntity stored = IcebergTableLikeEntity.of(persisted.getEntity());
           // Notifications can advance the timestamp without changing the metadata location.
-          // Confirm both before acknowledging the update.
+          // Matching only the location could acknowledge an unapplied notification and let an
+          // older, delayed one pass the out-of-order check, so confirm both.
           if (Objects.equal(
                   stored.getMetadataLocation(), icebergTableLikeEntity.getMetadataLocation())
               && stored
