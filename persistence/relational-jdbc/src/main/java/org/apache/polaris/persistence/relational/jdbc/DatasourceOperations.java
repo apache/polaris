@@ -509,8 +509,8 @@ public class DatasourceOperations {
   @VisibleForTesting
   <T> T withRetries(Operation<T> operation) throws SQLException {
     int attempts = 0;
-    // maximum number of retries.
-    int maxAttempts = relationalJdbcConfiguration.maxRetries().orElse(1);
+    // maximum number of attempts; the operation is always attempted at least once.
+    int maxAttempts = Math.max(1, relationalJdbcConfiguration.maxRetries().orElse(1));
     // How long we should try, since the first attempt.
     long maxDuration = relationalJdbcConfiguration.maxDurationInMs().orElse(5000L);
     // How long to wait before first failure.
