@@ -19,20 +19,15 @@
 import argparse
 import re
 
-parser = argparse.ArgumentParser(
-    description="Fix flow-collection indentation in a YAML spec so Redocly can bundle it."
-)
-parser.add_argument("path", help="YAML file to rewrite in place")
-path = parser.parse_args().path
-
 closer = re.compile(r"^(\s*)([}\]])(,?)(\s*)$")
 block_scalar = re.compile(r"^(\s*)\S.*:\s*[|>][0-9+-]*\s*(#.*)?$")
 
-lines = []
-scalar_indent = None
 
-with open(path, encoding="utf-8") as f:
-    for line in f:
+def normalize_text(text: str) -> str:
+    lines = []
+    scalar_indent = None
+
+    for line in text.splitlines(keepends=True):
         stripped = line.rstrip("\n")
 
         if scalar_indent is not None:
@@ -55,5 +50,21 @@ with open(path, encoding="utf-8") as f:
         if block_scalar.match(stripped):
             scalar_indent = len(stripped) - len(stripped.lstrip())
 
-with open(path, "w", encoding="utf-8") as f:
-    f.writelines(lines)
+    return "".join(lines)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Fix flow-collection indentation in a YAML spec so Redocly can bundle it."
+    )
+    parser.add_argument("path", help="YAML file to normalize")
+    path = parser.parse_args().path
+
+    with open(path, encoding="utf-8") as f:
+        text = f.read()
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(normalize_text(text))
+
+
+if __name__ == "__main__":
+    main()
