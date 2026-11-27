@@ -87,12 +87,7 @@ def fetch_spec(sha: str) -> str:
 
 
 def render_metadata(kind: str, ref: str, sha: str) -> str:
-    lines = [
-        ASF_HEADER,
-        "",
-        "CODE_COPIED_TO_POLARIS",
-        "Source: Apache Iceberg REST Catalog API",
-    ]
+    lines = [ASF_HEADER, ""]
     if kind == "tag":
         lines.append(f"Apache Iceberg Version: {ref.removeprefix('apache-iceberg-')}")
     elif kind == "branch":

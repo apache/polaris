@@ -17,8 +17,6 @@
 # under the License.
 #
 
-CODE_COPIED_TO_POLARIS
-Source: Apache Iceberg REST Catalog API
 Apache Iceberg Branch: main
 Commit SHA: ce1ce419f90354a86ea7a8d7552f8418e4da7a1a
 Upstream: https://github.com/apache/iceberg/blob/ce1ce419f90354a86ea7a8d7552f8418e4da7a1a/open-api/rest-catalog-open-api.yaml
