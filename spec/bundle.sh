@@ -39,8 +39,11 @@ else
 fi
 echo "Bundling with: ${redocly[*]}"
 
+workdir="$(mktemp -d)"
 header="$(mktemp)"
-trap 'rm -f "$header"' EXIT
+trap 'rm -rf -- "$workdir"; rm -f -- "$header"' EXIT
+cp -R spec "$workdir/"
+python3 spec/normalize-openapi.py "$workdir/spec/iceberg-rest-catalog-open-api.yaml"
 awk '/^#/ || /^[[:space:]]*$/ { print; next } { exit }' "$source_spec" > "$header"
 
 header_lines="$(wc -l < "$header")"
@@ -49,7 +52,7 @@ if [[ "$header_lines" -ne 19 ]] || ! grep -q "Licensed to the Apache Software Fo
   exit 1
 fi
 
-"${redocly[@]}" bundle "$source_spec" -o "$bundle"
+"${redocly[@]}" bundle "$workdir/spec/polaris-catalog-service.yaml" -o "$bundle"
 
 # Fires only if the bundler ever starts preserving comments; keeps a rerun from stacking headers.
 if [[ "$(head -n "$header_lines" "$bundle")" == "$(cat "$header")" ]]; then
