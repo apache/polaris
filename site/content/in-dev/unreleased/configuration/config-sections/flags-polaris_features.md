@@ -614,6 +614,15 @@ The duration of time that vended storage credentials are valid for. Support for 
 
 ---
 
+##### `polaris.features."STORAGE_CREDENTIAL_REFRESH_BUFFER_SECONDS"`
+
+Minimum remaining validity (in seconds) that a cached storage credential must have before it is considered stale and evicted. When non-zero, credentials are removed from the cache this many seconds before they expire, ensuring clients always receive credentials with at least this much validity left. When zero (the default), credentials are instead kept for half of their remaining lifetime -- a reasonable choice on its own when the actual expiry timeout can't be estimated upfront. Must be less than STORAGE_CREDENTIAL_DURATION_SECONDS.
+
+- **Type:** `Integer`
+- **Default:** `0`
+
+---
+
 ##### `polaris.features."SUPPORTED_CATALOG_CONNECTION_TYPES"`
 
 The list of supported catalog connection types for federation
