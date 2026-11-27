@@ -145,8 +145,8 @@ public class ModelCommitMetricsReportTest {
   @Test
   public void testZeroDurationRoundTripsAsZeroNotEmpty() {
     // Also pins the known compatibility limitation documented on getTotalDurationMs(): a stored
-    // 0 is always read back as a real zero, even for rows written by an earlier iteration of
-    // this PR where 0 could have meant "unknown duration".
+    // 0 is always read back as a real zero, even for legacy rows where 0 could have meant
+    // "unknown duration".
     ModelCommitMetricsReport report =
         ImmutableModelCommitMetricsReport.builder()
             .from(createTestReport())

@@ -37,8 +37,7 @@ public class MetricsModelUtilsTest {
 
   @Test
   public void parseJsonArrayReadsPreUpgradeCommaDelimitedRows() {
-    // Rows written by an earlier iteration of this PR, before this field switched to JSON
-    // encoding.
+    // Legacy rows written before this field was encoded as JSON.
     assertThat(MetricsModelUtils.parseJsonArray("id,name,value"))
         .containsExactly("id", "name", "value");
   }
