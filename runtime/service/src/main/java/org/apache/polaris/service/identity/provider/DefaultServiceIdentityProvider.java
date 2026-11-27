@@ -31,11 +31,13 @@ import org.apache.polaris.core.admin.model.ServiceIdentityInfo;
 import org.apache.polaris.core.admin.model.SigV4AuthenticationParameters;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.identity.ServiceIdentityType;
+import org.apache.polaris.core.identity.credential.AwsIamServiceIdentityCredential;
 import org.apache.polaris.core.identity.credential.ServiceIdentityCredential;
 import org.apache.polaris.core.identity.dpo.AwsIamServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.dpo.ServiceIdentityInfoDpo;
 import org.apache.polaris.core.identity.provider.ServiceIdentityProvider;
 import org.apache.polaris.core.secrets.SecretReference;
+import org.apache.polaris.service.identity.AwsIamServiceIdentityConfiguration;
 import org.apache.polaris.service.identity.RealmServiceIdentityConfiguration;
 import org.apache.polaris.service.identity.ResolvableServiceIdentityConfiguration;
 import org.apache.polaris.service.identity.ServiceIdentityConfiguration;
@@ -47,7 +49,8 @@ import org.jspecify.annotations.NonNull;
  *
  * <p>This implementation loads service identity configurations at startup and uses them to provide
  * identity information and credentials on demand. All resolution is done lazily - credentials are
- * only created when actually needed for authentication.
+ * only created when actually needed for authentication, and the AWS credentials providers behind
+ * them are reused across requests via {@link ServiceIdentityCredentialCache}.
  */
 @RequestScoped
 public class DefaultServiceIdentityProvider implements ServiceIdentityProvider {
@@ -58,19 +61,24 @@ public class DefaultServiceIdentityProvider implements ServiceIdentityProvider {
 
   private final String realm;
   private final RealmServiceIdentityConfiguration config;
+  private final ServiceIdentityCredentialCache credentialCache;
 
   public DefaultServiceIdentityProvider() {
     this.realm = DEFAULT_REALM_KEY;
     this.config = null;
+    this.credentialCache = null;
   }
 
   @Inject
   public DefaultServiceIdentityProvider(
-      RealmContext realmContext, ServiceIdentityConfiguration serviceIdentityConfiguration) {
+      RealmContext realmContext,
+      ServiceIdentityConfiguration serviceIdentityConfiguration,
+      ServiceIdentityCredentialCache credentialCache) {
     ServiceIdentityConfiguration.RealmConfigEntry entry =
         serviceIdentityConfiguration.forRealm(realmContext);
     this.realm = entry.realm();
     this.config = entry.config();
+    this.credentialCache = credentialCache;
   }
 
   @Override
@@ -136,7 +144,22 @@ public class DefaultServiceIdentityProvider implements ServiceIdentityProvider {
         .filter(identityConfig ->
             buildIdentityInfoReference(realm, identityConfig.getType()).equals(ref))
         .findFirst()
-        .flatMap(identityConfig -> identityConfig.asServiceIdentityCredential(ref));
+        .flatMap(identityConfig -> resolveCredential(identityConfig, ref));
+  }
+
+  private Optional<? extends ServiceIdentityCredential> resolveCredential(
+      ResolvableServiceIdentityConfiguration identityConfig, SecretReference ref) {
+    // The AWS credentials provider is the expensive part (under web identity it owns an STS client
+    // and a credential cache), so it is shared across requests; the credential itself is built
+    // per call and never shared.
+    if (identityConfig instanceof AwsIamServiceIdentityConfiguration awsConfig) {
+      return Optional.of(
+          new AwsIamServiceIdentityCredential(
+              ref,
+              awsConfig.iamArn(),
+              credentialCache.awsCredentialsProvider(realm, awsConfig::awsCredentialsProvider)));
+    }
+    return identityConfig.asServiceIdentityCredential(ref);
   }
 
   @VisibleForTesting
