@@ -27,6 +27,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Binds a loopback HTTP receiver before {@code @QuarkusTest} starts so {@code
@@ -36,17 +37,23 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class WebhookReceiverTestResource implements QuarkusTestResourceLifecycleManager {
 
   public record RecordedRequest(
-      String body, String signature, String eventType, String authorization) {}
+      String body, String signature, String eventType, String authorization, String contentType) {}
 
   public static final class Capture {
     private final List<RecordedRequest> requests = new CopyOnWriteArrayList<>();
+    private final AtomicInteger status = new AtomicInteger(200);
 
     public List<RecordedRequest> requests() {
       return requests;
     }
 
+    public void setStatus(int status) {
+      this.status.set(status);
+    }
+
     public void clear() {
       requests.clear();
+      status.set(200);
     }
   }
 
@@ -73,8 +80,9 @@ public class WebhookReceiverTestResource implements QuarkusTestResourceLifecycle
                         exchange
                             .getRequestHeaders()
                             .getFirst(WebhookEventListener.EVENT_TYPE_HEADER),
-                        exchange.getRequestHeaders().getFirst("Authorization")));
-            exchange.sendResponseHeaders(200, -1);
+                        exchange.getRequestHeaders().getFirst("Authorization"),
+                        exchange.getRequestHeaders().getFirst("Content-Type")));
+            exchange.sendResponseHeaders(capture.status.get(), -1);
             exchange.close();
           });
       server.start();

@@ -60,8 +60,7 @@ import tools.jackson.databind.json.JsonMapper;
  * the HTTP receiver before the server starts and records POSTs for this test to read.
  *
  * <p>{@code WebhookEventListenerQuarkusTest} covers the same client in-process with
- * {@code @QuarkusTest}. Unit tests keep a JDK-HttpClient seam for listener logic (HMAC, status
- * mapping).
+ * {@code @QuarkusTest}. Unit tests cover listener checks that do not need HTTP.
  */
 @ExtendWith(PolarisIntegrationTestExtension.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)

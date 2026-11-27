@@ -175,8 +175,9 @@ public class WebhookEventListener implements PolarisEventListener {
   }
 
   /**
-   * Minimal transport seam over the webhook endpoint. Production uses a Quarkus REST client; tests
-   * can substitute a lightweight implementation.
+   * Minimal transport seam over the webhook endpoint. Production uses a Quarkus REST client. Tests
+   * that do not boot Quarkus exercise {@link #restClientTransport(WebhookHttpClient)} with a mock
+   * client.
    */
   interface WebhookTransport extends AutoCloseable {
     record Result(int status, String retryAfter) {}

@@ -20,6 +20,7 @@ package org.apache.polaris.extensions.events.webhook;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -74,6 +75,10 @@ class WebhookEventListenerQuarkusTest {
           SECRET,
           "polaris.event-listener.webhook.headers.\"Authorization\"",
           AUTHORIZATION,
+          "polaris.event-listener.webhook.headers.\"Polaris-Signature-256\"",
+          "sha256=forged",
+          "polaris.event-listener.webhook.headers.\"Content-Type\"",
+          "text/plain",
           "polaris.readiness.ignore-severe-issues",
           "true");
     }
@@ -107,13 +112,23 @@ class WebhookEventListenerQuarkusTest {
     assertThat(json.get("type").asString())
         .isEqualTo(
             CloudEventsEventJsonMapper.cloudEventsType(PolarisEventType.AFTER_REFRESH_TABLE));
+    assertThat(json.get("datacontenttype").asString()).isEqualTo("application/json");
+    assertThat(json.has("deliverytime")).isFalse();
+    assertThat(json.has("realmid")).isFalse();
     JsonNode data = json.get("data");
     assertThat(data.get("realm_id").asString()).isEqualTo(REALM);
+    assertThat(data.get("principal").asString()).isEqualTo("test-user");
+    assertThat(data.get("activated_roles")).hasSize(1);
     assertThat(data.get("catalog_name").asString()).isEqualTo("test_catalog");
+    assertThat(data.get("table_identifier").isArray()).isTrue();
+    assertThat(data.get("event_type").asString())
+        .isEqualTo(PolarisEventType.AFTER_REFRESH_TABLE.name());
     assertThat(request.eventType()).isEqualTo(PolarisEventType.AFTER_REFRESH_TABLE.name());
     assertThat(request.signature())
         .isEqualTo("sha256=" + WebhookEventListener.sign(request.body(), SECRET));
+    assertThat(request.signature()).doesNotContain("forged");
     assertThat(request.authorization()).isEqualTo(AUTHORIZATION);
+    assertThat(request.contentType()).startsWith("application/json");
     assertThat(
             meterRegistry
                 .find("polaris.event.webhook.deliveries")
@@ -121,6 +136,44 @@ class WebhookEventListenerQuarkusTest {
                 .counter()
                 .count())
         .isEqualTo(1.0);
+  }
+
+  @Test
+  void productionRestClientRecordsPermanentClientErrorWithoutRetry() {
+    capture.setStatus(400);
+    double retriesBefore = retryCount();
+    double failuresBefore = deliveryCount("failure");
+
+    listener.onEvent(testEvent());
+
+    assertThat(capture.requests()).hasSize(1);
+    assertThat(retryCount() - retriesBefore).isEqualTo(0.0);
+    assertThat(deliveryCount("failure") - failuresBefore).isEqualTo(1.0);
+  }
+
+  @Test
+  void productionRestClientRetriesTransientServerError() {
+    capture.setStatus(500);
+    double retriesBefore = retryCount();
+    double failuresBefore = deliveryCount("failure");
+
+    listener.onEvent(testEvent());
+
+    // @Retry maxRetries=2 is two extra attempts after the first POST.
+    assertThat(capture.requests()).hasSize(3);
+    assertThat(retryCount() - retriesBefore).isEqualTo(3.0);
+    assertThat(deliveryCount("failure") - failuresBefore).isEqualTo(1.0);
+  }
+
+  private double deliveryCount(String result) {
+    Counter counter =
+        meterRegistry.find("polaris.event.webhook.deliveries").tag("result", result).counter();
+    return counter == null ? 0.0 : counter.count();
+  }
+
+  private double retryCount() {
+    Counter retries = meterRegistry.find("polaris.event.webhook.retries").counter();
+    return retries == null ? 0.0 : retries.count();
   }
 
   private static PolarisEvent testEvent() {
