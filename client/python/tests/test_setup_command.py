@@ -738,6 +738,52 @@ class TestSetupCommand(CLITestBase):
             ]
         )
 
+    @patch("apache_polaris.cli.command.setup.PolicyAPI")
+    def test_setup_export_paginates_policies(
+        self, mock_policy_api_class: MagicMock
+    ) -> None:
+        policy_api = mock_policy_api_class.return_value
+        policy_api.list_policies.side_effect = [
+            SimpleNamespace(
+                identifiers=[SimpleNamespace(name="first")], next_page_token="next"
+            ),
+            SimpleNamespace(identifiers=[SimpleNamespace(name="second")]),
+        ]
+        policy_api.load_policy.return_value = SimpleNamespace(
+            policy=SimpleNamespace(
+                content="{}", policy_type="system.snapshot-expiry", description=None
+            )
+        )
+        command = SetupCommand(
+            setup_subcommand=Subcommands.EXPORT, page_size=1, _catalog_api=MagicMock()
+        )
+
+        policies = command._export_policies_for_catalog(
+            self.build_mock_client(), "catalog", [["parent", "child"]]
+        )
+
+        namespace = f"parent{UNIT_SEPARATOR}child"
+        self.assertEqual(
+            policy_api.list_policies.call_args_list,
+            [
+                call(prefix="catalog", namespace=namespace, page_size=1, page_token=""),
+                call(
+                    prefix="catalog",
+                    namespace=namespace,
+                    page_size=1,
+                    page_token="next",
+                ),
+            ],
+        )
+        self.assertEqual(
+            policy_api.load_policy.call_args_list,
+            [
+                call(prefix="catalog", namespace=namespace, policy_name="first"),
+                call(prefix="catalog", namespace=namespace, policy_name="second"),
+            ],
+        )
+        self.assertEqual([policy["name"] for policy in policies], ["first", "second"])
+
     @patch("apache_polaris.cli.command.setup.NamespacesCommand")
     @patch("apache_polaris.cli.command.setup.IcebergCatalogAPI")
     def test_setup_exported_dotted_namespace_levels_round_trip_without_colliding(

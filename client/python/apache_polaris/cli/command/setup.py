@@ -656,34 +656,39 @@ class SetupCommand(Command):
             policy_api = PolicyAPI(catalog_api_client)
             for ns in namespaces:
                 namespace_str = UNIT_SEPARATOR.join(ns)
-                policies = policy_api.list_policies(
-                    prefix=catalog_name, namespace=namespace_str
-                ).identifiers
-                for p in policies:
-                    # Load the full policy to get its content
-                    full_policy = policy_api.load_policy(
-                        prefix=catalog_name, namespace=namespace_str, policy_name=p.name
-                    )
-                    policy_obj = full_policy.policy
-                    # Compact the content JSON string into a single line for export
-                    compact_content = None
-                    if policy_obj.content:
-                        try:
-                            content_dict = json.loads(policy_obj.content)
-                            compact_content = json.dumps(
-                                content_dict, separators=(",", ":")
-                            )
-                        except json.JSONDecodeError:
-                            compact_content = policy_obj.content
-                    policy_info = {
-                        "name": p.name,
-                        "namespace": ns,
-                        "type": policy_obj.policy_type,
-                        "content": compact_content,
-                    }
-                    if policy_obj.description:
-                        policy_info["description"] = policy_obj.description
-                    policies_list.append(policy_info)
+                for response in paginate(
+                    policy_api.list_policies,
+                    page_size=self.page_size,
+                    prefix=catalog_name,
+                    namespace=namespace_str,
+                ):
+                    for p in response.identifiers or []:
+                        # Load the full policy to get its content
+                        full_policy = policy_api.load_policy(
+                            prefix=catalog_name,
+                            namespace=namespace_str,
+                            policy_name=p.name,
+                        )
+                        policy_obj = full_policy.policy
+                        # Compact the content JSON string into a single line for export
+                        compact_content = None
+                        if policy_obj.content:
+                            try:
+                                content_dict = json.loads(policy_obj.content)
+                                compact_content = json.dumps(
+                                    content_dict, separators=(",", ":")
+                                )
+                            except json.JSONDecodeError:
+                                compact_content = policy_obj.content
+                        policy_info = {
+                            "name": p.name,
+                            "namespace": ns,
+                            "type": policy_obj.policy_type,
+                            "content": compact_content,
+                        }
+                        if policy_obj.description:
+                            policy_info["description"] = policy_obj.description
+                        policies_list.append(policy_info)
         except Exception:
             self._record_failure(
                 f"Failed to export policies for catalog '{catalog_name}'"
