@@ -97,7 +97,8 @@ class AwsEndpointCatalogConfigValidatorTest {
 
     assertThatThrownBy(() -> validator.validate(awsCatalog(storage)))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("This catalog sets custom S3 endpoints, which the realm does not allow.");
+        .hasMessage(
+            "This catalog sets custom S3 endpoints, which the realm configuration does not allow.");
   }
 
   @ParameterizedTest
@@ -113,7 +114,7 @@ class AwsEndpointCatalogConfigValidatorTest {
 
     assertThatThrownBy(() -> validator.validate(awsCatalog(storage)))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("This catalog disables STS, which the realm does not allow.");
+        .hasMessage("This catalog disables STS, which the realm configuration does not allow.");
   }
 
   @Test
@@ -145,7 +146,8 @@ class AwsEndpointCatalogConfigValidatorTest {
     assertThatThrownBy(() -> validator.validate(sigV4Catalog(S3_ENDPOINT)))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
-            "This catalog sets a custom SigV4 STS endpoint, which the realm does not allow.");
+            "This catalog sets a custom SigV4 STS endpoint, "
+                + "which the realm configuration does not allow.");
   }
 
   @Test
@@ -173,7 +175,8 @@ class AwsEndpointCatalogConfigValidatorTest {
     assertThatThrownBy(() -> validator.validate(sigV4Catalog(S3_ENDPOINT)))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
-            "This catalog sets a custom SigV4 STS endpoint, which the realm does not allow.");
+            "This catalog sets a custom SigV4 STS endpoint, "
+                + "which the realm configuration does not allow.");
   }
 
   @Test

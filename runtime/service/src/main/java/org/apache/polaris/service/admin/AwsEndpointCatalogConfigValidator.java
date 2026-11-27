@@ -68,15 +68,16 @@ public class AwsEndpointCatalogConfigValidator implements CatalogConfigValidator
               || awsConfig.getEndpointInternal() != null
               || awsConfig.getStsEndpoint() != null)) {
         throw new IllegalArgumentException(
-            "This catalog sets custom S3 endpoints, which the realm does not allow.");
+            "This catalog sets custom S3 endpoints, which the realm configuration does not allow.");
       }
       if (sigV4StsEndpoint != null) {
         throw new IllegalArgumentException(
-            "This catalog sets a custom SigV4 STS endpoint, which the realm does not allow.");
+            "This catalog sets a custom SigV4 STS endpoint, "
+                + "which the realm configuration does not allow.");
       }
       if (awsConfig != null && awsConfig.getStsUnavailable() != null) {
         throw new IllegalArgumentException(
-            "This catalog disables STS, which the realm does not allow.");
+            "This catalog disables STS, which the realm configuration does not allow.");
       }
     }
 

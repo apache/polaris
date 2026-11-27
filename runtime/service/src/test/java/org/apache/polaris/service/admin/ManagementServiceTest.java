@@ -154,25 +154,28 @@ public class ManagementServiceTest {
     storageConfig.setEndpoint("http://example.com");
     assertThatThrownBy(createCatalog::get)
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("This catalog sets custom S3 endpoints, which the realm does not allow.");
+        .hasMessage(
+            "This catalog sets custom S3 endpoints, which the realm configuration does not allow.");
 
     storageConfig.setEndpoint(null);
     storageConfig.setStsEndpoint("http://example.com");
     assertThatThrownBy(createCatalog::get)
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("This catalog sets custom S3 endpoints, which the realm does not allow.");
+        .hasMessage(
+            "This catalog sets custom S3 endpoints, which the realm configuration does not allow.");
 
     storageConfig.setStsEndpoint(null);
     storageConfig.setEndpointInternal("http://example.com");
     assertThatThrownBy(createCatalog::get)
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("This catalog sets custom S3 endpoints, which the realm does not allow.");
+        .hasMessage(
+            "This catalog sets custom S3 endpoints, which the realm configuration does not allow.");
 
     storageConfig.setEndpointInternal(null);
     storageConfig.setStsUnavailable(false);
     assertThatThrownBy(createCatalog::get)
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("This catalog disables STS, which the realm does not allow.");
+        .hasMessage("This catalog disables STS, which the realm configuration does not allow.");
   }
 
   @Test
@@ -255,7 +258,8 @@ public class ManagementServiceTest {
                 .updateCatalog(
                     catalogName, update2, services.realmContext(), services.securityContext()))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("This catalog sets custom S3 endpoints, which the realm does not allow.");
+        .hasMessage(
+            "This catalog sets custom S3 endpoints, which the realm configuration does not allow.");
   }
 
   @Test
@@ -271,7 +275,8 @@ public class ManagementServiceTest {
         new UpdateCatalogRequest(currentEntityVersion(testServices, catalogName), Map.of(), null);
     assertThatThrownBy(() -> updateCatalog(testServices, catalogName, updateRequest))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("This catalog sets custom S3 endpoints, which the realm does not allow.");
+        .hasMessage(
+            "This catalog sets custom S3 endpoints, which the realm configuration does not allow.");
   }
 
   @Test
@@ -307,7 +312,7 @@ public class ManagementServiceTest {
         new UpdateCatalogRequest(currentEntityVersion(testServices, catalogName), Map.of(), null);
     assertThatThrownBy(() -> updateCatalog(testServices, catalogName, updateRequest))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("This catalog disables STS, which the realm does not allow.");
+        .hasMessage("This catalog disables STS, which the realm configuration does not allow.");
   }
 
   @Test
