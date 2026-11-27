@@ -34,7 +34,7 @@ public class HadoopCatalogValidator implements CatalogConfigValidator {
 
   @Override
   public void validate(Catalog catalog) {
-    PolarisCatalogHelpers.requireImplicitAuthentication(
+    PolarisCatalogHelpers.checkImplicitAuthentication(
         catalog, ConnectionConfigInfo.ConnectionTypeEnum.HADOOP);
   }
 }

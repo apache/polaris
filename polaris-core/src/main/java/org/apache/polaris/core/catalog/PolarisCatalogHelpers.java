@@ -39,18 +39,18 @@ public class PolarisCatalogHelpers {
   private PolarisCatalogHelpers() {}
 
   /**
-   * Requires {@code IMPLICIT} authentication when the given catalog is an external catalog that
-   * uses the given connection type. Other catalogs are not checked.
+   * Checks that the given catalog uses {@code IMPLICIT} authentication if it is an external catalog
+   * with the applicable connection type. Other catalogs are not checked.
    *
    * @throws IllegalArgumentException if the catalog requests another authentication type
    */
-  public static void requireImplicitAuthentication(
-      Catalog catalog, ConnectionConfigInfo.ConnectionTypeEnum connectionType) {
+  public static void checkImplicitAuthentication(
+      Catalog catalog, ConnectionConfigInfo.ConnectionTypeEnum applicableConnectionType) {
     if (!(catalog instanceof ExternalCatalog externalCatalog)) {
       return;
     }
     ConnectionConfigInfo connection = externalCatalog.getConnectionConfigInfo();
-    if (connection == null || connection.getConnectionType() != connectionType) {
+    if (connection == null || connection.getConnectionType() != applicableConnectionType) {
       return;
     }
     // A missing value is reported by the request validation that requires it.
@@ -61,7 +61,7 @@ public class PolarisCatalogHelpers {
       return;
     }
     throw new IllegalArgumentException(
-        connectionType.name()
+        applicableConnectionType.name()
             + " connections only support IMPLICIT authentication, but "
             + authentication.getAuthenticationType().name()
             + " was requested");

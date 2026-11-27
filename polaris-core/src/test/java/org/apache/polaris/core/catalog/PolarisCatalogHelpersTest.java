@@ -48,11 +48,10 @@ class PolarisCatalogHelpersTest {
   @EnumSource(
       value = ConnectionTypeEnum.class,
       names = {"HADOOP", "HIVE", "BIGQUERY"})
-  void requireImplicitAuthenticationAcceptsImplicit(ConnectionTypeEnum connectionType) {
+  void checkImplicitAuthenticationAcceptsImplicit(ConnectionTypeEnum connectionType) {
     Catalog catalog = externalCatalog(connection(connectionType, implicit()));
 
-    assertThatCode(
-            () -> PolarisCatalogHelpers.requireImplicitAuthentication(catalog, connectionType))
+    assertThatCode(() -> PolarisCatalogHelpers.checkImplicitAuthentication(catalog, connectionType))
         .doesNotThrowAnyException();
   }
 
@@ -60,11 +59,11 @@ class PolarisCatalogHelpersTest {
   @EnumSource(
       value = ConnectionTypeEnum.class,
       names = {"HADOOP", "HIVE", "BIGQUERY"})
-  void requireImplicitAuthenticationRejectsOtherAuthentication(ConnectionTypeEnum connectionType) {
+  void checkImplicitAuthenticationRejectsOtherAuthentication(ConnectionTypeEnum connectionType) {
     Catalog catalog = externalCatalog(connection(connectionType, bearer()));
 
     assertThatThrownBy(
-            () -> PolarisCatalogHelpers.requireImplicitAuthentication(catalog, connectionType))
+            () -> PolarisCatalogHelpers.checkImplicitAuthentication(catalog, connectionType))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(
             connectionType.name()
@@ -72,16 +71,16 @@ class PolarisCatalogHelpersTest {
   }
 
   @Test
-  void requireImplicitAuthenticationLeavesMissingAuthenticationToRequestValidation() {
+  void checkImplicitAuthenticationLeavesMissingAuthenticationToRequestValidation() {
     Catalog catalog = externalCatalog(connection(ConnectionTypeEnum.HADOOP, null));
 
     assertThatCode(() ->
-            PolarisCatalogHelpers.requireImplicitAuthentication(catalog, ConnectionTypeEnum.HADOOP))
+            PolarisCatalogHelpers.checkImplicitAuthentication(catalog, ConnectionTypeEnum.HADOOP))
         .doesNotThrowAnyException();
   }
 
   @Test
-  void requireImplicitAuthenticationIgnoresOtherConnectionTypes() {
+  void checkImplicitAuthenticationIgnoresOtherConnectionTypes() {
     Catalog hive = externalCatalog(connection(ConnectionTypeEnum.HIVE, bearer()));
     Catalog icebergRest =
         externalCatalog(
@@ -92,16 +91,16 @@ class PolarisCatalogHelpersTest {
                 .build());
 
     assertThatCode(() ->
-            PolarisCatalogHelpers.requireImplicitAuthentication(hive, ConnectionTypeEnum.HADOOP))
+            PolarisCatalogHelpers.checkImplicitAuthentication(hive, ConnectionTypeEnum.HADOOP))
         .doesNotThrowAnyException();
     assertThatCode(() ->
-            PolarisCatalogHelpers.requireImplicitAuthentication(
+            PolarisCatalogHelpers.checkImplicitAuthentication(
                 icebergRest, ConnectionTypeEnum.HADOOP))
         .doesNotThrowAnyException();
   }
 
   @Test
-  void requireImplicitAuthenticationIgnoresCatalogsWithoutConnection() {
+  void checkImplicitAuthenticationIgnoresCatalogsWithoutConnection() {
     Catalog internal =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
@@ -111,11 +110,10 @@ class PolarisCatalogHelpersTest {
             .build();
 
     assertThatCode(() ->
-            PolarisCatalogHelpers.requireImplicitAuthentication(
-                internal, ConnectionTypeEnum.HADOOP))
+            PolarisCatalogHelpers.checkImplicitAuthentication(internal, ConnectionTypeEnum.HADOOP))
         .doesNotThrowAnyException();
     assertThatCode(() ->
-            PolarisCatalogHelpers.requireImplicitAuthentication(
+            PolarisCatalogHelpers.checkImplicitAuthentication(
                 externalCatalog(null), ConnectionTypeEnum.HADOOP))
         .doesNotThrowAnyException();
   }
