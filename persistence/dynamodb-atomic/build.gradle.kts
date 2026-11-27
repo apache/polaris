@@ -27,6 +27,9 @@ dependencies {
   implementation(libs.slf4j.api)
   compileOnly(libs.jspecify)
 
+  compileOnly(platform(libs.jackson.bom))
+  compileOnly("com.fasterxml.jackson.core:jackson-annotations")
+
   implementation(platform(libs.awssdk.bom))
   implementation("software.amazon.awssdk:dynamodb")
 }
