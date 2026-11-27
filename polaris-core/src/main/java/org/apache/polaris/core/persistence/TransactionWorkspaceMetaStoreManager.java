@@ -19,6 +19,7 @@
 package org.apache.polaris.core.persistence;
 
 import com.google.common.collect.ImmutableList;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -253,6 +254,16 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup) {
     throw illegalMethodError("dropEntityIfExists");
+  }
+
+  @Override
+  public @NonNull DropEntityResult softDeleteEntityIfExists(
+      @NonNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisBaseEntity entityToDrop,
+      @NonNull Instant dropTimestamp,
+      @NonNull Instant toPurgeTimestamp) {
+    throw illegalMethodError("softDeleteEntityIfExists");
   }
 
   @Override

@@ -28,6 +28,7 @@ public abstract class BaseCommand implements Callable<Integer> {
   public static final int EXIT_CODE_BOOTSTRAP_ERROR = 3;
   public static final int EXIT_CODE_PURGE_ERROR = 4;
   public static final int EXIT_CODE_MAINTENANCE_ERROR = 5;
+  public static final int EXIT_CODE_EXPIRE_ERROR = 6;
 
   @Spec protected CommandSpec spec;
 }

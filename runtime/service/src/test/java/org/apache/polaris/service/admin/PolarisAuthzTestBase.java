@@ -515,7 +515,7 @@ public abstract class PolarisAuthzTestBase {
 
     @SuppressWarnings("unused") // Required by CDI
     protected TestPolarisLocalCatalogFactory() {
-      this(null, null, null, null, null, null, null, null, null, null, null);
+      this(null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     @Inject
@@ -530,7 +530,8 @@ public abstract class PolarisAuthzTestBase {
         PolarisMetaStoreManager metaStoreManager,
         CallContext callContext,
         PolarisPrincipal principal,
-        IdempotencyRequestContext idempotencyRequestContext) {
+        IdempotencyRequestContext idempotencyRequestContext,
+        java.time.Clock clock) {
       super(
           diagnostics,
           resolverFactory,
@@ -542,7 +543,8 @@ public abstract class PolarisAuthzTestBase {
           metaStoreManager,
           callContext,
           principal,
-          idempotencyRequestContext);
+          idempotencyRequestContext,
+          clock);
     }
 
     @Override
