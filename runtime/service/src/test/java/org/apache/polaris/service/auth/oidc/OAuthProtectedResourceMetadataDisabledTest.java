@@ -1,0 +1,38 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.polaris.service.auth.oidc;
+
+import static io.restassured.RestAssured.given;
+
+import io.quarkus.test.junit.QuarkusTest;
+import org.junit.jupiter.api.Test;
+
+/**
+ * Verifies the default, disabled state of {@code quarkus.oidc.resource-metadata.enabled} (see
+ * {@link OAuthProtectedResourceMetadataTest} for the enabled case): with no overrides, the
+ * well-known endpoint is not served at all.
+ */
+@QuarkusTest
+class OAuthProtectedResourceMetadataDisabledTest {
+
+  @Test
+  void wellKnownEndpointIsNotServedByDefault() {
+    given().get("/.well-known/oauth-protected-resource/api/catalog").then().statusCode(404);
+  }
+}
