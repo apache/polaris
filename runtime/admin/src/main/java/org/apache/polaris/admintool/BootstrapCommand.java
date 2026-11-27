@@ -166,11 +166,15 @@ public class BootstrapCommand extends BaseMetaStoreCommand {
               .printf("Realm '%s' is already bootstrapped; skipping.%n", realm);
         } else {
           String realm = result.getKey();
+          String reason = result.getValue().getExtraInformation();
           spec.commandLine()
               .getErr()
               .printf(
                   "Bootstrapping '%s' failed: %s%n",
-                  realm, result.getValue().getReturnStatus().toString());
+                  realm,
+                  reason == null
+                      ? result.getValue().getReturnStatus().toString()
+                      : result.getValue().getReturnStatus() + ": " + reason);
           success = false;
         }
       }
