@@ -81,6 +81,26 @@ The property `polaris.authentication.token-broker.max-token-generation` specifie
 - Format: ISO-8601 duration (e.g., `PT1H` for 1 hour, `PT30M` for 30 minutes). 
 - Default: `PT1H`. 
 
+{{< alert note >}}
+Tokens issued by the internal `TokenBroker` are stateless bearer tokens: Polaris does not keep a
+record of the tokens it issues. It does, however, load the principal and its role grants on every
+request, so changes to the principal and its grants apply to tokens that were already issued. A
+token's lifetime is set at issuance from `max-token-generation`, so changing this property only
+affects new tokens.
+
+Resetting a principal's credentials replaces its previous client secrets: they can no longer be used
+to request tokens, and tokens issued with them can no longer be exchanged for new tokens. A routine
+rotation keeps the previous primary secret valid until the next rotation or reset, except for a
+principal created with `credentialRotationRequired`, whose first rotation invalidates the initial
+secret immediately. If a client secret may have been exposed, reset the credentials rather than
+rotating them.
+
+After either operation, tokens that were already issued can still authenticate to Polaris until they
+expire. To remove access granted by a role, revoke that role from the principal. To block
+authentication with existing tokens, delete the principal. Storage credentials that were already
+vended follow the storage provider's own expiration and revocation rules.
+{{< /alert >}}
+
 ### Token Service 
 
 The Token Service and `TokenServiceConfiguration` (Quarkus) is responsible for issuing and validating tokens (e.g., bearer tokens) for authenticated principals when internal authentication is used. It works in coordination with the `Authenticator` and `TokenBroker`. The default implementation is `default`, and this must be configured when using internal authentication.  

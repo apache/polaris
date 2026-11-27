@@ -475,6 +475,8 @@ polaris principals list
 
 The `rotate-credentials` subcommand is used to update the credentials used by a principal. After this command runs successfully, the new credentials will be printed to stdout.
 
+Unless the principal was created with `credentialRotationRequired`, the previous client secret remains valid until the next rotation or reset, and access tokens already issued to the principal remain valid until they expire. If a client secret may have been exposed, use `reset` instead. See [Token Broker]({{% ref "managing-security/external-idp#token-broker" %}}).
+
 ```
 usage: polaris principals rotate-credentials [-h] [options] PRINCIPAL_NAME
 
@@ -542,6 +544,8 @@ polaris principals access quickstart_user
 #### reset
 
 The `reset` subcommand is used to reset principal credentials.
+
+The previous client secrets can no longer be used, but access tokens already issued to the principal remain valid until they expire. See [Token Broker]({{% ref "managing-security/external-idp#token-broker" %}}).
 
 ```
 usage: polaris principals reset [-h] [options] PRINCIPAL_NAME
