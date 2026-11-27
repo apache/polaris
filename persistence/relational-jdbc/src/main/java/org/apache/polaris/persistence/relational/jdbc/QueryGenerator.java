@@ -349,6 +349,23 @@ public class QueryGenerator {
     return new QueryFragment(clause, parameters);
   }
 
+  /**
+   * Generates a DELETE query that removes at most {@code limit} metrics reports of a realm from
+   * {@code tableName} whose timestamp is strictly before {@code timestampMs}. The limit is applied
+   * in a subquery because PostgreSQL does not support {@code DELETE ... LIMIT}.
+   */
+  public static PreparedQuery generateDeleteMetricsReportsBeforeQuery(
+      @NonNull String tableName, @NonNull String realmId, long timestampMs, int limit) {
+    Preconditions.checkArgument(limit > 0, "Limit must be positive");
+    String sql =
+        "DELETE FROM "
+            + tableName
+            + " WHERE realm_id = ? AND report_id IN (SELECT report_id FROM "
+            + tableName
+            + " WHERE realm_id = ? AND timestamp_ms < ? LIMIT ?)";
+    return new PreparedQuery(sql, List.of(realmId, realmId, timestampMs, limit));
+  }
+
   /** Returns a query that reads the current schema version. */
   public static PreparedQuery generateVersionQuery() {
     return new PreparedQuery(
