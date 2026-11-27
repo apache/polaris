@@ -85,6 +85,7 @@ leading comment block. The script behind the target is `spec/bundle.sh`.
 ### Updating the Iceberg specification
 
 The file `iceberg-rest-catalog-open-api.yaml` is copied from the upstream Iceberg REST catalog spec.
+The source ref and commit SHA are kept in `iceberg-rest-catalog-open-api.metadata.txt`.
 `make spec-bundle` fixes the upstream indentation in a temporary copy for the docs build.
 
 Pull a specific Iceberg tag:
@@ -98,10 +99,10 @@ python3 spec/pull-iceberg-spec.py --branch main
 python3 spec/pull-iceberg-spec.py --sha 212aa894e919ff9fdf89160da4aadcbe6858ac01
 ```
 
-The script downloads the YAML and only adds the source ref and resolved commit SHA to the
-`CODE_COPIED_TO_POLARIS` header when available. The indentation fix stays in `spec/bundle.sh`, which
+The script downloads the YAML unchanged and writes the source ref and resolved commit SHA to
+`iceberg-rest-catalog-open-api.metadata.txt`. The indentation fix stays in `spec/bundle.sh`, which
 applies it to a temporary copy for the docs build. Review the resulting diff, run `make spec-bundle`,
-then commit the spec and generated bundle together.
+then commit the spec, metadata file, and generated bundle together.
 
 However, when copying it, you may need to make some nonfunctional changes to ensure that the generated Python types
 still allow all tests to pass. You can regenerate the Python client by running:

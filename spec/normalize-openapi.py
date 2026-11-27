@@ -19,19 +19,21 @@
 import argparse
 import re
 
-closer = re.compile(r"^(\s*)([}\]])(,?)(\s*)$")
+closer = re.compile(r"^(\s*)([}\]])(,?)\s*$")
 block_scalar = re.compile(r"^(\s*)\S.*:\s*[|>][0-9+-]*\s*(#.*)?$")
+flow_start = re.compile(r"[{[]\s*(?:#.*)?$")
 
 
 def normalize_text(text: str) -> str:
     lines = []
     scalar_indent = None
+    flow_indents = []
 
     for line in text.splitlines(keepends=True):
         stripped = line.rstrip("\n")
+        indent = len(stripped) - len(stripped.lstrip())
 
         if scalar_indent is not None:
-            indent = len(stripped) - len(stripped.lstrip())
             if stripped.strip() and indent <= scalar_indent:
                 scalar_indent = None
             else:
@@ -39,16 +41,17 @@ def normalize_text(text: str) -> str:
                 continue
 
         match = closer.match(stripped)
-        if match:
-            stripped = (
-                f"{match.group(1)} {match.group(2)}"
-                f"{match.group(3)}{match.group(4)}"
-            )
+        if match and flow_indents:
+            open_indent = flow_indents.pop()
+            if indent <= open_indent:
+                stripped = " " + stripped
 
         lines.append(stripped + ("\n" if line.endswith("\n") else ""))
 
         if block_scalar.match(stripped):
-            scalar_indent = len(stripped) - len(stripped.lstrip())
+            scalar_indent = indent
+        elif flow_start.search(stripped):
+            flow_indents.append(indent)
 
     return "".join(lines)
 
