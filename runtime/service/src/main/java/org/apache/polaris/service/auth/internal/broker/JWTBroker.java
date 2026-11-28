@@ -20,6 +20,7 @@ package org.apache.polaris.service.auth.internal.broker;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.IncorrectClaimException;
 import com.auth0.jwt.exceptions.JWTDecodeException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
@@ -64,6 +65,14 @@ public class JWTBroker implements TokenBroker {
   @VisibleForTesting static final String CLAIM_KEY_CREDENTIALS_VERSION = "polaris-cv";
 
   /**
+   * Identifier of the realm the token was issued for. Tokens are only accepted by the realm they
+   * were issued for. Tokens without this claim (minted before it was introduced) are still accepted
+   * as bearers until expiry, but are rejected on token exchange. The claim name is
+   * collision-resistant per RFC 7519.
+   */
+  @VisibleForTesting static final String CLAIM_KEY_REALM = "polaris-realm";
+
+  /**
    * Tolerance for an {@code iat} claim that is ahead of this node's clock. A token minted by one
    * Polaris node and immediately presented to another node whose clock is slightly behind would
    * otherwise be rejected, because {@code iat} has second granularity. Expiry is not relaxed.
@@ -72,6 +81,7 @@ public class JWTBroker implements TokenBroker {
 
   private final PolarisMetaStoreManager metaStoreManager;
   private final PolarisCallContext polarisCallContext;
+  private final String realmId;
   private final int maxTokenGenerationInSeconds;
   private final Algorithm algorithm;
   private final JWTVerifier verifier;
@@ -79,11 +89,13 @@ public class JWTBroker implements TokenBroker {
   JWTBroker(
       PolarisMetaStoreManager metaStoreManager,
       PolarisCallContext polarisCallContext,
+      String realmId,
       int maxTokenGenerationInSeconds,
       Algorithm algorithm,
       JWTVerifier verifier) {
     this.metaStoreManager = metaStoreManager;
     this.polarisCallContext = polarisCallContext;
+    this.realmId = realmId;
     this.maxTokenGenerationInSeconds = maxTokenGenerationInSeconds;
     this.algorithm = algorithm;
     this.verifier = verifier;
@@ -145,8 +157,16 @@ public class JWTBroker implements TokenBroker {
     // enforced on the token-exchange path. Token construction stays inside the try: a well-signed
     // token that misses a mandatory claim must not surface as a raw NPE.
     final InternalPolarisToken internalToken;
+    final String tokenRealm;
     try {
       verifier.verify(decodedJWT);
+      tokenRealm = decodedJWT.getClaim(CLAIM_KEY_REALM).asString();
+      if (tokenRealm != null && !tokenRealm.equals(realmId)) {
+        throw new IncorrectClaimException(
+            String.format("The Claim '%s' value doesn't match the required one.", CLAIM_KEY_REALM),
+            CLAIM_KEY_REALM,
+            decodedJWT.getClaim(CLAIM_KEY_REALM));
+      }
       internalToken =
           InternalPolarisToken.of(
               decodedJWT.getSubject(),
@@ -158,7 +178,7 @@ public class JWTBroker implements TokenBroker {
           new NotAuthorizedException("Failed to verify the token").initCause(e);
     }
     String credentialsVersion = decodedJWT.getClaim(CLAIM_KEY_CREDENTIALS_VERSION).asString();
-    return new VerifiedToken(internalToken, credentialsVersion);
+    return new VerifiedToken(internalToken, credentialsVersion, tokenRealm);
   }
 
   /**
@@ -207,10 +227,10 @@ public class JWTBroker implements TokenBroker {
       return TokenResponse.of(OAuthError.invalid_client);
     }
     // Claim-less (pre-binding) tokens may still be used as bearer tokens until they expire, but
-    // exchange must not re-mint them onto the current credentials generation with a fresh
+    // exchange must not re-mint them onto the current credentials generation or realm with a fresh
     // lifetime; per RFC 6749 section 5.2 the subject grant is invalid in that case.
     String credentialsVersion = verified.subjectCredentialsVersion();
-    if (credentialsVersion == null) {
+    if (credentialsVersion == null || verified.subjectRealm() == null) {
       return TokenResponse.of(OAuthError.invalid_grant);
     }
     try {
@@ -303,7 +323,8 @@ public class JWTBroker implements TokenBroker {
             .withClaim(CLAIM_KEY_CLIENT_ID, clientId)
             .withClaim(CLAIM_KEY_PRINCIPAL_ID, principalId)
             .withClaim(CLAIM_KEY_SCOPE, scopes(scope))
-            .withClaim(CLAIM_KEY_CREDENTIALS_VERSION, credentialsVersion);
+            .withClaim(CLAIM_KEY_CREDENTIALS_VERSION, credentialsVersion)
+            .withClaim(CLAIM_KEY_REALM, realmId);
     return builder.sign(algorithm);
   }
 
@@ -345,8 +366,11 @@ public class JWTBroker implements TokenBroker {
   /**
    * Result of JWT verification (signature + claims only). {@code subjectCredentialsVersion} is the
    * token's credentials-generation claim, or {@code null} for legacy tokens without it. Binding is
-   * enforced later on the exchange path.
+   * enforced later on the exchange path. {@code subjectRealm} is the token's realm claim, already
+   * checked against this broker's realm, or {@code null} for legacy tokens without it.
    */
   private record VerifiedToken(
-      InternalPolarisToken token, @Nullable String subjectCredentialsVersion) {}
+      InternalPolarisToken token,
+      @Nullable String subjectCredentialsVersion,
+      @Nullable String subjectRealm) {}
 }
