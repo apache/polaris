@@ -31,6 +31,7 @@ import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.catalog.CatalogConfigValidator;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 
