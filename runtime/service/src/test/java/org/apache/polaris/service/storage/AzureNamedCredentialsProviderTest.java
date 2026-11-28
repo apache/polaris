@@ -30,7 +30,6 @@ import com.azure.identity.ClientSecretCredentialBuilder;
 import com.azure.identity.DefaultAzureCredentialBuilder;
 import io.smallrye.config.PropertiesConfigSource;
 import io.smallrye.config.SmallRyeConfigBuilder;
-import java.time.Clock;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -117,12 +116,11 @@ class AzureNamedCredentialsProviderTest {
             .getConfigMapping(StorageConfiguration.class);
     RealmConfig realmConfig = new RealmConfigImpl((rc, name) -> flags.get(name), REALM);
     return new PolarisStorageIntegrationProviderImpl(
-        storageConfiguration,
         new S3CredentialVendingMechanisms(Map.of()),
         realmConfig,
-        Clock.systemUTC(),
         null,
-        new AzureCredentialsFactory(storageConfiguration, realmConfig));
+        new AzureCredentialsFactory(storageConfiguration, realmConfig),
+        null);
   }
 
   /** The client IDs of the credentials built so far, in build order. */
