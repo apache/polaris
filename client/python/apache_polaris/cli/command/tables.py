@@ -182,7 +182,7 @@ class TableCommand(Command):
             current_schema = next(
                 (
                     schema
-                    for schema in metadata.schemas
+                    for schema in metadata.schemas or []
                     if schema.schema_id == metadata.current_schema_id
                 ),
                 None,
@@ -208,57 +208,70 @@ class TableCommand(Command):
 
             # Partitioning
             print("\nPartitioning")
-            current_spec = next(
-                (
-                    spec
-                    for spec in metadata.partition_specs
-                    if spec.spec_id == metadata.default_spec_id
-                ),
-                None,
-            )
-            if current_spec and current_spec.fields:
-                table = PrettyTable(
-                    field_names=["Source ID", "Field Name", "Transform"], align="l"
-                )
-                for field in current_spec.fields:
-                    table.add_row([field.source_id, field.name, field.transform])
-                indented_table = "\n".join(
-                    " " * 2 + line for line in table.get_string().splitlines()
-                )
-                print(indented_table)
+            # An omitted partition spec doesn't establish that the table is un-partitioned
+            if metadata.partition_specs is None:
+                print("  No partitioning information available")
             else:
-                print("  Table is un-partitioned.")
+                current_spec = next(
+                    (
+                        spec
+                        for spec in metadata.partition_specs
+                        if spec.spec_id == metadata.default_spec_id
+                    ),
+                    None,
+                )
+                if current_spec and current_spec.fields:
+                    table = PrettyTable(
+                        field_names=["Source ID", "Field Name", "Transform"], align="l"
+                    )
+                    for field in current_spec.fields:
+                        table.add_row([field.source_id, field.name, field.transform])
+                    indented_table = "\n".join(
+                        " " * 2 + line for line in table.get_string().splitlines()
+                    )
+                    print(indented_table)
+                else:
+                    print("  Table is un-partitioned.")
 
             # Sort Order
             print("\nSort order")
-            current_sort_order = next(
-                (
-                    sort_order
-                    for sort_order in metadata.sort_orders
-                    if sort_order.order_id == metadata.default_sort_order_id
-                ),
-                None,
-            )
-            if current_sort_order and current_sort_order.fields:
-                table = PrettyTable(
-                    field_names=["Source ID", "Transform", "Null Order", "Direction"],
-                    align="l",
-                )
-                for field in current_sort_order.fields:
-                    table.add_row(
-                        [
-                            field.source_id,
-                            field.transform,
-                            field.null_order.value,
-                            field.direction.value,
-                        ]
-                    )
-                indented_table = "\n".join(
-                    " " * 2 + line for line in table.get_string().splitlines()
-                )
-                print(indented_table)
+            # An omitted sort order doesn't establish that the table is un-sorted
+            if metadata.sort_orders is None:
+                print("  No sort order information available")
             else:
-                print("  Table is un-sorted.")
+                current_sort_order = next(
+                    (
+                        sort_order
+                        for sort_order in metadata.sort_orders
+                        if sort_order.order_id == metadata.default_sort_order_id
+                    ),
+                    None,
+                )
+                if current_sort_order and current_sort_order.fields:
+                    table = PrettyTable(
+                        field_names=[
+                            "Source ID",
+                            "Transform",
+                            "Null Order",
+                            "Direction",
+                        ],
+                        align="l",
+                    )
+                    for field in current_sort_order.fields:
+                        table.add_row(
+                            [
+                                field.source_id,
+                                field.transform,
+                                field.null_order.value,
+                                field.direction.value,
+                            ]
+                        )
+                    indented_table = "\n".join(
+                        " " * 2 + line for line in table.get_string().splitlines()
+                    )
+                    print(indented_table)
+                else:
+                    print("  Table is un-sorted.")
         except Exception as e:
             handle_api_exception("Table Metadata", e)
 

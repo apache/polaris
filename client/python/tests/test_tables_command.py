@@ -18,6 +18,7 @@
 #
 
 import io
+from typing import Any, Dict, List, NamedTuple, Optional
 from unittest.mock import patch, MagicMock
 from cli_test_utils import CLITestBase
 from apache_polaris.cli.constants import UNIT_SEPARATOR
@@ -25,6 +26,17 @@ from apache_polaris.cli.exceptions import CLI_ERROR_EXIT_CODE
 from apache_polaris.cli.polaris_cli import PolarisCli
 from apache_polaris.sdk.catalog.exceptions import ApiException
 from apache_polaris.sdk.catalog.models import LoadTableResult, RegisterTableRequest
+
+
+class MetadataTestCase(NamedTuple):
+    name: str
+    schemas: Optional[List[Dict[str, Any]]]
+    partition_specs: Optional[List[Dict[str, Any]]]
+    sort_orders: Optional[List[Dict[str, Any]]]
+    expected_schema: str
+    expected_partition: str
+    expected_sort: str
+    omit_snapshots: bool = False
 
 
 class TestTablesCommand(CLITestBase):
@@ -289,6 +301,181 @@ class TestTablesCommand(CLITestBase):
                 )
                 mock_policy_api.get_applicable_policies.assert_called_once_with(
                     prefix="my-catalog", namespace="ns1", target_name="my_table"
+                )
+
+    @patch("apache_polaris.cli.command.tables.PolicyAPI")
+    @patch("apache_polaris.cli.command.tables.IcebergCatalogAPI")
+    def test_table_summarize_optional_metadata(
+        self, mock_iceberg_api_class: MagicMock, mock_policy_api_class: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_iceberg_api = mock_iceberg_api_class.return_value
+        mock_policy_api = mock_policy_api_class.return_value
+        mock_policy_api.get_applicable_policies.return_value.applicable_policies = []
+
+        populated_schemas = [
+            {
+                "type": "struct",
+                "schema-id": 0,
+                "fields": [
+                    {
+                        "id": 1,
+                        "name": "id",
+                        "type": "long",
+                        "required": True,
+                    }
+                ],
+            }
+        ]
+        populated_partition_specs = [
+            {
+                "spec-id": 0,
+                "fields": [
+                    {
+                        "source-id": 1,
+                        "name": "id_part",
+                        "transform": "identity",
+                    }
+                ],
+            }
+        ]
+        populated_sort_orders = [
+            {
+                "order-id": 0,
+                "fields": [
+                    {
+                        "source-id": 1,
+                        "transform": "identity",
+                        "null-order": "nulls-first",
+                        "direction": "asc",
+                    }
+                ],
+            }
+        ]
+
+        cases = [
+            MetadataTestCase(
+                name="all_present_populated",
+                schemas=populated_schemas,
+                partition_specs=populated_partition_specs,
+                sort_orders=populated_sort_orders,
+                expected_schema="| long |",
+                expected_partition="| id_part",
+                expected_sort="| nulls-first",
+            ),
+            MetadataTestCase(
+                name="schemas_omitted",
+                schemas=None,
+                partition_specs=populated_partition_specs,
+                sort_orders=populated_sort_orders,
+                expected_schema="No schema information available",
+                expected_partition="| id_part",
+                expected_sort="| nulls-first",
+            ),
+            MetadataTestCase(
+                name="partition_specs_omitted",
+                schemas=populated_schemas,
+                partition_specs=None,
+                sort_orders=populated_sort_orders,
+                expected_schema="| long |",
+                expected_partition="No partitioning information available",
+                expected_sort="| nulls-first",
+            ),
+            MetadataTestCase(
+                name="sort_orders_omitted",
+                schemas=populated_schemas,
+                partition_specs=populated_partition_specs,
+                sort_orders=None,
+                expected_schema="| long |",
+                expected_partition="| id_part",
+                expected_sort="No sort order information available",
+            ),
+            MetadataTestCase(
+                name="all_three_omitted",
+                schemas=None,
+                partition_specs=None,
+                sort_orders=None,
+                expected_schema="No schema information available",
+                expected_partition="No partitioning information available",
+                expected_sort="No sort order information available",
+                omit_snapshots=True,
+            ),
+            MetadataTestCase(
+                name="explicit_empty_lists",
+                schemas=[],
+                partition_specs=[],
+                sort_orders=[],
+                expected_schema="No schema information available",
+                expected_partition="Table is un-partitioned.",
+                expected_sort="Table is un-sorted.",
+            ),
+        ]
+
+        for case in cases:
+            with self.subTest(case_id=case.name):
+                metadata = {
+                    "format-version": 2,
+                    "table-uuid": "00000000-0000-0000-0000-000000000000",
+                    "location": "s3://bucket/ns/empty",
+                    "last-updated-ms": 1700000000000,
+                    "last-column-id": 1,
+                    "current-schema-id": 0,
+                    "default-spec-id": 0,
+                    "default-sort-order-id": 0,
+                }
+                if not case.omit_snapshots:
+                    metadata["snapshots"] = []
+                if case.schemas is not None:
+                    metadata["schemas"] = case.schemas
+                if case.partition_specs is not None:
+                    metadata["partition-specs"] = case.partition_specs
+                if case.sort_orders is not None:
+                    metadata["sort-orders"] = case.sort_orders
+
+                mock_iceberg_api.load_table.return_value = LoadTableResult.from_dict(
+                    {"metadata": metadata}
+                )
+                mock_iceberg_api.reset_mock()
+                mock_policy_api.reset_mock()
+
+                with (
+                    patch("sys.stdout", new_callable=io.StringIO) as stdout,
+                    patch("sys.stderr", new_callable=io.StringIO) as stderr,
+                ):
+                    self.mock_execute(
+                        mock_client,
+                        [
+                            "tables",
+                            "summarize",
+                            "empty",
+                            "--catalog",
+                            "demo",
+                            "--namespace",
+                            "ns",
+                        ],
+                    )
+
+                self.assertEqual(stderr.getvalue(), "")
+                output = stdout.getvalue()
+                self.assertIn("Table: ns.empty", output)
+                self.assertIn("\nMetadata\n", output)
+                self.assertIn("Location:", output)
+                self.assertIn("\nStatistics\n", output)
+                self.assertIn("Table is empty (no snapshots found)", output)
+                self.assertIn("\nSchema\n", output)
+                self.assertIn(case.expected_schema, output)
+                self.assertIn("\nPartitioning\n", output)
+                self.assertIn(case.expected_partition, output)
+                self.assertIn("\nSort order\n", output)
+                self.assertIn(case.expected_sort, output)
+                self.assertIn("\nEffective policies\n", output)
+                self.assertIn("No policies apply to this table", output)
+
+                mock_iceberg_api.load_table.assert_called_once_with(
+                    prefix="demo", namespace="ns", table="empty"
+                )
+                mock_policy_api.get_applicable_policies.assert_called_once_with(
+                    prefix="demo", namespace="ns", target_name="empty"
                 )
 
     @patch("apache_polaris.cli.command.tables.IcebergCatalogAPI")
