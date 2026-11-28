@@ -150,8 +150,9 @@ class R2LocalSigningVendingFlowTest {
   }
 
   /**
-   * A cleanup (purge) task rebuilds a FileIO through {@code TaskFileIOSupplier}, which asks for the
-   * {@code ALL} action on the table location, so the credential is read-write.
+   * A cleanup (purge) task rebuilds a FileIO through {@code TaskFileIOSupplier}, which asks for
+   * READ, LIST and DELETE on the table location. DELETE is write-capable on R2, so the credential
+   * is read-write.
    */
   @Test
   void aCleanupTaskFileIoGetsAReadWriteCredential() {

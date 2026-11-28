@@ -53,7 +53,10 @@ public class TaskFileIOSupplier {
     Map<String, String> properties = new HashMap<>(internalProperties);
 
     Set<String> locations = TaskUtils.storageLocations(properties);
-    Set<PolarisStorageActions> storageActions = Set.of(PolarisStorageActions.ALL);
+    // Cleanup reads metadata and deletes files; it never writes, so it does not ask for WRITE.
+    Set<PolarisStorageActions> storageActions =
+        Set.of(
+            PolarisStorageActions.READ, PolarisStorageActions.LIST, PolarisStorageActions.DELETE);
     ResolvedPolarisEntity resolvedTaskEntity =
         new ResolvedPolarisEntity(task, List.of(), List.of());
     PolarisResolvedPathWrapper resolvedPath =

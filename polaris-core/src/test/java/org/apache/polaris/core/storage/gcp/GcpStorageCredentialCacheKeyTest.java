@@ -40,12 +40,18 @@ class GcpStorageCredentialCacheKeyTest {
   private static final RealmConfig REALM_CONFIG = Mockito.mock(RealmConfig.class);
 
   private static GcpStorageCredentialCacheKey key(Optional<String> principalName) {
+    return key(principalName, Set.of());
+  }
+
+  private static GcpStorageCredentialCacheKey key(
+      Optional<String> principalName, Set<String> parentFolderLocations) {
     return GcpStorageCredentialCacheKey.of(
         "tenant1",
         CONFIG,
         Set.of("gs://bucket/path"),
         Set.of(),
-        Set.of(),
+        Set.of("gs://bucket/path"),
+        parentFolderLocations,
         principalName,
         CREDS,
         TRANSPORT,
@@ -61,6 +67,17 @@ class GcpStorageCredentialCacheKeyTest {
     assertThat(key(Optional.of("alice"))).isNotEqualTo(key(Optional.of("bob")));
     assertThat(key(Optional.of("alice"))).hasSameHashCodeAs(key(Optional.of("alice")));
     assertThat(key(Optional.of("alice"))).isEqualTo(key(Optional.of("alice")));
+  }
+
+  @Test
+  void parentFolderLocationsArePartOfCacheIdentity() {
+    // Loading a key creates the parent folders of these locations. The set is filled only when
+    // folder creation is enabled, so then a cleanup vend, which creates none, must not fill the
+    // entry that a later writer of the same locations would use.
+    assertThat(key(Optional.empty(), Set.of()))
+        .isNotEqualTo(key(Optional.empty(), Set.of("gs://bucket/path")));
+    assertThat(key(Optional.empty(), Set.of("gs://bucket/path")))
+        .isEqualTo(key(Optional.empty(), Set.of("gs://bucket/path")));
   }
 
   @Test

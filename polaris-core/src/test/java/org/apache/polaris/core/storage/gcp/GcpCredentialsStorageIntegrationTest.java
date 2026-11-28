@@ -22,10 +22,19 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.google.api.client.http.LowLevelHttpRequest;
+import com.google.api.client.http.LowLevelHttpResponse;
 import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.testing.http.MockHttpTransport;
+import com.google.api.client.testing.http.MockLowLevelHttpRequest;
+import com.google.api.client.testing.http.MockLowLevelHttpResponse;
 import com.google.auth.http.HttpTransportFactory;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.CredentialAccessBoundary;
@@ -78,6 +87,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
+import org.slf4j.LoggerFactory;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
@@ -329,7 +339,8 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 + "/')");
     assertThat(expressionAt(parsedRules, 1))
         .isEqualTo(
-            "resource.name.startsWith('projects/_/buckets/bucket1/objects/a\\'b\\\"c\\\\d/')");
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/a\\'b\\\"c\\\\d/')"
+                + " || resource.name.startsWith('projects/_/buckets/bucket1/folders/a\\'b\\\"c\\\\d/')");
   }
 
   @ParameterizedTest
@@ -554,7 +565,457 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                 + " || api.getAttribute('storage.googleapis.com/objectListPrefix', '')"
                 + ".startsWith('data/')");
     assertThat(expressionAt(parsedRules, 1))
+        .isEqualTo(
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/data/')"
+                + " || resource.name.startsWith('projects/_/buckets/bucket1/folders/data/')");
+  }
+
+  @Test
+  public void testGenerateAccessBoundaryWriteRuleCoversHnsFolders() {
+    // HNS buckets check storage.folders.* against folders/<path>, not objects/<path>.
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            Set.of("gs://bucket1/data"), Set.of(), Set.of("gs://bucket1/data"));
+
+    ObjectMapper mapper = JsonMapper.builder().build();
+    JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
+
+    assertThat(expressionAt(parsedRules, 0))
         .isEqualTo("resource.name.startsWith('projects/_/buckets/bucket1/objects/data/')");
+    assertThat(expressionAt(parsedRules, 1))
+        .isEqualTo(
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/data/')"
+                + " || resource.name.startsWith('projects/_/buckets/bucket1/folders/data/')");
+  }
+
+  @Test
+  public void testGenerateAccessBoundaryHasNoRuleForParentFolders() {
+    // Missing parent folders are created by Polaris before vending. A folders.create grant on them
+    // would also authorize renaming a folder from one write location into a missing parent of
+    // another, so the boundary covers folders only inside the write locations.
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            Set.of(), Set.of(), Set.of("gs://bucket1/warehouse/ns/table1"));
+
+    JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
+
+    assertThat(parsedRules.path("accessBoundaryRules")).hasSize(1);
+    assertThat(expressionOf(parsedRules, "bucket1", "inRole:roles/storage.legacyBucketWriter"))
+        .isEqualTo(
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/warehouse/ns/table1/')"
+                + " || resource.name.startsWith('projects/_/buckets/bucket1/folders/warehouse/ns/table1/')");
+  }
+
+  @Test
+  public void testGenerateAccessBoundaryWriteRuleCoversFoldersOfEachWriteLocation() {
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            Set.of(), Set.of(), Set.of("gs://bucket1/warehouse/t1", "gs://bucket1/warehouse/t2"));
+
+    JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
+
+    assertThat(parsedRules.path("accessBoundaryRules")).hasSize(1);
+    assertThat(
+            expressionOf(parsedRules, "bucket1", "inRole:roles/storage.legacyBucketWriter")
+                .split(" \\|\\| "))
+        .containsExactlyInAnyOrder(
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/warehouse/t1/')",
+            "resource.name.startsWith('projects/_/buckets/bucket1/folders/warehouse/t1/')",
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/warehouse/t2/')",
+            "resource.name.startsWith('projects/_/buckets/bucket1/folders/warehouse/t2/')");
+  }
+
+  @Test
+  public void testGenerateAccessBoundaryEscapesCelLiteralCharactersInFolderExpressions() {
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            Set.of(), Set.of(), Set.of("gs://bucket1/a'b/c\"d"));
+
+    JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
+
+    assertThat(expressionOf(parsedRules, "bucket1", "inRole:roles/storage.legacyBucketWriter"))
+        .isEqualTo(
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/a\\'b/c\\\"d/')"
+                + " || resource.name.startsWith('projects/_/buckets/bucket1/folders/a\\'b/c\\\"d/')");
+  }
+
+  @Test
+  public void testGenerateAccessBoundaryWriteRulesForCustomNamespaceLocations() {
+    // With ALLOW_NAMESPACE_CUSTOM_LOCATION a namespace (and its tables) can live at an arbitrary
+    // path, possibly in another bucket than the catalog base (e.g. a table under
+    // gs://bucket2/custom/ns/ whose catalog base is gs://bucket1/warehouse/). The rules are derived
+    // only from the table's own write locations, so each bucket gets its own write rule.
+    CredentialAccessBoundary credentialAccessBoundary =
+        GcpCredentialsStorageIntegration.generateAccessBoundaryRules(
+            Set.of(),
+            Set.of(),
+            Set.of("gs://bucket2/custom/ns/t1", "gs://bucket1/warehouse/data/t1"));
+
+    JsonNode parsedRules = MAPPER.convertValue(credentialAccessBoundary, JsonNode.class);
+
+    assertThat(parsedRules.path("accessBoundaryRules")).hasSize(2);
+    assertThat(expressionOf(parsedRules, "bucket2", "inRole:roles/storage.legacyBucketWriter"))
+        .isEqualTo(
+            "resource.name.startsWith('projects/_/buckets/bucket2/objects/custom/ns/t1/')"
+                + " || resource.name.startsWith('projects/_/buckets/bucket2/folders/custom/ns/t1/')");
+    assertThat(expressionOf(parsedRules, "bucket1", "inRole:roles/storage.legacyBucketWriter"))
+        .isEqualTo(
+            "resource.name.startsWith('projects/_/buckets/bucket1/objects/warehouse/data/t1/')"
+                + " || resource.name.startsWith("
+                + "'projects/_/buckets/bucket1/folders/warehouse/data/t1/')");
+  }
+
+  private static Stream<Arguments> parentFolderCases() {
+    return Stream.of(
+        Arguments.of(Set.of("gs://b1/ns/tbl"), Map.of("b1", Set.of("ns/"))),
+        Arguments.of(Set.of("gs://b1/a/b/c/tbl/"), Map.of("b1", Set.of("a/b/c/"))),
+        // Bucket-root and single-segment locations have no parent folder.
+        Arguments.of(Set.of("gs://b1/tbl"), Map.of()),
+        Arguments.of(Set.of("gs://b1"), Map.of()),
+        Arguments.of(Set.of("gs://b1/"), Map.of()),
+        // A parent that a deeper parent's recursive creation also creates is dropped.
+        Arguments.of(
+            Set.of("gs://b1/wh/ns/t1", "gs://b1/wh/ns/t1/data/x"),
+            Map.of("b1", Set.of("wh/ns/t1/data/"))),
+        // Two write locations in different subtrees of one bucket: both parent chains.
+        Arguments.of(
+            Set.of("gs://b1/wh/ns/tbl", "gs://b1/wh2/d1/d2/data"),
+            Map.of("b1", Set.of("wh/ns/", "wh2/d1/d2/"))),
+        // A shared ancestor is dropped while each of its subtrees keeps its own parent.
+        Arguments.of(
+            Set.of("gs://b1/a/t", "gs://b1/a/b/t", "gs://b1/a/c/t"),
+            Map.of("b1", Set.of("a/b/", "a/c/"))),
+        // Sibling folders that only share a string prefix are not ancestors of each other.
+        Arguments.of(
+            Set.of("gs://b1/a/b/t", "gs://b1/a/b-x/t", "gs://b1/a/bc/t"),
+            Map.of("b1", Set.of("a/b/", "a/b-x/", "a/bc/"))),
+        Arguments.of(
+            Set.of("gs://b1/x/t", "gs://b2/y/z/t"),
+            Map.of("b1", Set.of("x/"), "b2", Set.of("y/z/"))),
+        // Consecutive slashes are kept as they are.
+        Arguments.of(Set.of("gs://b1/a//t"), Map.of("b1", Set.of("a//"))));
+  }
+
+  @ParameterizedTest
+  @MethodSource("parentFolderCases")
+  public void testParentFoldersToCreate(
+      Set<String> writeLocations, Map<String, Set<String>> expected) {
+    assertThat(GcpCredentialsStorageIntegration.parentFoldersToCreate(writeLocations))
+        .isEqualTo(expected);
+  }
+
+  /** Vends with a fake transport that answers every folder request with {@code status}. */
+  private static List<String> vendAndRecordFolderRequests(
+      Set<String> readLocations, Set<String> writeLocations, int status) {
+    List<String> requests = new ArrayList<>();
+    vend(
+        toGrants(readLocations, Set.of(), writeLocations),
+        FOLDER_CREATION_ENABLED,
+        folderTransport(requests, status));
+    return requests;
+  }
+
+  /**
+   * A transport factory whose requests are recorded in {@code requests} as "method url body
+   * authorization" and answered with {@code status}; a negative status throws an {@link
+   * IOException} instead.
+   */
+  private static HttpTransportFactory folderTransport(List<String> requests, int status) {
+    MockHttpTransport transport =
+        new MockHttpTransport() {
+          @Override
+          public LowLevelHttpRequest buildRequest(String method, String url) {
+            return new MockLowLevelHttpRequest(url) {
+              @Override
+              public LowLevelHttpResponse execute() throws IOException {
+                requests.add(
+                    method
+                        + " "
+                        + url
+                        + " "
+                        + getContentAsString()
+                        + " "
+                        + getHeaderValues("Authorization"));
+                if (status < 0) {
+                  throw new IOException("connection refused");
+                }
+                return new MockLowLevelHttpResponse().setStatusCode(status);
+              }
+            };
+          }
+        };
+    return () -> transport;
+  }
+
+  /**
+   * Vends {@code grants} with service account impersonation and a stubbed downscoping call, and
+   * returns the access boundary the token was downscoped with.
+   */
+  private static CredentialAccessBoundary vend(
+      List<LocationGrant> grants, RealmConfig realmConfig, HttpTransportFactory transportFactory) {
+    AtomicReference<CredentialAccessBoundary> boundary = new AtomicReference<>();
+    StorageAccessConfig accessConfig =
+        new GcpCredentialsStorageIntegration(
+                sourceCredentials(),
+                transportFactory,
+                GCS_CONFIG,
+                realmConfig,
+                credentialOps(boundary, new Date()))
+            .getStorageAccessConfig(grants, Optional.empty(), CredentialVendingContext.empty());
+    assertThat(accessConfig.get(StorageAccessProperty.GCS_ACCESS_TOKEN))
+        .isEqualTo("downscoped-token");
+    return boundary.get();
+  }
+
+  private static final GcpStorageConfigurationInfo GCS_CONFIG =
+      GcpStorageConfigurationInfo.builder()
+          .addAllAllowedLocations(List.of("gs://bucket/"))
+          .gcpServiceAccount("test-sa@project.iam.gserviceaccount.com")
+          .build();
+
+  private static GoogleCredentials sourceCredentials() {
+    GoogleCredentials sourceCredentials = Mockito.mock(GoogleCredentials.class);
+    Mockito.when(sourceCredentials.createScoped(Mockito.any(String.class)))
+        .thenReturn(sourceCredentials);
+    return sourceCredentials;
+  }
+
+  /**
+   * Credential operations that impersonate through a stubbed IAM client and return a {@code
+   * downscoped-token} expiring at {@code tokenExpiry}, recording the access boundary in {@code
+   * boundary}.
+   */
+  private static GcpCredentialOps credentialOps(
+      AtomicReference<CredentialAccessBoundary> boundary, Date tokenExpiry) {
+    IamCredentialsClient iamClient = Mockito.mock(IamCredentialsClient.class);
+    Mockito.when(iamClient.generateAccessToken(Mockito.any(GenerateAccessTokenRequest.class)))
+        .thenReturn(
+            GenerateAccessTokenResponse.newBuilder()
+                .setAccessToken("impersonated-token")
+                .setExpireTime(
+                    Timestamp.newBuilder()
+                        .setSeconds(System.currentTimeMillis() / 1000 + 3600)
+                        .build())
+                .build());
+    return new GcpCredentialOps() {
+      @Override
+      public IamCredentialsClient createIamCredentialsClient(GoogleCredentials credentials) {
+        return iamClient;
+      }
+
+      @Override
+      public AccessToken refreshAccessToken(DownscopedCredentials credentials) {
+        boundary.set(credentials.getCredentialAccessBoundary());
+        return new AccessToken("downscoped-token", tokenExpiry);
+      }
+    };
+  }
+
+  private static final String L = "gs://bucket/ns/tbl";
+
+  /** Builds the cache key for a single grant of {@code actions} on {@link #L}. */
+  private static GcpStorageCredentialCacheKey keyFor(
+      boolean folderCreationEnabled, Set<PolarisStorageActions> actions) {
+    return (GcpStorageCredentialCacheKey)
+        new GcpCredentialsStorageIntegration(
+                sourceCredentials(),
+                folderTransport(new ArrayList<>(), 200),
+                GCS_CONFIG,
+                configWith(
+                    Map.of(
+                        "GCS_HNS_PARENT_FOLDER_CREATION_ENABLED",
+                        String.valueOf(folderCreationEnabled))),
+                credentialOps(new AtomicReference<>(), new Date()))
+            .buildCacheKey(
+                List.of(new LocationGrant(Set.of(L), actions)), CredentialVendingContext.empty());
+  }
+
+  @Test
+  public void testParentFolderLocationsInCacheKeyFollowFlag() {
+    Set<PolarisStorageActions> all = Set.of(PolarisStorageActions.ALL);
+    Set<PolarisStorageActions> writer =
+        Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST, PolarisStorageActions.WRITE);
+    Set<PolarisStorageActions> cleanup =
+        Set.of(
+            PolarisStorageActions.READ, PolarisStorageActions.LIST, PolarisStorageActions.DELETE);
+
+    // Flag off: no folders to create, so staged create, writer and cleanup share one key.
+    GcpStorageCredentialCacheKey offWriter = keyFor(false, writer);
+    for (GcpStorageCredentialCacheKey key : List.of(keyFor(false, all), keyFor(false, cleanup))) {
+      assertThat(key).isEqualTo(offWriter).hasSameHashCodeAs(offWriter);
+      assertThat(key.parentFolderLocations()).isEmpty();
+      assertThat(key.allowedWriteLocations()).containsExactly(L);
+    }
+    assertThat(offWriter.parentFolderLocations()).isEmpty();
+
+    // Flag on: writers create folders, so a cleanup vend must not fill their entry.
+    GcpStorageCredentialCacheKey onWriter = keyFor(true, writer);
+    assertThat(keyFor(true, all)).isEqualTo(onWriter);
+    assertThat(onWriter.parentFolderLocations()).containsExactly(L);
+    GcpStorageCredentialCacheKey onCleanup = keyFor(true, cleanup);
+    assertThat(onCleanup).isNotEqualTo(onWriter);
+    assertThat(onCleanup.parentFolderLocations()).isEmpty();
+
+    // The flag is part of key identity: the writer keys differ across flag values.
+    assertThat(offWriter).isNotEqualTo(onWriter);
+  }
+
+  @Test
+  public void testComputeCreatesFoldersFromKeyWhenFlagIsUnset() {
+    // The flag is unset in EMPTY_REALM_CONFIG; compute() acts on the key's set alone.
+    List<String> requests = new ArrayList<>();
+    GcpCredentialsStorageIntegration.compute(
+        GcpStorageCredentialCacheKey.of(
+            "test-realm",
+            GCS_CONFIG,
+            Set.of(L),
+            Set.of(L),
+            Set.of(L),
+            Set.of(L),
+            Optional.empty(),
+            sourceCredentials(),
+            folderTransport(requests, 200),
+            EMPTY_REALM_CONFIG,
+            credentialOps(new AtomicReference<>(), new Date()),
+            Optional.empty()));
+    assertThat(requests)
+        .containsExactly(
+            "POST https://storage.googleapis.com/storage/v1/b/bucket/folders?recursive=true"
+                + " {\"name\":\"ns/\"} [Bearer impersonated-token]");
+  }
+
+  @Test
+  public void testWriteVendCreatesParentFolders() {
+    assertThat(vendAndRecordFolderRequests(Set.of(), Set.of("gs://bucket/ns/tbl"), 200))
+        .containsExactly(
+            "POST https://storage.googleapis.com/storage/v1/b/bucket/folders?recursive=true"
+                + " {\"name\":\"ns/\"} [Bearer impersonated-token]");
+  }
+
+  @Test
+  public void testParentFolderCreationIsOffByDefault() {
+    List<String> requests = new ArrayList<>();
+    vend(
+        toGrants(Set.of(), Set.of(), Set.of("gs://bucket/ns/tbl")),
+        EMPTY_REALM_CONFIG,
+        folderTransport(requests, 200));
+    assertThat(requests).isEmpty();
+  }
+
+  @Test
+  public void testParentFolderCreationCanBeDisabled() {
+    List<String> requests = new ArrayList<>();
+    vend(
+        toGrants(Set.of(), Set.of(), Set.of("gs://bucket/ns/tbl")),
+        configWith(Map.of("GCS_HNS_PARENT_FOLDER_CREATION_ENABLED", "false")),
+        folderTransport(requests, 200));
+    assertThat(requests).isEmpty();
+  }
+
+  @Test
+  public void testFolderClientFailureDoesNotFailTheVend() {
+    HttpTransportFactory failingFactory =
+        () -> {
+          throw new IllegalStateException("no transport");
+        };
+    try (LogCapture logs = new LogCapture()) {
+      // vend() asserts that the token is still returned.
+      vend(
+          toGrants(Set.of(), Set.of(), Set.of("gs://bucket/ns/tbl")),
+          FOLDER_CREATION_ENABLED,
+          failingFactory);
+      assertThat(logs.events())
+          .filteredOn(event -> event.getLevel() == Level.WARN)
+          .singleElement()
+          .satisfies(event -> assertThat(event.getFormattedMessage()).contains("ns/", "bucket"));
+    }
+  }
+
+  @Test
+  public void testDeleteWithoutWriteCreatesNoFolders() {
+    // File cleanup tasks read and delete files but never write, so their credentials must not
+    // create folders. They get the same access boundary as an ALL grant.
+    String location = "gs://bucket/ns/tbl";
+    List<String> cleanupRequests = new ArrayList<>();
+    CredentialAccessBoundary cleanupBoundary =
+        vend(
+            List.of(
+                new LocationGrant(
+                    Set.of(location),
+                    Set.of(
+                        PolarisStorageActions.READ,
+                        PolarisStorageActions.LIST,
+                        PolarisStorageActions.DELETE))),
+            FOLDER_CREATION_ENABLED,
+            folderTransport(cleanupRequests, 200));
+    List<String> allRequests = new ArrayList<>();
+    CredentialAccessBoundary allBoundary =
+        vend(
+            List.of(new LocationGrant(Set.of(location), Set.of(PolarisStorageActions.ALL))),
+            FOLDER_CREATION_ENABLED,
+            folderTransport(allRequests, 200));
+
+    assertThat(cleanupRequests).isEmpty();
+    // Stage-create requests ALL and writes data, so ALL still creates the parent folders.
+    assertThat(allRequests).hasSize(1);
+    assertThat(MAPPER.convertValue(cleanupBoundary, JsonNode.class))
+        .isEqualTo(MAPPER.convertValue(allBoundary, JsonNode.class));
+  }
+
+  @Test
+  public void testReadOnlyVendCreatesNoFolders() {
+    assertThat(vendAndRecordFolderRequests(Set.of("gs://bucket/ns/tbl"), Set.of(), 200)).isEmpty();
+  }
+
+  @ParameterizedTest
+  @ValueSource(ints = {403, 409, 500, -1})
+  public void testFolderCreationFailureDoesNotFailTheVend(int status) {
+    // 409: already exists, or no hierarchical namespace. 403: missing permission, or no
+    // hierarchical namespace. -1: transport failure. The token is returned in every case.
+    assertThat(vendAndRecordFolderRequests(Set.of(), Set.of("gs://bucket/ns/tbl"), status))
+        .hasSize(1);
+  }
+
+  @ParameterizedTest
+  @CsvSource({"200, 0", "409, 0", "403, 2", "500, 2", "-1, 2"})
+  public void testEveryFailedFolderCreationLogsAWarning(int status, int expectedWarnings) {
+    // Two vends against the same bucket: a failure is logged every time, not once per bucket.
+    try (LogCapture logs = new LogCapture()) {
+      for (int i = 0; i < 2; i++) {
+        vendAndRecordFolderRequests(Set.of(), Set.of("gs://bucket/ns/tbl"), status);
+      }
+      assertThat(logs.events())
+          .filteredOn(event -> event.getLevel() == Level.WARN)
+          .hasSize(expectedWarnings);
+    }
+  }
+
+  /**
+   * Captures the log events of {@link GcpCredentialsStorageIntegration} at DEBUG and above while it
+   * is open. Use it in a try-with-resources block, which restores the logger.
+   */
+  private static final class LogCapture implements AutoCloseable {
+    private final Logger logger =
+        (Logger) LoggerFactory.getLogger(GcpCredentialsStorageIntegration.class);
+    private final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+    private final Level original = logger.getLevel();
+
+    LogCapture() {
+      appender.start();
+      logger.setLevel(Level.DEBUG);
+      logger.addAppender(appender);
+    }
+
+    List<ILoggingEvent> events() {
+      return List.copyOf(appender.list);
+    }
+
+    @Override
+    public void close() {
+      logger.detachAppender(appender);
+      appender.stop();
+      logger.setLevel(original);
+    }
   }
 
   private static String expressionAt(JsonNode parsedRules, int ruleIndex) {
@@ -565,6 +1026,29 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .path("expression")
         .asString();
   }
+
+  /**
+   * Returns the expression of the only rule on {@code bucket} whose permissions are exactly {@code
+   * permission}. Rule order follows {@code Set.of} iteration order, so tests with several buckets
+   * must not look rules up by index.
+   */
+  private static String expressionOf(JsonNode parsedRules, String bucket, String permission) {
+    List<JsonNode> matches = new ArrayList<>();
+    for (JsonNode rule : parsedRules.path("accessBoundaryRules")) {
+      if (rule.path("availableResource")
+              .asString()
+              .equals("//storage.googleapis.com/projects/_/buckets/" + bucket)
+          && rule.path("availablePermissions").size() == 1
+          && rule.path("availablePermissions").path(0).asString().equals(permission)) {
+        matches.add(rule);
+      }
+    }
+    assertThat(matches).hasSize(1);
+    return matches.get(0).path("availabilityCondition").path("expression").asString();
+  }
+
+  private static final RealmConfig FOLDER_CREATION_ENABLED =
+      configWith(Map.of("GCS_HNS_PARENT_FOLDER_CREATION_ENABLED", "true"));
 
   private static RealmConfig configWith(Map<String, String> values) {
     RealmConfigurationSource source = (rc, name) -> values.get(name);

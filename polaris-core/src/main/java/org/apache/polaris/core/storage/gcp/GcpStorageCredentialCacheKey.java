@@ -59,30 +59,40 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
   Set<String> allowedWriteLocations();
 
   /**
+   * The write locations whose missing parent folders are created when this key is loaded: those
+   * granted WRITE or ALL, but not DELETE alone. Empty unless {@code
+   * GCS_HNS_PARENT_FOLDER_CREATION_ENABLED} is true; resolved when the key is built, so the
+   * folder-creation decision is part of key identity. It is a data field because it changes what
+   * loading the key does, so a cleanup vend cannot fill an entry that a writer would then reuse.
+   */
+  @Value.Parameter(order = 6)
+  Set<String> parentFolderLocations();
+
+  /**
    * The requesting principal name, included in the cache key only when GCS principal attribution is
    * enabled (otherwise empty). When attribution is active the vended credential carries this
    * principal's identity, so it must participate in cache identity to avoid serving one principal's
    * attributed credentials to another.
    */
-  @Value.Parameter(order = 6)
+  @Value.Parameter(order = 7)
   Optional<String> principalName();
 
   // ---- aux: app-scoped invariants, excluded from equals/hashCode ----
 
-  @Value.Parameter(order = 7)
+  @Value.Parameter(order = 8)
   @Value.Auxiliary
   GoogleCredentials sourceCredentials();
 
-  @Value.Parameter(order = 8)
+  @Value.Parameter(order = 9)
   @Value.Auxiliary
   HttpTransportFactory transportFactory();
 
   @Override
-  @Value.Parameter(order = 9)
+  @Value.Parameter(order = 10)
   @Value.Auxiliary
   RealmConfig realmConfig();
 
-  @Value.Parameter(order = 10)
+  @Value.Parameter(order = 11)
   @Value.Auxiliary
   GcpCredentialOps credentialOps();
 
@@ -91,7 +101,7 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
    * fully configured and a principal is available. Computed at cache key build time so {@code
    * compute()} can use these values directly without re-reading realm config.
    */
-  @Value.Parameter(order = 11)
+  @Value.Parameter(order = 12)
   @Value.Auxiliary
   Optional<GcpAttributionParams> attributionParams();
 
@@ -100,12 +110,17 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
     return GcpCredentialsStorageIntegration.compute(this);
   }
 
+  /**
+   * Pass an empty {@code parentFolderLocations} unless folder creation is enabled; loading the key
+   * creates folders for every location in it.
+   */
   static GcpStorageCredentialCacheKey of(
       String realmId,
       GcpStorageConfigurationInfo storageConfig,
       Set<String> allowedReadLocations,
       Set<String> allowedListLocations,
       Set<String> allowedWriteLocations,
+      Set<String> parentFolderLocations,
       Optional<String> principalName,
       GoogleCredentials sourceCredentials,
       HttpTransportFactory transportFactory,
@@ -118,6 +133,7 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
         allowedReadLocations,
         allowedListLocations,
         allowedWriteLocations,
+        parentFolderLocations,
         principalName,
         sourceCredentials,
         transportFactory,
