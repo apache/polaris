@@ -22,6 +22,9 @@ import java.net.URISyntaxException;
 import org.apache.polaris.core.storage.azure.AzureLocation;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public class StorageLocationTest {
 
@@ -107,5 +110,53 @@ public class StorageLocationTest {
               StorageLocation.of(specialCharsLocalStorage);
             })
         .hasCauseInstanceOf(URISyntaxException.class);
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "s3://bucket/a/b/file.avro, s3://bucket/a/b/",
+    "s3://bucket/a/b/, s3://bucket/a/",
+    "s3://bucket/file.avro, s3://bucket/",
+    // the last path segment equals the bucket name
+    "s3://b/b, s3://b/",
+    "s3a://bucket/a/file.avro, s3a://bucket/a/",
+    // S3 keys that are not valid URIs
+    "'s3://bucket/my dir/file{1}.avro', 's3://bucket/my dir/'",
+    "s3://bucket/a%b/file.avro, s3://bucket/a%b/",
+    // empty path segments are kept; only one trailing slash is ignored
+    "s3://bucket/a//file.avro, s3://bucket/a//",
+    "s3://bucket/a//, s3://bucket/a/",
+    "s3://bucket//, s3://bucket/",
+    "gs://bucket/a/file.avro, gs://bucket/a/",
+    "abfss://container@account.dfs.core.windows.net/a/file.avro, abfss://container@account.dfs.core.windows.net/a/",
+    "abfss://container@account.dfs.core.windows.net/file.avro, abfss://container@account.dfs.core.windows.net/",
+    "wasbs://container@account.blob.core.windows.net/a/b/, wasbs://container@account.blob.core.windows.net/a/",
+    "file:///tmp/a/file.avro, file:///tmp/a/",
+    "file:///tmp, file:///",
+    "/tmp/a/file.avro, file:///tmp/a/",
+  })
+  public void testParent(String location, String expectedParent) {
+    StorageLocation child = StorageLocation.of(location);
+    StorageLocation parent = child.parent().orElseThrow();
+
+    Assertions.assertThat(parent.toString()).isEqualTo(expectedParent);
+    Assertions.assertThat(parent).isExactlyInstanceOf(child.getClass());
+    Assertions.assertThat(child.isChildOf(parent)).isTrue();
+    Assertions.assertThat(parent.isSameLocation(child)).isFalse();
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "s3://bucket",
+        "s3://bucket/",
+        "gs://bucket/",
+        "abfss://container@account.dfs.core.windows.net",
+        "abfss://container@account.dfs.core.windows.net/",
+        "file:///",
+        "no-scheme/a/b",
+      })
+  public void testParentOfRootIsEmpty(String location) {
+    Assertions.assertThat(StorageLocation.of(location).parent()).isEmpty();
   }
 }
