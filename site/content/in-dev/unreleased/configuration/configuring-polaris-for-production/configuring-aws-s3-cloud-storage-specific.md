@@ -216,6 +216,10 @@ For AWS S3 and S3-compatible backends that expose the STS API (such as MinIO), l
 }
 ```
 
+For Dell ECS, set `roleArn` to the ECS role URN, for example
+`urn:ecs:iam::namespace:role/s3assumeRole`. Polaris sends this URN unchanged to STS, but uses
+`arn:aws:s3:::` for S3 bucket and object resources in the inline session policy, as required by ECS.
+
 For S3-compatible backends without STS (Apache Ozone S3 gateway, or Ceph RGW without STS enabled),
 set `stsUnavailable: true`. Polaris will then skip subscoped credential vending entirely, and the
 client must omit `X-Iceberg-Access-Delegation: vended-credentials` and authenticate to the object
