@@ -1721,11 +1721,41 @@ polaris setup apply setup-config.yaml
 
 #### export
 
-The `export` subcommand retrieves the current Polaris configuration and outputs it in a YAML format. This output is compatible with the apply subcommand, allowing you to easily back up, migrate, or recreate your Polaris environment.
+`polaris setup export` saves principals, roles, catalogs, and other Polaris resources as YAML.
+Use `polaris setup apply` to restore those resources or migrate them to another Polaris deployment.
 
-Exported policies are represented as a list with explicit `name` and `namespace` fields so policies with the same name in different namespaces are preserved. The `apply` subcommand also accepts the legacy policy mapping keyed by name, but that format cannot represent duplicate policy names because YAML mapping keys must be unique.
+Each exported policy has a `name` and `namespace`, so policies in different namespaces can share a name.
+The export omits policy attachments. Before running `polaris setup apply`, add an `attach` list
+to each policy you want to reattach. This example shows the `policies` section of a catalog
+with a policy attached to the `sales.orders` table.
 
-Tables and views are exported only when `--include-tables-and-views` is set. They are exported as lists of `{name, namespace, metadata_location}`, sorted by namespace and name. Staged tables within a transaction are skipped. Because each table and view is loaded individually, this can significantly increase export time for catalogs with many tables.
+```yaml
+policies:
+  - name: retention
+    namespace: [sales]
+    type: system.snapshot-expiry
+    content: '{"version":"2025-02-03","enable":true}'
+    attach:
+      - type: table-like
+        path: sales.orders
+        parameters:
+          owner: analytics
+```
+
+Include `parameters` only if the original attachment had them. For a `namespace` or `table-like`
+target, separate the names in `path` with periods. For a `catalog` target, omit `path`.
+
+`polaris setup apply` can also read older YAML files exported by Polaris 1.4.0 through 1.7.0
+that use policy names as keys.
+In that format, policy names must be unique within each catalog.
+
+Add `--include-tables-and-views` to export Iceberg table and view registrations from internal catalogs.
+Entries are sorted by namespace and name. Each contains `name`, `namespace`, and `metadata_location`.
+The CLI skips tables that have no committed metadata location yet, such as a table staged in an open
+transaction. It loads each table and view individually, which can take time in large catalogs.
+
+The export does not copy files. To register a table or view from the YAML, its metadata file must still
+be accessible at the recorded location. Reading a restored table also requires its manifests and data files.
 
 ```
 usage: polaris setup export [-h] [options]
