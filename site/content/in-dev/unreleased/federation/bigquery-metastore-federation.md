@@ -124,6 +124,30 @@ calls via service account impersonation:
 - `gcp.bigquery.impersonate.scopes`: OAuth scopes for the impersonated credential.
 - `gcp.bigquery.impersonate.delegates`: chain of delegate service accounts.
 
+## Connection properties
+
+`connectionConfigInfo.properties` holds settings for the BigQuery Metastore client that Polaris
+creates for the federated catalog. Unlike catalog-level `properties`, these values are visible only
+through the Management API and are never returned to catalog clients via `/v1/config`. Only the
+following keys are forwarded to Iceberg's `BigQueryMetastoreCatalog`; any other key is stored but
+ignored:
+
+| Key | Purpose |
+|-----|---------|
+| `gcp.bigquery.project-id` | GCP project that owns the datasets (required) |
+| `warehouse` | BigQuery dataset used as the default warehouse (required) |
+| `gcp.bigquery.location` | BigQuery location (region) of the datasets |
+| `gcp.bigquery.list-all-tables` | List every table in the dataset, not only Iceberg tables |
+| `gcp.bigquery.impersonate.service-account` | Target service account email |
+| `gcp.bigquery.impersonate.lifetime-seconds` | Lifetime of the impersonated credential |
+| `gcp.bigquery.impersonate.scopes` | OAuth scopes for the impersonated credential |
+| `gcp.bigquery.impersonate.delegates` | Chain of delegate service accounts |
+
+Connection properties take precedence over catalog-level `properties` when the same key is present.
+Implementation-selection keys such as `io-impl` and storage credential keys are not accepted as
+connection properties. Credentials for BigQuery and GCS come from Application Default Credentials
+as described above.
+
 ## Limitations and operational notes
 
 - **Single identity:** Because only `IMPLICIT` authentication is permitted, Polaris cannot mix
