@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.rest.Endpoint;
+import org.apache.iceberg.rest.RESTCatalogProperties;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
@@ -109,7 +110,7 @@ public class GetConfigTest {
   }
 
   @Test
-  public void testCatalogPropertiesReturnedWhenAuthorized() {
+  public void testGetConfigSucceedsWhenAuthorized() {
     TestServices services = TestServices.builder().config(baseConfig(Map.of())).build();
     String catalogName = createCatalog(services);
 
@@ -120,11 +121,11 @@ public class GetConfigTest {
     assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     ConfigResponse configResponse = response.readEntity(ConfigResponse.class);
 
-    assertThat(configResponse.defaults()).containsEntry("custom-property", "custom-value");
+    assertThat(configResponse.defaults()).doesNotContainKey("custom-property");
   }
 
   @Test
-  public void testCatalogPropertiesReturnedWhenEnforcementEnabled() {
+  public void testGetConfigSucceedsWhenEnforcementEnabled() {
     TestServices services =
         TestServices.builder()
             .config(baseConfig(Map.of("ENFORCE_CATALOG_CONFIG_AUTHORIZATION", true)))
@@ -138,7 +139,7 @@ public class GetConfigTest {
     assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     ConfigResponse configResponse = response.readEntity(ConfigResponse.class);
 
-    assertThat(configResponse.defaults()).containsEntry("custom-property", "custom-value");
+    assertThat(configResponse.defaults()).doesNotContainKey("custom-property");
   }
 
   @Test
@@ -159,7 +160,7 @@ public class GetConfigTest {
     assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     ConfigResponse configResponse = response.readEntity(ConfigResponse.class);
     assertThat(configResponse.overrides()).contains(Map.entry("prefix", catalogName));
-    assertThat(configResponse.defaults()).containsEntry("custom-property", "custom-value");
+    assertThat(configResponse.defaults()).doesNotContainKey("custom-property");
   }
 
   @Test
@@ -204,9 +205,33 @@ public class GetConfigTest {
         .containsExactly(PolarisAuthorizableOperation.GET_CATALOG_CONFIG);
   }
 
+  @Test
+  public void testIcebergDefaultsEmptyWhenCatalogKeysUnset() {
+    ConfigResponse configResponse = getConfig(Map.of(), Map.of("custom-property", "custom-value"));
+
+    assertThat(configResponse.defaults()).isEmpty();
+    assertThat(configResponse.overrides())
+        .containsKeys("prefix", RESTCatalogProperties.NAMESPACE_SEPARATOR);
+  }
+
+  @Test
+  public void testIcebergDefaultsOmitCatalogEntityProperties() {
+    ConfigResponse configResponse =
+        getConfig(Map.of(), Map.of(RESTCatalogProperties.PAGE_SIZE, "50"));
+
+    assertThat(configResponse.defaults()).isEmpty();
+    assertThat(configResponse.overrides())
+        .containsKeys("prefix", RESTCatalogProperties.NAMESPACE_SEPARATOR);
+  }
+
   private static ConfigResponse getConfig(Map<String, Object> extraConfig) {
+    return getConfig(extraConfig, Map.of("custom-property", "custom-value"));
+  }
+
+  private static ConfigResponse getConfig(
+      Map<String, Object> extraConfig, Map<String, String> extraCatalogProperties) {
     TestServices services = TestServices.builder().config(baseConfig(extraConfig)).build();
-    String catalogName = createCatalog(services);
+    String catalogName = createCatalog(services, extraCatalogProperties);
 
     Response response =
         services
@@ -227,13 +252,18 @@ public class GetConfigTest {
   }
 
   private static String createCatalog(TestServices services) {
+    return createCatalog(services, Map.of("custom-property", "custom-value"));
+  }
+
+  private static String createCatalog(
+      TestServices services, Map<String, String> extraCatalogProperties) {
     FileStorageConfigInfo fileStorage =
         FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
             .setAllowedLocations(List.of("file://"))
             .build();
     String catalogName = "test-catalog-" + UUID.randomUUID();
     CatalogProperties catalogProperties = new CatalogProperties("file:///tmp/path/to/data");
-    catalogProperties.put("custom-property", "custom-value");
+    extraCatalogProperties.forEach(catalogProperties::put);
     Catalog catalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)

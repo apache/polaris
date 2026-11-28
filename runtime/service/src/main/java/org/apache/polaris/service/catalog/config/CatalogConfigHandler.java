@@ -29,7 +29,6 @@ import jakarta.inject.Inject;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.rest.Endpoint;
@@ -43,8 +42,6 @@ import org.apache.polaris.core.auth.PolarisPrincipal;
 import org.apache.polaris.core.auth.SingleTargetAuthorizationIntent;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
@@ -105,23 +102,19 @@ public class CatalogConfigHandler {
     if (resolvedCatalog == null) {
       throw new NotFoundException("Unable to find warehouse %s", catalogName);
     }
-    PolarisBaseEntity catalogEntity = resolvedCatalog.getResolvedLeafEntity().getEntity();
-
     // GET_CATALOG_CONFIG is opt-in via ENFORCE_CATALOG_CONFIG_AUTHORIZATION (default false).
-    // When false, behavior matches the pre-authorization path so upgrades do not 403 bootstrap.
-    // When true, CATALOG_READ_CONFIG is required for the whole endpoint. A 200 still includes
-    // catalog properties (defaults) as it does today.
+    // When false, the endpoint is not authorization-gated so upgrades do not 403 bootstrap.
+    // When true, CATALOG_READ_CONFIG is required for the whole endpoint.
+    // Catalog entity properties are not copied into Iceberg defaults. prefix and
+    // namespace-separator stay in overrides. Pagination stays on LIST_PAGINATION_* server flags.
     boolean enforceAccessChecks =
         realmConfig.getConfig(FeatureConfiguration.ENFORCE_CATALOG_CONFIG_AUTHORIZATION);
     if (enforceAccessChecks) {
       authorizer.authorize(authorizationState, configAuthzRequest).throwIfDenied();
     }
 
-    Map<String, String> properties = PolarisEntity.of(catalogEntity).getPropertiesAsMap();
-
     ConfigResponse.Builder builder =
         ConfigResponse.builder()
-            .withDefaults(properties)
             .withOverrides(
                 ImmutableMap.of(
                     "prefix",
