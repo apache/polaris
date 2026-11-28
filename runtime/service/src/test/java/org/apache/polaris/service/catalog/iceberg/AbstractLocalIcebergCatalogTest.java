@@ -725,6 +725,95 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
   }
 
   @Test
+  public void commitWithRollbackEnabledReportsConflictOnTableWithoutSnapshots() {
+    Schema schema = new Schema(Types.NestedField.required(1, "id", Types.LongType.get()));
+    TableMetadata base =
+        TableMetadata.newTableMetadata(
+            schema, PartitionSpec.unpartitioned(), "file:///tmp/t", Map.of());
+    TableOperations ops = mock(TableOperations.class);
+    when(ops.current()).thenReturn(base);
+
+    // A stale requirement against a table that has no snapshot yet.
+    UpdateTableRequest request =
+        new UpdateTableRequest(
+            List.of(new UpdateRequirement.AssertCurrentSchemaID(base.currentSchemaId() + 1)),
+            List.of(new MetadataUpdate.SetProperties(Map.of("k", "v"))));
+    CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(5, true);
+
+    assertThatThrownBy(() -> catalogHandlerUtils.commit(ops, request))
+        .isInstanceOf(CommitFailedException.class)
+        .hasMessageContaining("Requirement failed: current schema changed");
+  }
+
+  @Test
+  public void commitWithRollbackEnabledReportsConflictOnConcurrentBranchCreation() {
+    LocalIcebergCatalog catalog = this.catalog();
+    if (this.requiresNamespaceCreate()) {
+      catalog.createNamespace(NS);
+    }
+
+    Table table = catalog.buildTable(TABLE, SCHEMA).withPartitionSpec(SPEC).create();
+    table.newFastAppend().appendFile(FILE_A).commit();
+    table.refresh();
+
+    // The client stages a snapshot on a branch that does not exist yet, so the request carries
+    // an AssertRefSnapshotID requirement without a snapshot id.
+    Snapshot s = table.newFastAppend().appendFile(FILE_B).toBranch("audit").apply();
+    TableMetadata base = ((BaseTable) catalog.loadTable(TABLE)).operations().current();
+    TableMetadata.Builder update = TableMetadata.buildFrom(base);
+    update.setBranchSnapshot(s, "audit");
+    List<MetadataUpdate> updates = update.build().changes();
+    UpdateTableRequest request =
+        UpdateTableRequest.create(TABLE, UpdateRequirements.forUpdateTable(base, updates), updates);
+
+    // Another writer creates the branch first.
+    Table concurrent = catalog.loadTable(TABLE);
+    concurrent
+        .manageSnapshots()
+        .createBranch("audit", concurrent.currentSnapshot().snapshotId())
+        .commit();
+
+    CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(5, true);
+    assertThatThrownBy(() ->
+            catalogHandlerUtils.commit(
+                ((BaseTable) catalog.loadTable(TABLE)).operations(), request))
+        .isInstanceOf(CommitFailedException.class)
+        .hasMessageContaining("branch audit was created concurrently");
+  }
+
+  @Test
+  public void commitWithRollbackEnabledReportsConflictOnConcurrentBranchRemoval() {
+    LocalIcebergCatalog catalog = this.catalog();
+    if (this.requiresNamespaceCreate()) {
+      catalog.createNamespace(NS);
+    }
+
+    Table table = catalog.buildTable(TABLE, SCHEMA).withPartitionSpec(SPEC).create();
+    table.newFastAppend().appendFile(FILE_A).commit();
+    table.manageSnapshots().createBranch("audit", table.currentSnapshot().snapshotId()).commit();
+    table.refresh();
+
+    // The client stages a snapshot on the existing branch.
+    Snapshot s = table.newFastAppend().appendFile(FILE_B).toBranch("audit").apply();
+    TableMetadata base = ((BaseTable) catalog.loadTable(TABLE)).operations().current();
+    TableMetadata.Builder update = TableMetadata.buildFrom(base);
+    update.setBranchSnapshot(s, "audit");
+    List<MetadataUpdate> updates = update.build().changes();
+    UpdateTableRequest request =
+        UpdateTableRequest.create(TABLE, UpdateRequirements.forUpdateTable(base, updates), updates);
+
+    // Another writer removes the branch first.
+    catalog.loadTable(TABLE).manageSnapshots().removeBranch("audit").commit();
+
+    CatalogHandlerUtils catalogHandlerUtils = new CatalogHandlerUtils(5, true);
+    assertThatThrownBy(() ->
+            catalogHandlerUtils.commit(
+                ((BaseTable) catalog.loadTable(TABLE)).operations(), request))
+        .isInstanceOf(CommitFailedException.class)
+        .hasMessageContaining("audit is missing");
+  }
+
+  @Test
   public void testConcurrentWritesWithRollbackWithNonReplaceSnapshotInBetween() {
     LocalIcebergCatalog catalog = this.catalog();
     if (this.requiresNamespaceCreate()) {
