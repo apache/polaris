@@ -3057,6 +3057,28 @@ public abstract class AbstractLocalIcebergCatalogTest extends CatalogTests<Local
         .hasMessageContaining("is not allowed outside of table location");
   }
 
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void testRegistrationRejectsExistingNamespaceName(boolean view) {
+    LocalIcebergCatalog catalog = catalog();
+    Namespace parent = Namespace.of("registration_parent");
+    catalog.createNamespace(parent);
+    catalog.createNamespace(Namespace.of("registration_parent", "registered"));
+    TableIdentifier identifier = TableIdentifier.of(parent, "registered");
+    String metadataLocation = STORAGE_LOCATION + "/registered/metadata/v1.metadata.json";
+
+    Assertions.assertThatThrownBy(
+            () -> {
+              if (view) {
+                catalog.registerView(identifier, metadataLocation);
+              } else {
+                catalog.registerTable(identifier, metadataLocation);
+              }
+            })
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessageContaining("Namespace with same name already exists");
+  }
+
   @Test
   public void testRegisterViewAllowsMetadataFileOutsideViewLocationWhenFlagEnabled() {
     updateCatalogProperties(

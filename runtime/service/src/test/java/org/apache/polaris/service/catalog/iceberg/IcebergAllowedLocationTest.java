@@ -60,6 +60,7 @@ import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.TableProperties;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
@@ -1502,10 +1503,17 @@ public class IcebergAllowedLocationTest {
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Invalid locations");
 
-    // The parent namespace contains the table's location, but so does the child namespace, which
-    // becomes the table's sibling. This holds even if the destination name equals the child
-    // namespace's name: tables and namespaces are distinct entities.
     TableIdentifier renamed = TableIdentifier.of(parent, destinationName);
+    if (destinationName.equals("child")) {
+      assertThatThrownBy(() -> renameTable(services, source, renamed))
+          .isInstanceOf(AlreadyExistsException.class)
+          .hasMessageContaining("Namespace with same name already exists");
+      newHandler(services).tableExists(source);
+      return;
+    }
+
+    // The parent and child namespaces both contain the table's location. The child becomes a
+    // sibling of the renamed table and creates a location overlap.
     if (allowOverlap) {
       renameTable(services, source, renamed);
       newHandler(services).tableExists(renamed);

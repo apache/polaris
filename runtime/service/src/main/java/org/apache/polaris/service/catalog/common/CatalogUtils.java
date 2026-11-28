@@ -23,19 +23,56 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.iceberg.exceptions.ServiceFailureException;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolvedPathKey;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 
 /** Utility methods for working with Polaris catalog entities. */
 public class CatalogUtils {
+
+  /** Checks for a sibling namespace or table-like entity of the opposite type. */
+  public static void checkSiblingName(
+      PolarisMetaStoreManager metaStoreManager,
+      PolarisCallContext context,
+      List<PolarisEntity> parentPath,
+      TableIdentifier identifier,
+      PolarisEntityType type) {
+    boolean creatingNamespace = type == PolarisEntityType.NAMESPACE;
+    var result =
+        metaStoreManager.readEntityByName(
+            context,
+            PolarisEntity.toCoreList(parentPath),
+            creatingNamespace ? PolarisEntityType.TABLE_LIKE : PolarisEntityType.NAMESPACE,
+            creatingNamespace
+                ? PolarisEntitySubType.ANY_SUBTYPE
+                : PolarisEntitySubType.NULL_SUBTYPE,
+            identifier.name());
+    if (result.isSuccess()) {
+      if (creatingNamespace) {
+        throw ExceptionUtils.alreadyExistsExceptionWithSameNameForTableLikeEntity(
+            identifier, PolarisEntitySubType.fromCode(result.getEntity().getSubTypeCode()));
+      }
+      throw new AlreadyExistsException("Namespace with same name already exists: %s", identifier);
+    }
+    if (result.getReturnStatus() != BaseResult.ReturnStatus.ENTITY_NOT_FOUND) {
+      throw new ServiceFailureException(
+          "Failed to check sibling name '%s'. Status: %s ExtraInfo: %s",
+          identifier, result.getReturnStatus(), result.getExtraInformation());
+    }
+  }
 
   /**
    * Find the resolved entity path that may contain storage information

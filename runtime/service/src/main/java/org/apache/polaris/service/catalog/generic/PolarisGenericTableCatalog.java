@@ -110,6 +110,12 @@ public class PolarisGenericTableCatalog implements GenericTableCatalog {
             ResolvedPathKey.ofTableLike(tableIdentifier), PolarisEntitySubType.ANY_SUBTYPE);
     PolarisEntity entity = resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity();
     if (null == entity) {
+      CatalogUtils.checkSiblingName(
+          metaStoreManager,
+          callContext.getPolarisCallContext(),
+          catalogPath,
+          tableIdentifier,
+          PolarisEntityType.TABLE_LIKE);
       boolean hasLocation = baseLocation != null && !baseLocation.isEmpty();
       if (hasLocation) {
         CatalogUtils.validateLocationsForTableLike(

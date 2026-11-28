@@ -431,6 +431,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           String.format("Failed to fetch resolved parent for TableIdentifier '%s'", identifier));
     }
 
+    checkTableLikeName(identifier, resolvedParent.getRawFullPath());
     validateLocationForTableLike(identifier, metadataFileLocation, resolvedParent);
 
     FileIO fileIO =
@@ -746,6 +747,13 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
       throw new NoSuchNamespaceException(
           "Cannot create namespace %s. Parent namespace does not exist.", namespace);
     }
+
+    CatalogUtils.checkSiblingName(
+        getMetaStoreManager(),
+        getCurrentPolarisContext(),
+        resolvedParent.getRawFullPath(),
+        TableIdentifier.of(parentNamespace, namespace.level(namespace.length() - 1)),
+        PolarisEntityType.NAMESPACE);
     createNamespaceInternal(namespace, metadata, resolvedParent);
   }
 
@@ -881,6 +889,15 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     } else {
       return location;
     }
+  }
+
+  private void checkTableLikeName(TableIdentifier identifier, List<PolarisEntity> parentPath) {
+    CatalogUtils.checkSiblingName(
+        getMetaStoreManager(),
+        getCurrentPolarisContext(),
+        parentPath,
+        identifier,
+        PolarisEntityType.TABLE_LIKE);
   }
 
   private PolarisResolvedPathWrapper getResolvedParentNamespace(Namespace namespace) {
@@ -1216,6 +1233,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
           String.format("Failed to fetch resolved parent for TableIdentifier '%s'", identifier));
     }
 
+    checkTableLikeName(identifier, resolvedParent.getRawFullPath());
     validateLocationForTableLike(identifier, metadataFileLocation, resolvedParent);
 
     FileIO fileIO =
@@ -2129,6 +2147,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                   .getRawFullPath()
               : resolvedTableEntities.getRawParentPath();
 
+      if (base == null) {
+        checkTableLikeName(tableIdentifier, resolvedNamespace);
+      }
+
       validateLocationsForTableLike(
           tableIdentifier, metadata.location(), locationsToValidate, resolvedStorageEntity);
 
@@ -2611,6 +2633,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
                   .getResolvedPath(ResolvedPathKey.ofNamespace(identifier.namespace()))
                   .getRawFullPath()
               : resolvedEntities.getRawParentPath();
+
+      if (base == null) {
+        checkTableLikeName(identifier, resolvedNamespace);
+      }
       Set<String> requestedLocations = StorageUtil.getLocationsUsedByTable(metadata);
       Set<String> locationsToValidate = new HashSet<>(requestedLocations);
       locationsToValidate.add(
@@ -2986,6 +3012,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
             "Cannot rename %s to %s. Namespace does not exist: %s", from, to, to.namespace());
       }
       newCatalogPath = resolvedNewParentEntities.getRawFullPath();
+      checkTableLikeName(to, newCatalogPath);
 
       validateLocationsForRenamedTableLike(
           subType,
@@ -3002,6 +3029,7 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               .setParentId(resolvedNewParentEntities.getResolvedLeafEntity().getEntity().getId())
               .build();
     } else {
+      checkTableLikeName(to, catalogPath);
       // only the name of the entity is changed
       toEntity =
           new IcebergTableLikeEntity.Builder(IcebergTableLikeEntity.of(leafEntity))

@@ -62,6 +62,7 @@ import org.apache.iceberg.catalog.CatalogTests;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableCommit;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
@@ -132,7 +133,9 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -1992,6 +1995,122 @@ public abstract class PolarisRestCatalogIntegrationBase extends CatalogTests<RES
     managementApi.updateCatalog(catalog, catalogProps);
 
     assertThatCode(() -> restCatalog.dropView(id)).doesNotThrowAnyException();
+  }
+
+  private enum SiblingKind {
+    TABLE("Table"),
+    VIEW("View"),
+    NAMESPACE("Namespace"),
+    GENERIC_TABLE("Generic table");
+
+    private final String displayName;
+
+    SiblingKind(String displayName) {
+      this.displayName = displayName;
+    }
+  }
+
+  static Stream<Arguments> siblingNameConflicts() {
+    return Arrays.stream(SiblingKind.values())
+        .flatMap(existing ->
+            Arrays.stream(SiblingKind.values())
+                .filter(requested -> requested != existing)
+                .map(requested -> Arguments.of(existing, requested)));
+  }
+
+  @ParameterizedTest
+  @MethodSource("siblingNameConflicts")
+  void testCreateRejectsNameOfDifferentSiblingKind(SiblingKind existing, SiblingKind requested) {
+    Namespace parent = Namespace.of("ns1");
+    TableIdentifier name = TableIdentifier.of(parent, "clash");
+    restCatalog.createNamespace(parent);
+    try {
+      createSibling(existing, name);
+      if (requested == SiblingKind.GENERIC_TABLE) {
+        try (Response response =
+            genericTableApi
+                .request(
+                    "polaris/v1/{cat}/namespaces/{ns}/generic-tables",
+                    Map.of("cat", currentCatalogName, "ns", "ns1"))
+                .post(
+                    Entity.json(
+                        CreateGenericTableRequest.builder()
+                            .setName(name.name())
+                            .setFormat("format")
+                            .build()))) {
+          assertThat(response.getStatus()).isEqualTo(Response.Status.CONFLICT.getStatusCode());
+          assertThat(response.readEntity(String.class)).contains(existing.displayName);
+        }
+      } else {
+        assertThatThrownBy(() -> createSibling(requested, name))
+            .isInstanceOf(AlreadyExistsException.class)
+            .hasMessageContaining("already exists")
+            .hasMessageContaining(existing.displayName);
+      }
+    } finally {
+      genericTableApi.purge(currentCatalogName, parent);
+    }
+  }
+
+  @Test
+  void testSameNameUnderDifferentParentIsAllowed() {
+    Namespace first = Namespace.of("first");
+    Namespace second = Namespace.of("second");
+    restCatalog.createNamespace(first);
+    restCatalog.createNamespace(second);
+    Namespace child = Namespace.of("first", "shared");
+    restCatalog.createNamespace(child);
+
+    TableIdentifier table = TableIdentifier.of(second, "shared");
+    createSibling(SiblingKind.TABLE, table);
+    assertThat(restCatalog.tableExists(table)).isTrue();
+    assertThat(restCatalog.namespaceExists(child)).isTrue();
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = SiblingKind.class,
+      names = {"TABLE", "VIEW"})
+  void testRenameRejectsNamespaceNameInSameParent(SiblingKind kind) {
+    Namespace parent = Namespace.of("ns1");
+    TableIdentifier source = TableIdentifier.of(parent, "source");
+    TableIdentifier target = TableIdentifier.of(parent, "clash");
+    restCatalog.createNamespace(parent);
+    restCatalog.createNamespace(Namespace.of("ns1", "clash"));
+    createSibling(kind, source);
+
+    if (kind == SiblingKind.TABLE) {
+      assertThatThrownBy(() -> restCatalog.renameTable(source, target))
+          .isInstanceOf(AlreadyExistsException.class)
+          .hasMessageContaining("Namespace with same name already exists");
+      assertThat(restCatalog.tableExists(source)).isTrue();
+    } else {
+      assertThatThrownBy(() -> restCatalog.renameView(source, target))
+          .isInstanceOf(AlreadyExistsException.class)
+          .hasMessageContaining("Namespace with same name already exists");
+      assertThat(restCatalog.viewExists(source)).isTrue();
+    }
+  }
+
+  private void createSibling(SiblingKind kind, TableIdentifier identifier) {
+    switch (kind) {
+      case TABLE -> restCatalog.buildTable(identifier, SCHEMA).create();
+      case VIEW ->
+          restCatalog
+              .buildView(identifier)
+              .withSchema(SCHEMA)
+              .withDefaultNamespace(identifier.namespace())
+              .withQuery("spark", VIEW_QUERY)
+              .create();
+      case NAMESPACE -> {
+        String[] levels =
+            Arrays.copyOf(identifier.namespace().levels(), identifier.namespace().length() + 1);
+        levels[levels.length - 1] = identifier.name();
+        restCatalog.createNamespace(Namespace.of(levels));
+      }
+      case GENERIC_TABLE ->
+          genericTableApi.createGenericTable(currentCatalogName, identifier, "format", Map.of());
+    }
   }
 
   @Test
