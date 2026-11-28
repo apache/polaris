@@ -55,10 +55,6 @@ val intTestJvmVersion = 21
 dependencies {
   polarisServer(project(path = ":polaris-server", configuration = "quarkusRunner"))
 
-  // TODO: extract a polaris-rest module as a thin layer for
-  //  client to depends on.
-  implementation(project(":polaris-core")) { isTransitive = false }
-
   implementation(
     "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}",
   )
