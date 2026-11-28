@@ -132,8 +132,8 @@ public abstract class PolarisSparkIntegrationTestBase {
         .addCatalog(catalogName, "org.apache.iceberg.spark.SparkCatalog", endpoints, sparkToken)
         .addCatalog(
             externalCatalogName, "org.apache.iceberg.spark.SparkCatalog", endpoints, sparkToken)
-        .withCatalogProperties(catalogName, s3Container.getS3ConfigProperties())
-        .withCatalogProperties(externalCatalogName, s3Container.getS3ConfigProperties())
+        .withCatalogProperties(catalogName, s3Container.getS3ClientConfigProperties())
+        .withCatalogProperties(externalCatalogName, s3Container.getS3ClientConfigProperties())
         .getOrCreate();
   }
 

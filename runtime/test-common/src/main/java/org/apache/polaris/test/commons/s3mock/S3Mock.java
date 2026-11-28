@@ -52,6 +52,16 @@ public class S3Mock {
     s3Mock.stop();
   }
 
+  /** FileIO keys for Spark / Iceberg clients talking to this S3Mock. */
+  public Map<String, String> getS3ClientConfigProperties() {
+    String endpoint = this.s3Mock.getHttpEndpoint();
+    return Map.of(
+        "s3.endpoint", endpoint,
+        "s3.path-style-access", "true",
+        "s3.access-key-id", DEFAULT_ACCESS_KEY,
+        "s3.secret-access-key", DEFAULT_SECRET_KEY);
+  }
+
   public Map<String, String> getS3ConfigProperties() {
     String endpoint = this.s3Mock.getHttpEndpoint();
     return Map.of(

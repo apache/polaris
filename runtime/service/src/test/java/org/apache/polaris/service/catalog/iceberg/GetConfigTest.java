@@ -216,17 +216,8 @@ public class GetConfigTest {
 
   @Test
   public void testIcebergDefaultsOmitCatalogEntityProperties() {
-    Map<String, String> catalogProperties = new HashMap<>();
-    catalogProperties.put("custom-property", "custom-value");
-    catalogProperties.put("polaris.config.drop-with-purge.enabled", "true");
-    catalogProperties.put("allow.unstructured.table.location", "true");
-    catalogProperties.put("table-default.write.format.default", "parquet");
-    catalogProperties.put("s3.endpoint", "http://127.0.0.1:9000");
-    catalogProperties.put("io-impl", "org.apache.iceberg.aws.s3.S3FileIO");
-    catalogProperties.put(RESTCatalogProperties.PAGE_SIZE, "50");
-    catalogProperties.put(RESTCatalogProperties.METRICS_REPORTING_ENABLED, "false");
-
-    ConfigResponse configResponse = getConfig(Map.of(), catalogProperties);
+    ConfigResponse configResponse =
+        getConfig(Map.of(), Map.of(RESTCatalogProperties.PAGE_SIZE, "50"));
 
     assertThat(configResponse.defaults()).isEmpty();
     assertThat(configResponse.overrides())

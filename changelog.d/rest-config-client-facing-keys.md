@@ -10,6 +10,7 @@
 ### Upgrade notes
 
 - Iceberg REST `GET /v1/config` `defaults` no longer copy catalog entity properties. `prefix` and
-  `namespace-separator` remain in `overrides`. Set client FileIO keys such as `s3.endpoint` on the
-  Spark or Iceberg client until storage configuration can advertise them. `table-default.*` stays
-  off this endpoint; Polaris still applies those defaults when a table is created.
+  `namespace-separator` remain in `overrides`. Catalog-level FileIO keys such as `s3.endpoint` are
+  not advertised here; credential vending still sets them from storage configuration.
+  `table-default.*` stays off this endpoint; Polaris still applies those defaults when a table is
+  created.

@@ -26,7 +26,6 @@ import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Instance.Handle;
 import jakarta.inject.Inject;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -116,7 +115,6 @@ public class CatalogConfigHandler {
 
     ConfigResponse.Builder builder =
         ConfigResponse.builder()
-            .withDefaults(Collections.emptyMap())
             .withOverrides(
                 ImmutableMap.of(
                     "prefix",
