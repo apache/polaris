@@ -21,7 +21,10 @@ package org.apache.polaris.service.exception;
 import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.InvalidDefinitionException;
+import com.fasterxml.jackson.databind.exc.InvalidTypeIdException;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.ws.rs.core.MediaType;
@@ -31,6 +34,8 @@ import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 import java.util.Locale;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +47,8 @@ public class IcebergJsonProcessingExceptionMapper
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(IcebergJsonProcessingExceptionMapper.class);
+  private static final Pattern MISSING_REQUIRED_PROPERTY =
+      Pattern.compile("^Missing required creator property '([^']+)'");
 
   @Override
   public Response toResponse(JsonProcessingException exception) {
@@ -76,13 +83,7 @@ public class IcebergJsonProcessingExceptionMapper
     LOGGER.info("Unable to process JSON: {}", exception.getMessage());
     getLoggerForExceptionLogging().debug("Full JsonProcessingException", exception);
 
-    String messagePrefix =
-        switch (exception) {
-          case JsonParseException e -> "Invalid JSON: ";
-          case ValueInstantiationException ve -> "Invalid value: ";
-          default -> "";
-        };
-    final String message = messagePrefix + exception.getOriginalMessage();
+    final String message = clientMessage(exception);
     ErrorResponse icebergErrorResponse =
         ErrorResponse.builder()
             .responseCode(Status.BAD_REQUEST.getStatusCode())
@@ -93,6 +94,48 @@ public class IcebergJsonProcessingExceptionMapper
         .type(MediaType.APPLICATION_JSON_TYPE)
         .entity(icebergErrorResponse)
         .build();
+  }
+
+  /**
+   * Builds the message returned to the client. Jackson's own messages for a body that does not
+   * match the target model name Java types, model classes and the accepted polymorphic subtypes,
+   * which are internal detail; the client only needs the property and what is wrong with it. The
+   * full exception stays in the debug log above.
+   */
+  private static String clientMessage(JsonProcessingException exception) {
+    return switch (exception) {
+      case JsonParseException e -> "Invalid JSON: " + e.getOriginalMessage();
+      case ValueInstantiationException e -> "Invalid value: " + e.getOriginalMessage();
+      case InvalidTypeIdException e ->
+          "Invalid value: unknown type id '" + e.getTypeId() + "'" + forProperty(e);
+      case MismatchedInputException e -> {
+        Matcher missing = MISSING_REQUIRED_PROPERTY.matcher(e.getOriginalMessage());
+        if (missing.find()) {
+          yield "Invalid value: missing required property '" + missing.group(1) + "'";
+        }
+        String property = forProperty(e);
+        yield property.isEmpty()
+            ? "Invalid value: request body does not match the expected structure"
+            : "Invalid value" + property;
+      }
+      default -> exception.getOriginalMessage();
+    };
+  }
+
+  /** The JSON path of the offending property, built from field names and indices only. */
+  private static String forProperty(JsonMappingException exception) {
+    StringBuilder path = new StringBuilder();
+    for (JsonMappingException.Reference reference : exception.getPath()) {
+      if (reference.getFieldName() != null) {
+        if (!path.isEmpty()) {
+          path.append('.');
+        }
+        path.append(reference.getFieldName());
+      } else if (reference.getIndex() >= 0) {
+        path.append('[').append(reference.getIndex()).append(']');
+      }
+    }
+    return path.isEmpty() ? "" : " for property '" + path + "'";
   }
 
   /**

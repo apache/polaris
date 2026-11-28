@@ -25,4 +25,4 @@ build:
 
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
-| `polaris.file-io.type` |  | `string` | The type of the catalog IO to use. Must be a registered (`org.apache.polaris.service.catalog.io.FileIOFactory`) identifier.  |
+| `polaris.file-io.type` |  | `string` | The type of the catalog IO to use. Must be a registered (`org.apache.polaris.service.catalog.io.FileIOFactory`) identifier. |

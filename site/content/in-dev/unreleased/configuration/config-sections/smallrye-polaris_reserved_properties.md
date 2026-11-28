@@ -23,5 +23,5 @@ build:
   render: never
 ---
 
-Used to track entity properties reserved for use by the catalog. These properties may not be  overridden by the end user.
+Used to track entity properties reserved for use by the catalog. These properties may not be overridden by the end user.
 

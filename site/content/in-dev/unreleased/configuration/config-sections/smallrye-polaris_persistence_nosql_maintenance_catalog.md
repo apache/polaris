@@ -23,24 +23,24 @@ build:
   render: never
 ---
 
-No SQL persistence implementation of Polaris stores a history of changes per kind of object  (principals, principal roles, grants, immediate tasks, catalog roles and catalog state).  
+No SQL persistence implementation of Polaris stores a history of changes per kind of object (principals, principal roles, grants, immediate tasks, catalog roles and catalog state). 
 
-The rules are defined using a [CEL  script ](https://github.com/projectnessie/cel-java/). The default rules for all kinds of objects are to retain the history for 3 days, for  the catalog state for 30 days.   
+The rules are defined using a [CEL script](https://github.com/projectnessie/cel-java/). The default rules for all kinds of objects are to retain the history for 3 days, for the catalog state for 30 days. 
 
-The scripts have access to the following declared values:   
+The scripts have access to the following declared values: 
 
- * `ref` (string) name of the reference    
+ * `ref` (string) name of the reference 
  * `commits` (64-bit int) number of the currently processed commit, starting at `1` 
- * `ageDays` (64-bit int) age of currently processed commit in days    
- * `ageHours` (64-bit int) age of currently processed commit in hours    
- * `ageMinutes` (64-bit int) age of currently processed commit in minutes  
+ * `ageDays` (64-bit int) age of currently processed commit in days 
+ * `ageHours` (64-bit int) age of currently processed commit in hours 
+ * `ageMinutes` (64-bit int) age of currently processed commit in minutes 
 
-Scripts _must_ return a `boolean` yielding whether the commit shall be retained.  Note that maintenance-service implementations can keep the first not-to-be-retained commit.   
+Scripts _must_ return a `boolean` yielding whether the commit shall be retained. Note that maintenance-service implementations can keep the first not-to-be-retained commit. 
 
-Example scripts   
+Example scripts 
 
- * `ageDays < 30 || commits <= 10` retains the reference history with at least 10        commits and commits that are younger than 30 days    
- * `true` retains the whole reference history    
+ * `ageDays < 30 || commits <= 10` retains the reference history with at least 10 commits and commits that are younger than 30 days 
+ * `true` retains the whole reference history 
  * `false` retains the most recent commit
 
 | Property | Default Value | Type | Description |

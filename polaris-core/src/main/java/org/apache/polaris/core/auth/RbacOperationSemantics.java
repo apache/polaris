@@ -86,6 +86,7 @@ import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_PRI
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_SEMANTIC_MODEL;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_TABLE;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_TABLES;
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_TABLE_METRICS;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_VIEW;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LIST_VIEWS;
 import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.LOAD_NAMESPACE_METADATA;
@@ -219,6 +220,7 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_LIST;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_DATA;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_LINEAGE;
+import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_METRICS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_PARTITION_SPECS;
 import static org.apache.polaris.core.entity.PolarisPrivilege.TABLE_REMOVE_PROPERTIES;
@@ -356,6 +358,7 @@ record RbacOperationSemantics(
 
     // Metrics and notifications
     register(REPORT_READ_METRICS, TABLE_READ_DATA);
+    register(LIST_TABLE_METRICS, TABLE_READ_METRICS);
     register(REPORT_WRITE_METRICS, TABLE_WRITE_DATA);
     register(
         SEND_NOTIFICATIONS,

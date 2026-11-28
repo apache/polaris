@@ -20,6 +20,7 @@ package org.apache.polaris.service.exception;
 
 import com.azure.core.exception.AzureException;
 import com.azure.core.exception.HttpResponseException;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.cloud.BaseServiceException;
 import com.google.cloud.storage.StorageException;
 import com.google.common.annotations.VisibleForTesting;
@@ -81,6 +82,8 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
           IcebergExceptionMapper.UNKNOWN_CLOUD_HTTP_CODE);
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergExceptionMapper.class);
+  private final IcebergJsonProcessingExceptionMapper jsonProcessingExceptionMapper =
+      new IcebergJsonProcessingExceptionMapper();
 
   // Case-insensitive parts of exception messages that a request to a cloud provider was denied due
   // to lack of permissions
@@ -92,6 +95,17 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   @Override
   public Response toResponse(RuntimeException runtimeException) {
     LOGGER.info("Handling runtimeException {}", runtimeException.getMessage());
+
+    // The Quarkus Jackson body reader wraps a JSON failure while reading the request body in a
+    // bare WebApplicationException with status 400, which would otherwise be answered with
+    // "HTTP 400 Bad Request" and no detail. Unwrap that case so the response names the problem,
+    // as it does when the JSON mapper is reached directly. Other statuses are left alone: a JSON
+    // failure wrapped on the response-writing path is not the client's fault.
+    if (runtimeException instanceof WebApplicationException webApplicationException
+        && webApplicationException.getResponse().getStatus() == Status.BAD_REQUEST.getStatusCode()
+        && runtimeException.getCause() instanceof JsonProcessingException jsonException) {
+      return jsonProcessingExceptionMapper.toResponse(jsonException);
+    }
 
     int responseCode = mapExceptionToResponseCode(runtimeException);
     if (responseCode == Status.INTERNAL_SERVER_ERROR.getStatusCode()) {

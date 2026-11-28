@@ -54,7 +54,7 @@ public class TestDocGenTool {
             """
             | Property | Description |
             |----------|-------------|
-            | `property.one` | A property. "111" is the default value.   <br><br>Some text there. |
+            | `property.one` | A property. "111" is the default value. <br><br>Some text there. |
             | `property.four` | Four.  |
             """);
     soft.assertThat(filePropsA)
@@ -64,7 +64,7 @@ public class TestDocGenTool {
             """
             | Property | Description |
             |----------|-------------|
-            | `property.three` | Some (`value two`) more (`one two three`). <br><br> * foo    <br> * bar    <br> * baz  <br><br>blah   <br><br> * FOO    <br> * BAR    <br> * BAZ  <br><br> * foo    <br> * bar    <br> * baz  <br><br> |
+            | `property.three` | Some (`value two`) more (`one two three`). <br><br> * foo <br> * bar <br> * baz <br><br>blah <br><br> * FOO <br> * BAR <br> * BAZ <br><br> * foo <br> * bar <br> * baz <br><br> |
             """);
     soft.assertThat(filePropsB)
         .isRegularFile()
@@ -73,7 +73,7 @@ public class TestDocGenTool {
             """
             | Property | Description |
             |----------|-------------|
-            | `property.two` | Some summary for checkstyle. <br><br>Another property, need some words to cause a line break in the value tag here "111" for testing.   <br><br>Some text there.<br><br>_Deprecated_ this is deprecated because of (`property.three`). |
+            | `property.two` | Some summary for checkstyle. <br><br>Another property, need some words to cause a line break in the value tag here "111" for testing. <br><br>Some text there.<br><br>_Deprecated_ this is deprecated because of (`property.three`). |
             | `property.five` | Five.  |
             """);
 
@@ -89,14 +89,14 @@ public class TestDocGenTool {
             """
             The docs for `my.prefix`.\s
 
-             * Some   \s
-             * unordered   \s
-             * list \s
+             * Some\s
+             * unordered\s
+             * list\s
 
-            Some more text.  \s
+            Some more text.\s
 
-             1. one   \s
-             1. two   \s
+             1. one\s
+             1. two\s
              1. three
 
             | Property | Default Value | Type | Description |
@@ -105,7 +105,7 @@ public class TestDocGenTool {
             | `my.prefix.some-duration` |  | `duration` | A duration of something.  |
             | `my.prefix.nested.other-int` |  | `int` |  |
             | `my.prefix.nested.boxed-double` |  | `double` | <br><br>_Deprecated_  |
-            | `my.prefix.list-of-strings` |  | `list of string` | Example & < > "   € ® ©. <br><br> * ` session-iam-statements[0]= {"Effect":"Allow", "Action":"s3:*", "Resource":"arn:aws:s3:::*/alwaysAllowed/*"}        ` <br> * ` session-iam-statements[1]= {"Effect":"Deny", "Action":"s3:*", "Resource":"arn:aws:s3:::*/blocked/*"}        ` <br><br> |
+            | `my.prefix.list-of-strings` |  | `list of string` | Example & < > "   € ® ©. <br><br> * ` session-iam-statements[0]={"Effect":"Allow", "Action":"s3:*", "Resource":"arn:aws:s3:::*/alwaysAllowed/*"} ` <br> * ` session-iam-statements[1]={"Effect":"Deny", "Action":"s3:*", "Resource":"arn:aws:s3:::*/blocked/*"} ` <br><br> |
             | `my.prefix.some-int-thing` |  | `int` | Something int-ish.  |
             """);
     soft.assertThat(fileMyTypes)
@@ -156,19 +156,19 @@ public class TestDocGenTool {
             | `my.types.mapped-a.some-duration` |  | `duration` | A duration of something.  |
             | `my.types.mapped-a.nested.other-int` |  | `int` |  |
             | `my.types.mapped-a.nested.boxed-double` |  | `double` | <br><br>_Deprecated_  |
-            | `my.types.mapped-a.list-of-strings` |  | `list of string` | Example & < > "   € ® ©. <br><br> * ` session-iam-statements[0]= {"Effect":"Allow", "Action":"s3:*", "Resource":"arn:aws:s3:::*/alwaysAllowed/*"}        ` <br> * ` session-iam-statements[1]= {"Effect":"Deny", "Action":"s3:*", "Resource":"arn:aws:s3:::*/blocked/*"}        ` <br><br> |
+            | `my.types.mapped-a.list-of-strings` |  | `list of string` | Example & < > "   € ® ©. <br><br> * ` session-iam-statements[0]={"Effect":"Allow", "Action":"s3:*", "Resource":"arn:aws:s3:::*/alwaysAllowed/*"} ` <br> * ` session-iam-statements[1]={"Effect":"Deny", "Action":"s3:*", "Resource":"arn:aws:s3:::*/blocked/*"} ` <br><br> |
             | `my.types.mapped-a.some-int-thing` |  | `int` | Something int-ish.  |
             | `my.types.optional-mapped-a.some-weird-name` | `some-default` | `string` | Something that configures something.  |
             | `my.types.optional-mapped-a.some-duration` |  | `duration` | A duration of something.  |
             | `my.types.optional-mapped-a.nested.other-int` |  | `int` |  |
             | `my.types.optional-mapped-a.nested.boxed-double` |  | `double` | <br><br>_Deprecated_  |
-            | `my.types.optional-mapped-a.list-of-strings` |  | `list of string` | Example & < > "   € ® ©. <br><br> * ` session-iam-statements[0]= {"Effect":"Allow", "Action":"s3:*", "Resource":"arn:aws:s3:::*/alwaysAllowed/*"}        ` <br> * ` session-iam-statements[1]= {"Effect":"Deny", "Action":"s3:*", "Resource":"arn:aws:s3:::*/blocked/*"}        ` <br><br> |
+            | `my.types.optional-mapped-a.list-of-strings` |  | `list of string` | Example & < > "   € ® ©. <br><br> * ` session-iam-statements[0]={"Effect":"Allow", "Action":"s3:*", "Resource":"arn:aws:s3:::*/alwaysAllowed/*"} ` <br> * ` session-iam-statements[1]={"Effect":"Deny", "Action":"s3:*", "Resource":"arn:aws:s3:::*/blocked/*"} ` <br><br> |
             | `my.types.optional-mapped-a.some-int-thing` |  | `int` | Something int-ish.  |
             | `my.types.map-string-mapped-a.`_`<mappy>`_`.some-weird-name` | `some-default` | `string` | Something that configures something.  |
             | `my.types.map-string-mapped-a.`_`<mappy>`_`.some-duration` |  | `duration` | A duration of something.  |
             | `my.types.map-string-mapped-a.`_`<mappy>`_`.nested.other-int` |  | `int` |  |
             | `my.types.map-string-mapped-a.`_`<mappy>`_`.nested.boxed-double` |  | `double` | <br><br>_Deprecated_  |
-            | `my.types.map-string-mapped-a.`_`<mappy>`_`.list-of-strings` |  | `list of string` | Example & < > "   € ® ©. <br><br> * ` session-iam-statements[0]= {"Effect":"Allow", "Action":"s3:*", "Resource":"arn:aws:s3:::*/alwaysAllowed/*"}        ` <br> * ` session-iam-statements[1]= {"Effect":"Deny", "Action":"s3:*", "Resource":"arn:aws:s3:::*/blocked/*"}        ` <br><br> |
+            | `my.types.map-string-mapped-a.`_`<mappy>`_`.list-of-strings` |  | `list of string` | Example & < > "   € ® ©. <br><br> * ` session-iam-statements[0]={"Effect":"Allow", "Action":"s3:*", "Resource":"arn:aws:s3:::*/alwaysAllowed/*"} ` <br> * ` session-iam-statements[1]={"Effect":"Deny", "Action":"s3:*", "Resource":"arn:aws:s3:::*/blocked/*"} ` <br><br> |
             | `my.types.map-string-mapped-a.`_`<mappy>`_`.some-int-thing` |  | `int` | Something int-ish.  |
             | `my.types.some-duration` |  | `duration` | A duration of something.  |
             | `my.types.config-option-foo` |  | `string` | Something that configures something.  |
@@ -217,7 +217,7 @@ public class TestDocGenTool {
             | `my.types.map.py.`_`<name>`_`.some-duration` |  | `duration` | A duration of something.  |
             | `my.types.map.py.`_`<name>`_`.nested.other-int` |  | `int` |  |
             | `my.types.map.py.`_`<name>`_`.nested.boxed-double` |  | `double` | <br><br>_Deprecated_  |
-            | `my.types.map.py.`_`<name>`_`.list-of-strings` |  | `list of string` | Example & < > "   € ® ©. <br><br> * ` session-iam-statements[0]= {"Effect":"Allow", "Action":"s3:*", "Resource":"arn:aws:s3:::*/alwaysAllowed/*"}        ` <br> * ` session-iam-statements[1]= {"Effect":"Deny", "Action":"s3:*", "Resource":"arn:aws:s3:::*/blocked/*"}        ` <br><br> |
+            | `my.types.map.py.`_`<name>`_`.list-of-strings` |  | `list of string` | Example & < > "   € ® ©. <br><br> * ` session-iam-statements[0]={"Effect":"Allow", "Action":"s3:*", "Resource":"arn:aws:s3:::*/alwaysAllowed/*"} ` <br> * ` session-iam-statements[1]={"Effect":"Deny", "Action":"s3:*", "Resource":"arn:aws:s3:::*/blocked/*"} ` <br><br> |
             | `my.types.map.py.`_`<name>`_`.some-int-thing` |  | `int` | Something int-ish.  |
             """);
 

@@ -22,6 +22,7 @@ import static org.apache.polaris.persistence.nosql.cassandra.CassandraBackendCon
 import static org.apache.polaris.persistence.nosql.cassandra.CassandraBackendConfig.DEFAULT_DML_TIMEOUT;
 import static org.apache.polaris.persistence.nosql.cassandra.CassandraBackendConfig.DEFAULT_KEYSPACE;
 
+import com.datastax.oss.driver.api.core.DefaultConsistencyLevel;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
@@ -138,6 +139,31 @@ public interface CassandraConfiguration {
   /** The named Quarkus TLS Registry configuration to use for TLS or mTLS. */
   Optional<String> tlsConfigurationName();
 
+  /**
+   * Consistency for object reads, writes, and backend scans, and for the commit phase of
+   * conditional mutations. Reference reads use {@link #serialConsistencyLevel()} instead. Supported
+   * values are {@code LOCAL_QUORUM}, {@code QUORUM}, and {@code ALL}; weaker levels do not ensure
+   * quorum overlap.
+   *
+   * <p>All Polaris instances accessing a realm must use compatible consistency settings. The
+   * default serial consistency confines Paxos to the local data center; selecting {@code SERIAL}
+   * alone does not establish support for writers in multiple data centers.
+   */
+  @WithDefault("LOCAL_QUORUM")
+  DefaultConsistencyLevel consistencyLevel();
+
+  /**
+   * Consistency for reference reads and the Paxos phase of conditional mutations: {@code
+   * LOCAL_SERIAL} or {@code SERIAL}. Reference reads resolve unfinished Paxos proposals before
+   * returning.
+   *
+   * <p>All Polaris instances accessing a realm must use compatible consistency settings. The
+   * default serial consistency confines Paxos to the local data center; selecting {@code SERIAL}
+   * alone does not establish support for writers in multiple data centers.
+   */
+  @WithDefault("LOCAL_SERIAL")
+  DefaultConsistencyLevel serialConsistencyLevel();
+
   /** Timeout used when creating tables. */
   @WithDefault(DEFAULT_DDL_TIMEOUT)
   @JsonFormat(shape = JsonFormat.Shape.STRING)
@@ -177,6 +203,18 @@ public interface CassandraConfiguration {
     @Value.Default
     default Map<String, String> driverOptions() {
       return Map.of();
+    }
+
+    @Override
+    @Value.Default
+    default DefaultConsistencyLevel consistencyLevel() {
+      return DefaultConsistencyLevel.LOCAL_QUORUM;
+    }
+
+    @Override
+    @Value.Default
+    default DefaultConsistencyLevel serialConsistencyLevel() {
+      return DefaultConsistencyLevel.LOCAL_SERIAL;
     }
 
     @Override
