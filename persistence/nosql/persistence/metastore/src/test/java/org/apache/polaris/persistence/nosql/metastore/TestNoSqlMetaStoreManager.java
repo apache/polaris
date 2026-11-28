@@ -39,6 +39,7 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Proxy;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -186,8 +187,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
   @Test
   public void rejectsPaginationTokenWhenReferencedSnapshotDoesNotExist() {
     var noSqlToken =
-        NoSqlPaginationToken.paginationToken(
-            objRef(CatalogsObj.TYPE, Long.MAX_VALUE), key("catalog"));
+        NoSqlPaginationToken.paginationToken(objRef(CatalogsObj.TYPE, Long.MAX_VALUE), 42L);
     var responsePage = Page.page(PageToken.fromLimit(1), List.of("catalog"), noSqlToken);
     var pageToken = PageToken.build(responsePage.encodedResponseToken(), null, -1, () -> true);
 
@@ -195,6 +195,83 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
         .isThrownBy(() ->
             metaStore.listFullEntities(callContext, List.of(), CATALOG, NULL_SUBTYPE, pageToken))
         .withMessage("Invalid or expired NoSQL pagination token");
+  }
+
+  @Test
+  public void rejectsPaginationTokenWhenReferencedEntityDoesNotExist() {
+    createPrincipalRoles("unknownEntityRoleA", "unknownEntityRoleB");
+    var firstPage =
+        metaStore.listFullEntities(
+            callContext,
+            List.of(),
+            PolarisEntityType.PRINCIPAL_ROLE,
+            NULL_SUBTYPE,
+            PageToken.fromLimit(1));
+    var containerObjRef =
+        PageToken.build(firstPage.encodedResponseToken(), null, -1, () -> true)
+            .valueAs(NoSqlPaginationToken.class)
+            .orElseThrow()
+            .containerObjRef();
+
+    // The snapshot exists, but no entity in it has this ID.
+    var noSqlToken = NoSqlPaginationToken.paginationToken(containerObjRef, -1L);
+    var responsePage = Page.page(PageToken.fromLimit(1), List.of(), noSqlToken);
+    var pageToken = PageToken.build(responsePage.encodedResponseToken(), null, -1, () -> true);
+
+    assertThatIllegalArgumentException()
+        .isThrownBy(() ->
+            metaStore.listFullEntities(
+                callContext, List.of(), PolarisEntityType.PRINCIPAL_ROLE, NULL_SUBTYPE, pageToken))
+        .withMessage("Invalid or expired NoSQL pagination token");
+  }
+
+  @Test
+  public void paginationResumesFromEntityId() {
+    createPrincipalRoles("paginationRoleA", "paginationRoleB");
+    var expected =
+        metaStore
+            .listFullEntities(
+                callContext,
+                List.of(),
+                PolarisEntityType.PRINCIPAL_ROLE,
+                NULL_SUBTYPE,
+                PageToken.readEverything())
+            .items()
+            .stream()
+            .map(PolarisBaseEntity::getName)
+            .toList();
+
+    var paged = new ArrayList<String>();
+    var pages = 0;
+    var request = PageToken.fromLimit(1);
+    while (true) {
+      var page =
+          metaStore.listFullEntities(
+              callContext, List.of(), PolarisEntityType.PRINCIPAL_ROLE, NULL_SUBTYPE, request);
+      pages++;
+      page.items().forEach(entity -> paged.add(entity.getName()));
+      if (page.encodedResponseToken() == null) {
+        break;
+      }
+      request = PageToken.build(page.encodedResponseToken(), null, -1, () -> true);
+    }
+    assertThat(paged).containsExactlyElementsOf(expected);
+    // One entity per page, so every page but the last resumed from a token.
+    assertThat(pages).isEqualTo(expected.size());
+  }
+
+  private void createPrincipalRoles(String... names) {
+    for (var name : names) {
+      var role =
+          new PolarisBaseEntity(
+              PolarisEntityConstants.getNullId(),
+              metaStore.generateNewEntityId(callContext).getId(),
+              PolarisEntityType.PRINCIPAL_ROLE,
+              PolarisEntitySubType.NULL_SUBTYPE,
+              PolarisEntityConstants.getRootEntityId(),
+              name);
+      assertThat(metaStore.createEntityIfNotExists(callContext, null, role).isSuccess()).isTrue();
+    }
   }
 
   @Test

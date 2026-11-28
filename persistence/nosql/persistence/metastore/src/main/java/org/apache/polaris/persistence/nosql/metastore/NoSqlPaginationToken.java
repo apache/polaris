@@ -31,8 +31,9 @@ import tools.jackson.databind.annotation.JsonDeserialize;
 import tools.jackson.databind.annotation.JsonSerialize;
 
 /**
- * Pagination token for NoSQL that refers to the next {@link IndexKey}. The next request will refer
- * to the same index, for example, the same catalog state.
+ * Pagination token for NoSQL that refers to the next entity by its stable ID. The next request will
+ * refer to the same index, for example, the same catalog state, and resolves the entity's {@link
+ * IndexKey} from that index.
  */
 @PolarisImmutable
 @JsonSerialize(as = ImmutableNoSqlPaginationToken.class)
@@ -42,8 +43,8 @@ import tools.jackson.databind.annotation.JsonSerialize;
 public interface NoSqlPaginationToken extends Token {
   String ID = "n";
 
-  // This implementation decouples the direct use of the `ObjRef` and `IndexKey` and with
-  // that their Jackson version specific (de)serializers by using "neutral" byte buffers.
+  // This implementation decouples the direct use of the `ObjRef` and with that its Jackson version
+  // specific (de)serializers by using a "neutral" byte buffer.
   // Once both `:polaris-core` and `:polaris-persistence-nosql-*` are both using Jackson 3, the
   // change that introduced the `ByteBuffer` indirection can optionally be reverted.
 
@@ -56,24 +57,19 @@ public interface NoSqlPaginationToken extends Token {
     return ObjRef.fromByteBuffer(containerObjRefBytes().duplicate());
   }
 
-  @JsonProperty("k")
-  ByteBuffer keyBytes();
-
-  @JsonIgnore
-  @Value.Lazy
-  default IndexKey key() {
-    return IndexKey.key(keyBytes().duplicate());
-  }
+  /** Stable ID of the first entity of the next page. */
+  @JsonProperty("i")
+  long entityId();
 
   @Override
   default String getT() {
     return ID;
   }
 
-  static NoSqlPaginationToken paginationToken(ObjRef containerObjRef, IndexKey key) {
+  static NoSqlPaginationToken paginationToken(ObjRef containerObjRef, long entityId) {
     return ImmutableNoSqlPaginationToken.builder()
         .containerObjRefBytes(containerObjRef.toByteBuffer())
-        .keyBytes(key.asByteBuffer())
+        .entityId(entityId)
         .build();
   }
 
