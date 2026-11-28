@@ -72,6 +72,7 @@ import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.config.ReservedProperties;
 import org.apache.polaris.service.identity.provider.DefaultServiceIdentityProvider;
 import org.assertj.core.api.Assertions;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -921,6 +922,121 @@ public class ManagementServiceTest {
                     services.securityContext()))
         .isInstanceOf(BadRequestException.class)
         .hasMessageStartingWith("Cannot modify ExternalId");
+  }
+
+  @Test
+  public void testUpdateCatalogSetExternalIdWhenNonePreviouslyConfiguredAllowed() {
+    AwsStorageConfigInfo awsConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://bucket/path/to/data"))
+            .build();
+    String catalogName = "mycatalog";
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
+            .setStorageConfigInfo(awsConfigModel)
+            .build();
+    try (Response response =
+        services
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog),
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    Catalog fetchedCatalog;
+    try (Response response =
+        services
+            .catalogsApi()
+            .getCatalog(catalogName, services.realmContext(), services.securityContext())) {
+      fetchedCatalog = (Catalog) response.getEntity();
+    }
+
+    // Setting an external ID where none was configured before should succeed by default
+    UpdateCatalogRequest updateRequest =
+        new UpdateCatalogRequest(
+            fetchedCatalog.getEntityVersion(),
+            Map.of("default-base-location", "s3://bucket/path/to/data"),
+            AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                .setAllowedLocations(List.of("s3://bucket/path/to/data"))
+                .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+                .setExternalId("my-external-id")
+                .build());
+    try (Response response =
+        services
+            .catalogsApi()
+            .updateCatalog(
+                catalogName, updateRequest, services.realmContext(), services.securityContext())) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      assertThat(response.getEntity())
+          .asInstanceOf(InstanceOfAssertFactories.type(Catalog.class))
+          .extracting(Catalog::getStorageConfigInfo)
+          .asInstanceOf(InstanceOfAssertFactories.type(AwsStorageConfigInfo.class))
+          .returns("my-external-id", AwsStorageConfigInfo::getExternalId);
+    }
+  }
+
+  @Test
+  public void testUpdateCatalogSetRoleArnWhenNonePreviouslyConfiguredAllowed() {
+    AwsStorageConfigInfo awsConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://bucket/path/to/data"))
+            .build();
+    String catalogName = "mycatalog";
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
+            .setStorageConfigInfo(awsConfigModel)
+            .build();
+    try (Response response =
+        services
+            .catalogsApi()
+            .createCatalog(
+                new CreateCatalogRequest(catalog),
+                services.realmContext(),
+                services.securityContext())) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    Catalog fetchedCatalog;
+    try (Response response =
+        services
+            .catalogsApi()
+            .getCatalog(catalogName, services.realmContext(), services.securityContext())) {
+      fetchedCatalog = (Catalog) response.getEntity();
+    }
+
+    // Setting a role ARN (and with it an AWS account ID) where none was configured before
+    // should succeed by default
+    UpdateCatalogRequest updateRequest =
+        new UpdateCatalogRequest(
+            fetchedCatalog.getEntityVersion(),
+            Map.of("default-base-location", "s3://bucket/path/to/data"),
+            AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                .setAllowedLocations(List.of("s3://bucket/path/to/data"))
+                .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+                .build());
+    try (Response response =
+        services
+            .catalogsApi()
+            .updateCatalog(
+                catalogName, updateRequest, services.realmContext(), services.securityContext())) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      assertThat(response.getEntity())
+          .asInstanceOf(InstanceOfAssertFactories.type(Catalog.class))
+          .extracting(Catalog::getStorageConfigInfo)
+          .asInstanceOf(InstanceOfAssertFactories.type(AwsStorageConfigInfo.class))
+          .returns("arn:aws:iam::123456789012:role/my-role", AwsStorageConfigInfo::getRoleArn);
+    }
   }
 
   @Test

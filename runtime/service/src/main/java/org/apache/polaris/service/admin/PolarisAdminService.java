@@ -1030,13 +1030,16 @@ public class PolarisAdminService {
         && newStorageConfig instanceof AwsStorageConfigurationInfo newAwsConfig) {
 
       if (!allowUnrestrictedRoleChanges) {
-        if (!Objects.equals(currentAwsConfig.getAwsAccountId(), newAwsConfig.getAwsAccountId())) {
+        if (currentAwsConfig.getAwsAccountId() != null
+            && !Objects.equals(
+                currentAwsConfig.getAwsAccountId(), newAwsConfig.getAwsAccountId())) {
           throw new BadRequestException(
               "Cannot modify AWS account ID in storage config from %s to %s",
               currentStorageConfig, newStorageConfig);
         }
 
-        if (!Objects.equals(currentAwsConfig.getExternalId(), newAwsConfig.getExternalId())) {
+        if (currentAwsConfig.getExternalId() != null
+            && !Objects.equals(currentAwsConfig.getExternalId(), newAwsConfig.getExternalId())) {
           throw new BadRequestException(
               "Cannot modify ExternalId in storage config from %s to %s",
               currentStorageConfig, newStorageConfig);
