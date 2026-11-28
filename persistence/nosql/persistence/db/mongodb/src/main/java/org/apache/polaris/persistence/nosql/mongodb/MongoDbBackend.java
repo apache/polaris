@@ -215,18 +215,16 @@ final class MongoDbBackend implements Backend {
   public void batchDeleteRefs(Map<String, Set<String>> realmRefs) {
     var idDocs =
         realmRefs.entrySet().stream()
-            .flatMap(
-                e -> {
-                  var realmId = e.getKey();
-                  return e.getValue().stream()
-                      .map(
-                          ref -> {
-                            var idDoc = new Document();
-                            idDoc.put(COL_REALM, realmId);
-                            idDoc.put(COL_REF_NAME, ref);
-                            return idDoc;
-                          });
-                })
+            .flatMap(e -> {
+              var realmId = e.getKey();
+              return e.getValue().stream()
+                  .map(ref -> {
+                    var idDoc = new Document();
+                    idDoc.put(COL_REALM, realmId);
+                    idDoc.put(COL_REF_NAME, ref);
+                    return idDoc;
+                  });
+            })
             .toList();
     if (idDocs.isEmpty()) {
       return;
@@ -242,19 +240,17 @@ final class MongoDbBackend implements Backend {
   public void batchDeleteObjs(Map<String, Set<PersistId>> realmObjs) {
     var idDocs =
         realmObjs.entrySet().stream()
-            .flatMap(
-                e -> {
-                  var realmId = e.getKey();
-                  return e.getValue().stream()
-                      .map(
-                          id -> {
-                            var idDoc = new Document();
-                            idDoc.put(COL_REALM, realmId);
-                            idDoc.put(COL_OBJ_ID, id.id());
-                            idDoc.put(COL_OBJ_PART, id.part());
-                            return idDoc;
-                          });
-                })
+            .flatMap(e -> {
+              var realmId = e.getKey();
+              return e.getValue().stream()
+                  .map(id -> {
+                    var idDoc = new Document();
+                    idDoc.put(COL_REALM, realmId);
+                    idDoc.put(COL_OBJ_ID, id.id());
+                    idDoc.put(COL_OBJ_PART, id.part());
+                    return idDoc;
+                  });
+            })
             .toList();
     if (idDocs.isEmpty()) {
       return;

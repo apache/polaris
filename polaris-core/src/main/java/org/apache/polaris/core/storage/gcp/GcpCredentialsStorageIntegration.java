@@ -223,10 +223,9 @@ public class GcpCredentialsStorageIntegration
   protected StorageAccessConfig addExtraProperties(
       @NonNull StorageAccessConfig accessConfig, @NonNull Optional<String> refreshEndpoint) {
     return refreshEndpoint
-        .map(
-            endpoint ->
-                withExtraProperty(
-                    accessConfig, StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENDPOINT, endpoint))
+        .map(endpoint ->
+            withExtraProperty(
+                accessConfig, StorageAccessProperty.GCS_REFRESH_CREDENTIALS_ENDPOINT, endpoint))
         .orElse(accessConfig);
   }
 
@@ -456,75 +455,70 @@ public class GcpCredentialsStorageIntegration
 
     Stream.concat(allowedReadLocations.stream(), allowedListLocations.stream())
         .distinct()
-        .forEach(
-            location -> {
-              StorageUri uri = StorageUri.parse(location);
-              String bucket = uri.authority();
-              // Treat the granted path as a directory prefix: a trailing slash is required so
-              // that the downstream startsWith() CEL conditions cannot be satisfied by sibling
-              // objects or list prefixes that merely share the granted path as a string prefix
-              // (e.g. a grant on "data/" must not authorize access to "data_foo/*)".
-              String path = ensureTrailingSlash(trimLeadingSlash(uri.rawPath()));
-              readConditionsByBucket
-                  .computeIfAbsent(bucket, key -> new LinkedHashSet<>())
-                  .add(resourceNameStartsWithExpression(bucket, path));
-            });
-
-    allowedListLocations.forEach(
-        location -> {
+        .forEach(location -> {
           StorageUri uri = StorageUri.parse(location);
           String bucket = uri.authority();
+          // Treat the granted path as a directory prefix: a trailing slash is required so
+          // that the downstream startsWith() CEL conditions cannot be satisfied by sibling
+          // objects or list prefixes that merely share the granted path as a string prefix
+          // (e.g. a grant on "data/" must not authorize access to "data_foo/*)".
           String path = ensureTrailingSlash(trimLeadingSlash(uri.rawPath()));
           readConditionsByBucket
-              .computeIfAbsent(bucket, key -> new LinkedHashSet<>())
-              .add(objectListPrefixStartsWithExpression(path));
-          bucketsWithList.add(bucket);
-        });
-
-    allowedWriteLocations.forEach(
-        location -> {
-          StorageUri uri = StorageUri.parse(location);
-          String bucket = uri.authority();
-          String path = ensureTrailingSlash(trimLeadingSlash(uri.rawPath()));
-          writeConditionsByBucket
               .computeIfAbsent(bucket, key -> new LinkedHashSet<>())
               .add(resourceNameStartsWithExpression(bucket, path));
         });
 
+    allowedListLocations.forEach(location -> {
+      StorageUri uri = StorageUri.parse(location);
+      String bucket = uri.authority();
+      String path = ensureTrailingSlash(trimLeadingSlash(uri.rawPath()));
+      readConditionsByBucket
+          .computeIfAbsent(bucket, key -> new LinkedHashSet<>())
+          .add(objectListPrefixStartsWithExpression(path));
+      bucketsWithList.add(bucket);
+    });
+
+    allowedWriteLocations.forEach(location -> {
+      StorageUri uri = StorageUri.parse(location);
+      String bucket = uri.authority();
+      String path = ensureTrailingSlash(trimLeadingSlash(uri.rawPath()));
+      writeConditionsByBucket
+          .computeIfAbsent(bucket, key -> new LinkedHashSet<>())
+          .add(resourceNameStartsWithExpression(bucket, path));
+    });
+
     CredentialAccessBoundary.Builder accessBoundaryBuilder = CredentialAccessBoundary.newBuilder();
-    readConditionsByBucket.forEach(
-        (bucket, conditions) -> {
-          if (conditions.isEmpty()) {
-            return;
-          }
-          CredentialAccessBoundary.AccessBoundaryRule.Builder builder =
-              CredentialAccessBoundary.AccessBoundaryRule.newBuilder();
-          builder.setAvailableResource(bucketResource(bucket));
-          builder.setAvailabilityCondition(
-              CredentialAccessBoundary.AccessBoundaryRule.AvailabilityCondition.newBuilder()
-                  .setExpression(String.join(" || ", conditions))
-                  .build());
-          builder.setAvailablePermissions(List.of("inRole:roles/storage.legacyObjectReader"));
-          if (bucketsWithList.contains(bucket)) {
-            builder.addAvailablePermission("inRole:roles/storage.objectViewer");
-          }
-          accessBoundaryBuilder.addRule(builder.build());
-        });
-    writeConditionsByBucket.forEach(
-        (bucket, conditions) -> {
-          if (conditions.isEmpty()) {
-            return;
-          }
-          CredentialAccessBoundary.AccessBoundaryRule.Builder builder =
-              CredentialAccessBoundary.AccessBoundaryRule.newBuilder();
-          builder.setAvailableResource(bucketResource(bucket));
-          builder.setAvailabilityCondition(
-              CredentialAccessBoundary.AccessBoundaryRule.AvailabilityCondition.newBuilder()
-                  .setExpression(String.join(" || ", conditions))
-                  .build());
-          builder.setAvailablePermissions(List.of("inRole:roles/storage.legacyBucketWriter"));
-          accessBoundaryBuilder.addRule(builder.build());
-        });
+    readConditionsByBucket.forEach((bucket, conditions) -> {
+      if (conditions.isEmpty()) {
+        return;
+      }
+      CredentialAccessBoundary.AccessBoundaryRule.Builder builder =
+          CredentialAccessBoundary.AccessBoundaryRule.newBuilder();
+      builder.setAvailableResource(bucketResource(bucket));
+      builder.setAvailabilityCondition(
+          CredentialAccessBoundary.AccessBoundaryRule.AvailabilityCondition.newBuilder()
+              .setExpression(String.join(" || ", conditions))
+              .build());
+      builder.setAvailablePermissions(List.of("inRole:roles/storage.legacyObjectReader"));
+      if (bucketsWithList.contains(bucket)) {
+        builder.addAvailablePermission("inRole:roles/storage.objectViewer");
+      }
+      accessBoundaryBuilder.addRule(builder.build());
+    });
+    writeConditionsByBucket.forEach((bucket, conditions) -> {
+      if (conditions.isEmpty()) {
+        return;
+      }
+      CredentialAccessBoundary.AccessBoundaryRule.Builder builder =
+          CredentialAccessBoundary.AccessBoundaryRule.newBuilder();
+      builder.setAvailableResource(bucketResource(bucket));
+      builder.setAvailabilityCondition(
+          CredentialAccessBoundary.AccessBoundaryRule.AvailabilityCondition.newBuilder()
+              .setExpression(String.join(" || ", conditions))
+              .build());
+      builder.setAvailablePermissions(List.of("inRole:roles/storage.legacyBucketWriter"));
+      accessBoundaryBuilder.addRule(builder.build());
+    });
     return accessBoundaryBuilder.build();
   }
 

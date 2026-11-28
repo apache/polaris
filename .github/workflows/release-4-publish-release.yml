@@ -35,7 +35,7 @@ on:
 jobs:
   publish-release:
     name: Release - 4 - Publish Release After Vote Success
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
     outputs:
@@ -51,7 +51,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }} # zizmor: ignore[secrets-outside-env]
 
       - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
+        uses: $/.github/actions/setup-test-env
 
       - name: Configure Git
         run: |
@@ -213,10 +213,18 @@ jobs:
           docker buildx inspect
 
       - name: Set up Java
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: 'temurin'
-          java-version: '21'
+          java-version: '21.0.13+9'
+
+      - name: Check Docker image dependency licenses
+        run: |
+          source "${LIBS_DIR}/_exec.sh"
+
+          exec_process ./gradlew :polaris-server:checkDistributionLicenses :polaris-admin:checkDistributionLicenses \
+            -Dquarkus.container-image.build=false \
+            -Dquarkus.container-image.push=false
 
       - name: Log in to Docker Hub
         if: env.DRY_RUN == '0'
@@ -307,6 +315,7 @@ jobs:
               -name "*.tar.gz" -o \
               -name "*.tgz" -o \
               -name "*.zip" -o \
+              -name "polaris-build-environment-*.json" -o \
               -name "*.asc" -o \
               -name "*.sha512" -o \
               -name "*.prov" \
@@ -418,7 +427,7 @@ jobs:
 
   publish-python-client:
     name: Publish Python Client to PyPI
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: [publish-release]
     permissions:
       contents: read
@@ -470,6 +479,10 @@ jobs:
 
           exec_process svn export --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
             "${dev_python_client_url}" dist/
+
+          # The dist dev directory also holds the wheel's .asc signature and .sha512 checksum.
+          # They must not be uploaded: twine rejects them as unknown distribution formats.
+          exec_process rm -f dist/*.asc dist/*.sha512
 
       - name: Publish Python client release to PyPI
         if: env.DRY_RUN == '0'

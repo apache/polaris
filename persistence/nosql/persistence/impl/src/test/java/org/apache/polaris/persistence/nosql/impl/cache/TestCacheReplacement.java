@@ -31,6 +31,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.polaris.misc.types.memorysize.MemorySize;
 import org.apache.polaris.persistence.nosql.api.cache.CacheConfig;
 import org.apache.polaris.persistence.nosql.api.cache.CacheSizing;
+import org.apache.polaris.persistence.nosql.api.obj.ImmutableObjRef;
+import org.apache.polaris.persistence.nosql.api.obj.ObjRef;
 import org.apache.polaris.persistence.nosql.api.obj.VersionedTestObj;
 import org.apache.polaris.persistence.nosql.api.ref.Reference;
 import org.junit.jupiter.api.BeforeEach;
@@ -86,7 +88,7 @@ public class TestCacheReplacement {
     // An equal-key replacement must not retain the old payload via the stored key.
     assertThat(entry.getKey()).isNotSameAs(originalValue);
     assertThat(backend.currentWeightReported() - originalWeight)
-        .isEqualTo(entry.getValue().serialized().length - originalValue.serialized().length);
+        .isEqualTo(entry.getValue().data().length - originalValue.data().length);
     var cached = backend.get("realm", objRef(original));
     assertThat(cached).isEqualTo(replacement);
     // Creation time is auxiliary and is not covered by object equality.
@@ -136,4 +138,70 @@ public class TestCacheReplacement {
     now.set(Duration.ofSeconds(13).toNanos());
     assertThat(backend.getReference("realm", "ref")).isNull();
   }
+
+  @ParameterizedTest
+  @CsvSource({"0, 20", "20, 0"})
+  void referenceReplacementUpdatesWeight(int oldHistory, int newHistory) {
+    var original =
+        Reference.builder()
+            .name("ref")
+            .createdAtMicros(123)
+            .pointer(objRef("commit", 1, 2))
+            .previousPointers(new long[oldHistory])
+            .build();
+    var replacement =
+        Reference.builder().from(original).previousPointers(new long[newHistory]).build();
+    backend.putReferenceLocal("realm", original);
+    backend.cache.cleanUp();
+    var originalWeight = backend.currentWeightReported();
+    assertThat(originalWeight).isGreaterThan(Long.BYTES * (long) oldHistory);
+
+    backend.putReferenceLocal("realm", replacement);
+    backend.cache.cleanUp();
+    assertThat(backend.currentWeightReported() - originalWeight)
+        .isEqualTo(Long.BYTES * (long) (newHistory - oldHistory));
+    assertThat(backend.getReference("realm", "ref")).isEqualTo(replacement);
+
+    backend.putReferenceNegative("realm", "ref");
+    backend.cache.cleanUp();
+    assertThat(backend.currentWeightReported()).isLessThan(originalWeight);
+    backend.putReferenceLocal("realm", original);
+    backend.cache.cleanUp();
+    assertThat(backend.currentWeightReported()).isEqualTo(originalWeight);
+  }
+
+  @Test
+  void referenceSnapshotOwnsHistoryAndNormalizesPointer() {
+    long[] history = {123, 456};
+    ObjRef pointer =
+        new ObjRef() {
+          @Override
+          public String type() {
+            return "commit";
+          }
+
+          @Override
+          public long id() {
+            return 42;
+          }
+
+          @Override
+          public int numParts() {
+            return 3;
+          }
+        };
+    var original = new UncopiedReference("ref", Optional.of(pointer), 789, history);
+    backend.putReferenceLocal("realm", original);
+    history[0] = 999;
+    var cached = backend.getReference("realm", "ref");
+    assertThat(cached.previousPointers()).containsExactly(123, 456);
+    assertThat(cached.pointer().orElseThrow()).isInstanceOf(ImmutableObjRef.class);
+    assertThat(cached.pointer().orElseThrow().numParts()).isEqualTo(3);
+    cached.previousPointers()[0] = 999;
+    assertThat(backend.getReference("realm", "ref").previousPointers()).containsExactly(123, 456);
+  }
+
+  private record UncopiedReference(
+      String name, Optional<ObjRef> pointer, long createdAtMicros, long[] previousPointers)
+      implements Reference {}
 }

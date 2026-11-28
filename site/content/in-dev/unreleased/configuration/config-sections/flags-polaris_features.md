@@ -133,7 +133,7 @@ If set to true, allows catalog URLs to overlap.
 
 ##### `polaris.features."ALLOW_SETTING_S3_ENDPOINTS"`
 
-If set to true (default), Polaris will permit S3 storage configurations to have custom endpoints. If set to false, Polaris will not accept catalog create and update requests that contain S3 endpoint properties.
+If set to true (default), Polaris will permit S3 storage configurations to have custom endpoints, and SigV4 connection configurations to set a custom STS endpoint used for credential vending. If set to false, Polaris will not accept catalog create and update requests that contain S3 endpoint properties, or catalog create requests that set a SigV4 connection STS endpoint.
 
 - **Type:** `Boolean`
 - **Default:** `true`
@@ -368,7 +368,7 @@ When enabled, allows RBAC operations to create synthetic entities for entities i
 
 ##### `polaris.features."ENFORCE_CATALOG_CONFIG_AUTHORIZATION"`
 
-When true, Iceberg REST GET /v1/config requires CATALOG_READ_CONFIG (or a catalog-level privilege that subsumes it); unauthorized callers get 403. Namespace- or table-scoped grants are not enough; grant CATALOG_READ_CONFIG on the catalog. When false (default), the endpoint is not authorization-gated so upgrades do not 403 bootstrap. On a 200 the response still includes catalog properties (defaults) as it does today. Enable after granting CATALOG_READ_CONFIG (or catalog-level content privileges) and after updating Ranger/OPA policies for GET_CATALOG_CONFIG. Ranger currently maps GET_CATALOG_CONFIG to the existing catalog-properties-read access type; do not enable this flag for Ranger until a dedicated catalog-config-read access type exists (or accept that coarse mapping). This flag is temporary. The default will not flip until client-facing catalog configuration is defined. A production-readiness warning is emitted while the flag remains false only when using the internal Polaris authorizer(`polaris.authorization.type=internal`).
+When true, Iceberg REST GET /v1/config requires CATALOG_READ_CONFIG (or a catalog-level privilege that subsumes it); unauthorized callers get 403. Namespace- or table-scoped grants are not enough; grant CATALOG_READ_CONFIG on the catalog. When false (default), the endpoint is not authorization-gated so upgrades do not 403 bootstrap. On a 200 the response still includes catalog properties (defaults) as it does today. Enable after granting CATALOG_READ_CONFIG (or catalog-level content privileges) and after updating Ranger/OPA policies for GET_CATALOG_CONFIG. Ranger maps GET_CATALOG_CONFIG to catalog-config-read; catalog-properties-read implies catalog-config-read. Ranger operators must re-import polaris-ranger-servicedef.json (PUT the service definition) so the new access type exists in Ranger Admin; a Polaris upgrade does not update Ranger Admin. This flag is temporary. The default will not flip until client-facing catalog configuration is defined. A production-readiness warning is emitted while the flag remains false only when using the internal Polaris authorizer (`polaris.authorization.type=internal`).
 
 - **Type:** `Boolean`
 - **Default:** `false`
@@ -496,6 +496,42 @@ How many times to retry refreshing metadata when the previous error was retryabl
 
 ---
 
+##### `polaris.features."METRICS_QUERY_DEFAULT_PAGE_SIZE"`
+
+The page size used by the metrics reports query API when a request supplies neither a pageToken nor a pageSize. The metrics query API always paginates; it ignores LIST_PAGINATION_ENABLED. Values below 1 are treated as 1.
+
+- **Type:** `Integer`
+- **Default:** `100`
+
+---
+
+##### `polaris.features."METRICS_QUERY_DEFAULT_TIME_WINDOW_DAYS"`
+
+The time window, in days, applied by the metrics reports query API when a request omits timestampFrom. The window ends at timestampTo, or at the current time when timestampTo is also omitted. Values below 1 are treated as 1.
+
+- **Type:** `Integer`
+- **Default:** `7`
+
+---
+
+##### `polaris.features."METRICS_QUERY_MAX_OBJECTS"`
+
+The maximum number of entries allowed in the objects list of a single metrics reports query. Each entry selects one table, optionally restricted to one snapshot, so this also bounds the number of table/snapshot selectors sent to the metrics backend. Requests above the limit are rejected with a 400.
+
+- **Type:** `Integer`
+- **Default:** `100`
+
+---
+
+##### `polaris.features."METRICS_QUERY_MAX_PAGE_SIZE"`
+
+The largest page size a client may request from the metrics reports query API. Larger requested page sizes are reduced to this value. Values below 1 are treated as 1.
+
+- **Type:** `Integer`
+- **Default:** `1000`
+
+---
+
 ##### `polaris.features."OPTIMIZED_SIBLING_CHECK"`
 
 When set, Polaris uses an index to check overlap against base locations of tables, views, and namespaces across the catalog. If ALLOW_UNSTRUCTURED_TABLE_LOCATION is enabled (or the catalog is external), siblings are still listed when the index finds no conflict, to check sibling tables' write.data.path and write.metadata.path properties. Only enable it when the required index and backfill state is known to be correct. Locations written by Polaris always end with a slash; locations stored by older versions without one are still handled. Supported by the JDBC and NoSQL metastore implementations.
@@ -526,7 +562,7 @@ If set to true, Polaris will attempt to delete view metadata files when a view i
 
 ##### `polaris.features."RESOLVE_CREDENTIALS_BY_STORAGE_NAME"`
 
-If set to true, resolve AWS and GCS credentials based on the storageName field of the storage configuration. When disabled, the default credentials are used for all storages.
+If set to true, resolve AWS, Azure and GCS credentials based on the storageName field of the storage configuration. When disabled, the default credentials are used for all storages.
 
 - **Type:** `Boolean`
 - **Default:** `false`
@@ -608,7 +644,7 @@ The list of supported authentication types for catalog federation
 
 ##### `polaris.features."SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS"`
 
-The credential vending mechanisms an S3 catalog in this realm may name explicitly. Names are case-sensitive and must match a mechanism's identifier exactly, for example STS. Apache Polaris supports STS, which is STS AssumeRole. A catalog that leaves credentialVendingMechanism empty uses the server's default mechanism and is always allowed. Realm-level only; catalog properties cannot widen it. Enforced at catalog create and update, and when the server builds the storage integration that vends credentials for a catalog. A listed mechanism with no implementation in this server is reported at startup and refused at catalog create and update and whenever a credential is vended for a catalog that names it.
+The credential vending mechanisms an S3 catalog in this realm may name explicitly. Names are case-sensitive and must match a mechanism's identifier exactly, for example STS. Apache Polaris supports STS, which is STS AssumeRole, and R2_LOCAL_SIGNING, which the Cloudflare R2 storage extension provides. A catalog that leaves credentialVendingMechanism empty uses the server's default mechanism and is always allowed. Realm-level only; catalog properties cannot widen it. Enforced at catalog create and update, and when the server builds the storage integration that vends credentials for a catalog. A listed mechanism with no implementation in this server is reported at startup and refused at catalog create and update and whenever a credential is vended for a catalog that names it.
 
 - **Type:** `List<String>`
 - **Default:** `[STS]`

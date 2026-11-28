@@ -83,13 +83,14 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + "so upgrades do not 403 bootstrap. On a 200 the response still includes catalog "
                   + "properties (defaults) as it does today. Enable after granting CATALOG_READ_CONFIG "
                   + "(or catalog-level content privileges) and after updating Ranger/OPA policies "
-                  + "for GET_CATALOG_CONFIG. Ranger currently maps GET_CATALOG_CONFIG to the existing "
-                  + "catalog-properties-read access type; do not enable this flag for Ranger until a "
-                  + "dedicated catalog-config-read access type exists (or accept that coarse mapping). "
-                  + "This flag is temporary. The default will not flip until client-facing catalog "
-                  + "configuration is defined. A production-readiness warning is emitted while the "
-                  + "flag remains false only when using the internal Polaris authorizer"
-                  + "(`polaris.authorization.type=internal`).")
+                  + "for GET_CATALOG_CONFIG. Ranger maps GET_CATALOG_CONFIG to catalog-config-read; "
+                  + "catalog-properties-read implies catalog-config-read. Ranger operators must "
+                  + "re-import polaris-ranger-servicedef.json (PUT the service definition) so the "
+                  + "new access type exists in Ranger Admin; a Polaris upgrade does not update "
+                  + "Ranger Admin. This flag is temporary. The default will not flip until "
+                  + "client-facing catalog configuration is defined. A production-readiness warning "
+                  + "is emitted while the flag remains false only when using the internal Polaris "
+                  + "authorizer (`polaris.authorization.type=internal`).")
           .defaultValue(false)
           .buildFeatureConfiguration();
 
@@ -303,9 +304,10 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_SETTING_S3_ENDPOINTS")
           .description(
-              "If set to true (default), Polaris will permit S3 storage configurations to have custom endpoints.\n"
+              "If set to true (default), Polaris will permit S3 storage configurations to have custom endpoints, "
+                  + "and SigV4 connection configurations to set a custom STS endpoint used for credential vending.\n"
                   + "If set to false, Polaris will not accept catalog create and update requests that contain \n"
-                  + "S3 endpoint properties.")
+                  + "S3 endpoint properties, or catalog create requests that set a SigV4 connection STS endpoint.")
           .defaultValue(true)
           .buildFeatureConfiguration();
 
@@ -439,7 +441,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
               .description(
                   "The credential vending mechanisms an S3 catalog in this realm may name explicitly. Names\n"
                       + "are case-sensitive and must match a mechanism's identifier exactly, for example STS.\n"
-                      + "Apache Polaris supports STS, which is STS AssumeRole. A catalog that\n"
+                      + "Apache Polaris supports STS, which is STS AssumeRole, and R2_LOCAL_SIGNING, which\n"
+                      + "the Cloudflare R2 storage extension provides. A catalog that\n"
                       + "leaves credentialVendingMechanism empty uses the server's default mechanism and is\n"
                       + "always allowed. Realm-level only; catalog properties cannot widen it. Enforced at\n"
                       + "catalog create and update, and when the server builds the storage integration that\n"
@@ -547,6 +550,47 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
                   + " answered with a continuation token. An empty pageToken starts a paginated"
                   + " listing and is capped like any other paginated request.")
           .defaultValue(-1)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Integer> METRICS_QUERY_DEFAULT_PAGE_SIZE =
+      PolarisConfiguration.<Integer>builder()
+          .key("METRICS_QUERY_DEFAULT_PAGE_SIZE")
+          .description(
+              "The page size used by the metrics reports query API when a request supplies neither"
+                  + " a pageToken nor a pageSize. The metrics query API always paginates; it ignores"
+                  + " LIST_PAGINATION_ENABLED. Values below 1 are treated as 1.")
+          .defaultValue(100)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Integer> METRICS_QUERY_MAX_PAGE_SIZE =
+      PolarisConfiguration.<Integer>builder()
+          .key("METRICS_QUERY_MAX_PAGE_SIZE")
+          .description(
+              "The largest page size a client may request from the metrics reports query API."
+                  + " Larger requested page sizes are reduced to this value. Values below 1 are"
+                  + " treated as 1.")
+          .defaultValue(1000)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Integer> METRICS_QUERY_MAX_OBJECTS =
+      PolarisConfiguration.<Integer>builder()
+          .key("METRICS_QUERY_MAX_OBJECTS")
+          .description(
+              "The maximum number of entries allowed in the objects list of a single metrics"
+                  + " reports query. Each entry selects one table, optionally restricted to one"
+                  + " snapshot, so this also bounds the number of table/snapshot selectors sent to"
+                  + " the metrics backend. Requests above the limit are rejected with a 400.")
+          .defaultValue(100)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Integer> METRICS_QUERY_DEFAULT_TIME_WINDOW_DAYS =
+      PolarisConfiguration.<Integer>builder()
+          .key("METRICS_QUERY_DEFAULT_TIME_WINDOW_DAYS")
+          .description(
+              "The time window, in days, applied by the metrics reports query API when a request"
+                  + " omits timestampFrom. The window ends at timestampTo, or at the current time"
+                  + " when timestampTo is also omitted. Values below 1 are treated as 1.")
+          .defaultValue(7)
           .buildFeatureConfiguration();
 
   public static final FeatureConfiguration<Boolean> ENABLE_GENERIC_TABLES =
@@ -857,8 +901,8 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("RESOLVE_CREDENTIALS_BY_STORAGE_NAME")
           .description(
-              "If set to true, resolve AWS and GCS credentials based on the storageName field "
-                  + "of the storage configuration. "
+              "If set to true, resolve AWS, Azure and GCS credentials based on the "
+                  + "storageName field of the storage configuration. "
                   + "When disabled, the default credentials are used for all storages.")
           .defaultValue(false)
           .buildFeatureConfiguration();

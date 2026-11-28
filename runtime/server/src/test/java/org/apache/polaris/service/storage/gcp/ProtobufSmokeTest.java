@@ -31,10 +31,9 @@ public class ProtobufSmokeTest {
    */
   @Test
   public void testProtobufVersions() {
-    Assertions.assertThatCode(
-            () ->
-                Class.forName("com.google.cloud.iam.credentials.v1.GenerateAccessTokenRequest")
-                    .getName())
+    Assertions.assertThatCode(() ->
+            Class.forName("com.google.cloud.iam.credentials.v1.GenerateAccessTokenRequest")
+                .getName())
         .doesNotThrowAnyException();
   }
 }

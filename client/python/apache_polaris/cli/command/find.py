@@ -217,6 +217,14 @@ class FindCommand(Command):
                 entity_type_filter=self.type_filter,
                 page_size=self.page_size,
             ):
+                # A qualified search uses its parent namespace as the crawl root. The root scopes
+                # the search, but is not itself one of the results within that scope.
+                if (
+                    entity_type == EntityType.NAMESPACE
+                    and namespace
+                    and path == namespace
+                ):
+                    continue
                 # Check if path matches to ns + fuzzy leaf
                 if is_fuzzy_match(leaf_name, path[-1]):
                     self._print_result(context, entity_type, ".".join(path))

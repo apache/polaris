@@ -45,11 +45,140 @@ import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @ExtendWith(SoftAssertionsExtension.class)
 public class TestStripedIndexImpl {
   @InjectSoftAssertions SoftAssertions soft;
+
+  @ParameterizedTest
+  @CsvSource({
+    ",,0123",
+    ",b0,0",
+    "b0,b6,1",
+    "a2,b8,012",
+    "b4,b6,''",
+    "b4,,23",
+    "d,,''",
+    ",a0,''",
+    "b3,b7,12",
+    "b,b,12",
+    "a,a,0",
+    "c,c,3",
+    "b5,b5,''",
+    "b0,b0,''",
+    "d,d,''"
+  })
+  public void iteratorLoadsOnlyOverlappingStripes(
+      String lowerString, String higherString, String expectedStripes) {
+    var lower = lowerString == null ? null : key(lowerString);
+    var higher = higherString == null ? null : key(higherString);
+    var prefix = lower != null && lower.equals(higher);
+    for (var prefetch : List.of(false, true)) {
+      for (var reverse : List.of(false, true)) {
+        if (reverse && prefix) {
+          continue;
+        }
+        var stripes = new ArrayList<IndexSpi<ObjRef>>();
+        for (var keys :
+            List.of(
+                List.of("a1", "a3"),
+                List.of("b1", "b3"),
+                List.of("b7", "b9"),
+                List.of("c1", "c3"))) {
+          var stripe = newStoreIndex(OBJ_REF_SERIALIZER);
+          keys.forEach(k -> stripe.add(indexElement(key(k), Util.randomObjId())));
+          stripes.add(stripe);
+        }
+        var individualLoads = new ArrayList<Integer>();
+        var bulkLoads = new ArrayList<Integer>();
+        var lazyStripes = new ArrayList<IndexSpi<ObjRef>>();
+        for (var i = 0; i < stripes.size(); i++) {
+          var stripeIndex = i;
+          lazyStripes.add(
+              lazyStoreIndex(
+                  () -> {
+                    individualLoads.add(stripeIndex);
+                    return stripes.get(stripeIndex);
+                  },
+                  null,
+                  null));
+        }
+        var firstLastKeys = stripes.stream().flatMap(s -> Stream.of(s.first(), s.last())).toList();
+        var striped =
+            indexFromStripes(
+                lazyStripes,
+                firstLastKeys,
+                indexes -> {
+                  var loaded = indexes.clone();
+                  for (var i = 0; i < indexes.length; i++) {
+                    if (indexes[i] != null) {
+                      bulkLoads.add(i);
+                      loaded[i] = stripes.get(i);
+                    }
+                  }
+                  return loaded;
+                });
+        var expectedKeys =
+            stripes.stream()
+                .flatMap(s -> s.asKeyList().stream())
+                .filter(k -> lower == null || k.compareTo(lower) >= 0)
+                .filter(
+                    k -> prefix ? k.startsWith(lower) : higher == null || k.compareTo(higher) <= 0)
+                .toList();
+        var iterator =
+            reverse
+                ? striped.reverseElementIterator(lower, higher, prefetch)
+                : striped.elementIterator(lower, higher, prefetch);
+        soft.assertThat(newArrayList(iterator))
+            .extracting(InternalIndexElement::key)
+            .containsExactlyElementsOf(reverse ? expectedKeys.reversed() : expectedKeys);
+        var expectedLoads = expectedStripes.chars().map(c -> c - '0').boxed().toList();
+        soft.assertThat(bulkLoads).containsExactlyElementsOf(prefetch ? expectedLoads : List.of());
+        soft.assertThat(individualLoads)
+            .containsExactlyElementsOf(
+                prefetch ? List.of() : reverse ? expectedLoads.reversed() : expectedLoads);
+      }
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  public void iteratorBoundsReflectModifiedStripes(boolean prefetch) {
+    var stripes = new ArrayList<IndexSpi<ObjRef>>();
+    for (var k : List.of("a1", "b1", "c1")) {
+      var stripe = newStoreIndex(OBJ_REF_SERIALIZER);
+      stripe.add(indexElement(key(k), Util.randomObjId()));
+      stripes.add(stripe);
+    }
+    var striped = indexFromStripes(stripes);
+    for (var k : List.of("a0", "b0", "d1")) {
+      striped.add(indexElement(key(k), Util.randomObjId()));
+      soft.assertThat(newArrayList(striped.elementIterator(key(k), key(k), prefetch)))
+          .extracting(InternalIndexElement::key)
+          .containsExactly(key(k));
+      soft.assertThat(newArrayList(striped.elementIterator(null, key(k), prefetch)))
+          .extracting(InternalIndexElement::key)
+          .contains(key(k));
+      soft.assertThat(newArrayList(striped.reverseElementIterator(key(k), null, prefetch)))
+          .extracting(InternalIndexElement::key)
+          .contains(key(k));
+    }
+    for (var k : List.of("a0", "a1", "c1", "d1")) {
+      striped.remove(key(k));
+    }
+    soft.assertThat(newArrayList(striped.elementIterator(null, null, prefetch)))
+        .extracting(InternalIndexElement::key)
+        .containsExactly(key("b0"), key("b1"));
+    soft.assertThat(newArrayList(striped.reverseElementIterator(null, null, prefetch)))
+        .extracting(InternalIndexElement::key)
+        .containsExactly(key("b1"), key("b0"));
+    striped.remove(key("b0"));
+    striped.remove(key("b1"));
+    soft.assertThat(striped.elementIterator(null, null, prefetch)).isExhausted();
+    soft.assertThat(striped.reverseElementIterator(null, null, prefetch)).isExhausted();
+  }
 
   @Test
   public void isLoadedReflectedLazy() {

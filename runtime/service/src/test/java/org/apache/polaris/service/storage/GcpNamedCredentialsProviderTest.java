@@ -71,6 +71,7 @@ class GcpNamedCredentialsProviderTest {
         new S3CredentialVendingMechanisms(Map.of()),
         realmConfig,
         clock,
+        null,
         null);
   }
 

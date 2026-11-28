@@ -210,29 +210,27 @@ public class TableCleanupTaskHandler implements TaskHandler {
         .values()
         .stream()
         .filter(mf -> TaskUtils.exists(mf.path(), fileIO))
-        .map(
-            mf -> {
-              String taskName = childTaskName("manifest-file-cleanup", cleanupTask);
-              LOGGER
-                  .atDebug()
-                  .addKeyValue(StructuredLogKeys.TASK_NAME, taskName)
-                  .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableEntity.getTableIdentifier())
-                  .addKeyValue(
-                      StructuredLogKeys.METADATA_LOCATION, tableEntity.getMetadataLocation())
-                  .addKeyValue(StructuredLogKeys.MANIFEST_FILE, mf.path())
-                  .log("Queueing task to delete manifest file");
-              return new TaskEntity.Builder()
-                  .setName(taskName)
-                  .setCreateTimestamp(clock.millis())
-                  .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
-                  .withData(
-                      ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
-                          tableEntity.getTableIdentifier(), mf))
-                  .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
-                  // copy the internal properties, which will have storage info
-                  .setInternalProperties(cleanupTask.getInternalPropertiesAsMap())
-                  .build();
-            });
+        .map(mf -> {
+          String taskName = childTaskName("manifest-file-cleanup", cleanupTask);
+          LOGGER
+              .atDebug()
+              .addKeyValue(StructuredLogKeys.TASK_NAME, taskName)
+              .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableEntity.getTableIdentifier())
+              .addKeyValue(StructuredLogKeys.METADATA_LOCATION, tableEntity.getMetadataLocation())
+              .addKeyValue(StructuredLogKeys.MANIFEST_FILE, mf.path())
+              .log("Queueing task to delete manifest file");
+          return new TaskEntity.Builder()
+              .setName(taskName)
+              .setCreateTimestamp(clock.millis())
+              .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
+              .withData(
+                  ManifestFileCleanupTaskHandler.ManifestCleanupTask.buildFrom(
+                      tableEntity.getTableIdentifier(), mf))
+              .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
+              // copy the internal properties, which will have storage info
+              .setInternalProperties(cleanupTask.getInternalPropertiesAsMap())
+              .build();
+        });
   }
 
   private Stream<TaskEntity> getMetadataTaskStream(
@@ -253,29 +251,27 @@ public class TableCleanupTaskHandler implements TaskHandler {
           .log("Invalid TABLE_METADATA_CLEANUP_BATCH_SIZE; clamping to minimum value");
     }
     return getMetadataFileBatches(tableMetadata, batchSize).stream()
-        .map(
-            metadataBatch -> {
-              String taskName = childTaskName("batch-file-cleanup", cleanupTask);
-              LOGGER
-                  .atDebug()
-                  .addKeyValue(StructuredLogKeys.TASK_NAME, taskName)
-                  .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableEntity.getTableIdentifier())
-                  .addKeyValue(StructuredLogKeys.METADATA_FILES, metadataBatch.toString())
-                  .log(
-                      "Queueing task to delete metadata files (prev metadata and statistics files)");
-              return new TaskEntity.Builder()
-                  .setName(taskName)
-                  .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
-                  .setCreateTimestamp(clock.millis())
-                  .withTaskType(AsyncTaskType.BATCH_FILE_CLEANUP)
-                  .withData(
-                      new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
-                          tableEntity.getTableIdentifier(),
-                          metadataBatch,
-                          BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA))
-                  .setInternalProperties(cleanupTask.getInternalPropertiesAsMap())
-                  .build();
-            });
+        .map(metadataBatch -> {
+          String taskName = childTaskName("batch-file-cleanup", cleanupTask);
+          LOGGER
+              .atDebug()
+              .addKeyValue(StructuredLogKeys.TASK_NAME, taskName)
+              .addKeyValue(StructuredLogKeys.TABLE_IDENTIFIER, tableEntity.getTableIdentifier())
+              .addKeyValue(StructuredLogKeys.METADATA_FILES, metadataBatch.toString())
+              .log("Queueing task to delete metadata files (prev metadata and statistics files)");
+          return new TaskEntity.Builder()
+              .setName(taskName)
+              .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
+              .setCreateTimestamp(clock.millis())
+              .withTaskType(AsyncTaskType.BATCH_FILE_CLEANUP)
+              .withData(
+                  new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
+                      tableEntity.getTableIdentifier(),
+                      metadataBatch,
+                      BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA))
+              .setInternalProperties(cleanupTask.getInternalPropertiesAsMap())
+              .build();
+        });
   }
 
   private List<List<String>> getMetadataFileBatches(TableMetadata tableMetadata, int batchSize) {

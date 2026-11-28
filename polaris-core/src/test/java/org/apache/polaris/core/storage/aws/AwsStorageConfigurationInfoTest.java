@@ -244,12 +244,11 @@ public class AwsStorageConfigurationInfoTest {
 
   @Test
   void blankMechanismIsRejected() {
-    assertThatThrownBy(
-            () ->
-                AwsStorageConfigurationInfo.builder()
-                    .credentialVendingMechanism(" ")
-                    .addAllowedLocation("s3://bucket/")
-                    .build())
+    assertThatThrownBy(() ->
+            AwsStorageConfigurationInfo.builder()
+                .credentialVendingMechanism(" ")
+                .addAllowedLocation("s3://bucket/")
+                .build())
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("credentialVendingMechanism must not be blank");
   }

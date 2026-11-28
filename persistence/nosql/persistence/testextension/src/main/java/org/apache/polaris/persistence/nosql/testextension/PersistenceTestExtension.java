@@ -84,11 +84,10 @@ public class PersistenceTestExtension
     extensionContext
         .getRequiredTestInstances()
         .getAllInstances() //
-        .forEach(
-            instance ->
-                findAnnotatedFields(
-                        instance.getClass(), PolarisPersistence.class, ReflectionUtils::isNotStatic)
-                    .forEach(field -> injectField(extensionContext, instance, field)));
+        .forEach(instance ->
+            findAnnotatedFields(
+                    instance.getClass(), PolarisPersistence.class, ReflectionUtils::isNotStatic)
+                .forEach(field -> injectField(extensionContext, instance, field)));
   }
 
   private void injectField(ExtensionContext extensionContext, Object instance, Field field) {
@@ -247,14 +246,13 @@ public class PersistenceTestExtension
 
     LOGGER.info("Creating new persistence backend for {}", backendSpec);
     var factory =
-        BackendTestFactoryLoader.findFactory(
-            f -> {
-              if (!backendSpec.name().isEmpty() && !backendSpec.name().equalsIgnoreCase(f.name())) {
-                return false;
-              }
-              return backendSpec.factory() == BackendTestFactory.class
-                  || backendSpec.factory().isInstance(f);
-            });
+        BackendTestFactoryLoader.findFactory(f -> {
+          if (!backendSpec.name().isEmpty() && !backendSpec.name().equalsIgnoreCase(f.name())) {
+            return false;
+          }
+          return backendSpec.factory() == BackendTestFactory.class
+              || backendSpec.factory().isInstance(f);
+        });
     try {
       factory.start();
     } catch (Exception e) {

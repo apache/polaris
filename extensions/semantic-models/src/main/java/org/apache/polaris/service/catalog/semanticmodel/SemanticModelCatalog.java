@@ -175,12 +175,11 @@ public class SemanticModelCatalog {
     // LinkedHashSet keeps the page order stable in the serialized response.
     Set<SemanticModelIdentifier> identifiers =
         result.getEntities().stream()
-            .map(
-                record ->
-                    SemanticModelIdentifier.builder()
-                        .setNamespace(List.of(namespace.levels()))
-                        .setName(record.getName())
-                        .build())
+            .map(record ->
+                SemanticModelIdentifier.builder()
+                    .setNamespace(List.of(namespace.levels()))
+                    .setName(record.getName())
+                    .build())
             .collect(Collectors.toCollection(LinkedHashSet::new));
     return ListSemanticModelsResponse.builder()
         .setIdentifiers(identifiers)

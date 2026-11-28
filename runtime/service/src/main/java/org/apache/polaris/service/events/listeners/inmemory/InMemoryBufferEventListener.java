@@ -111,12 +111,11 @@ public class InMemoryBufferEventListener extends PolarisPersistenceEventListener
   private final LoadingCache<String, EventProcessor> processors =
       Caffeine.newBuilder()
           .expireAfterAccess(Duration.ofHours(1))
-          .removalListener(
-              (String realmId, EventProcessor processor, RemovalCause cause) -> {
-                if (processor != null) {
-                  processor.onComplete();
-                }
-              })
+          .removalListener((String realmId, EventProcessor processor, RemovalCause cause) -> {
+            if (processor != null) {
+              processor.onComplete();
+            }
+          })
           .build(this::createProcessor);
 
   // Construct via a method (not EventProcessor::new) so that when the cache lives on a CDI client

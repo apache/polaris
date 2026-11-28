@@ -16,6 +16,12 @@
           "items" : {
             "type" : "string"
           }
+        },
+        "attributes" : {
+          "type" : "object",
+          "additionalProperties" : {
+            "type" : "string"
+          }
         }
       }
     },
@@ -73,6 +79,12 @@
         "realm" : {
           "type" : "string",
           "required" : true
+        },
+        "properties" : {
+          "type" : "object",
+          "additionalProperties" : {
+            "type" : "string"
+          }
         }
       }
     }

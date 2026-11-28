@@ -112,13 +112,12 @@ final class InMemoryBackend implements Backend {
       @NonNull ReferenceScanCallback referenceConsumer, @NonNull ObjScanCallback objConsumer) {
     refs.forEach(
         (key, ref) -> referenceConsumer.call(key.realmId(), key.name(), ref.createdAtMicros()));
-    objs.forEach(
-        (key, serObj) ->
-            objConsumer.call(
-                key.realmId(),
-                serObj.type(),
-                persistId(key.id(), key.part()),
-                serObj.createdAtMicros()));
+    objs.forEach((key, serObj) ->
+        objConsumer.call(
+            key.realmId(),
+            serObj.type(),
+            persistId(key.id(), key.part()),
+            serObj.createdAtMicros()));
   }
 
   // For testing purposes only

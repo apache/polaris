@@ -374,13 +374,12 @@ public class RestCatalogRustFSSpecialIT {
     // RustFS's STS shim rejects the AssumeRole call when the inline policy contains the
     // wildcard KMS resource generated for kms-enabled configs; it returns a 400 without a
     // descriptive body, so we can only pin the error to the STS client path.
-    assertThatThrownBy(
-            () ->
-                catalogApi.loadTable(
-                    catalogName,
-                    id,
-                    "ALL",
-                    Map.of("X-Iceberg-Access-Delegation", VENDED_CREDENTIALS.protocolValue())))
+    assertThatThrownBy(() ->
+            catalogApi.loadTable(
+                catalogName,
+                id,
+                "ALL",
+                Map.of("X-Iceberg-Access-Delegation", VENDED_CREDENTIALS.protocolValue())))
         .hasMessageContaining("Service: Sts")
         .hasMessageContaining("Status Code: 400");
   }
@@ -480,13 +479,12 @@ public class RestCatalogRustFSSpecialIT {
       restCatalog.createTable(id, SCHEMA);
 
       // Credential vending is not supported without STS
-      assertThatThrownBy(
-              () ->
-                  catalogApi.loadTable(
-                      catalogName,
-                      id,
-                      "ALL",
-                      Map.of("X-Iceberg-Access-Delegation", VENDED_CREDENTIALS.protocolValue())))
+      assertThatThrownBy(() ->
+              catalogApi.loadTable(
+                  catalogName,
+                  id,
+                  "ALL",
+                  Map.of("X-Iceberg-Access-Delegation", VENDED_CREDENTIALS.protocolValue())))
           .hasMessageContaining("but no credentials are available")
           .hasMessageContaining(id.toString());
     }

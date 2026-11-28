@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog;
 
+import static org.apache.polaris.service.catalog.AccessDelegationMode.NONE;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.REMOTE_SIGNING;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 
@@ -43,6 +44,9 @@ import org.slf4j.LoggerFactory;
  *
  * <ol>
  *   <li>If no delegation mode is requested, returns empty.
+ *   <li>If {@link AccessDelegationMode#NONE} is requested, alone or together with other modes,
+ *       returns empty: the client has said that it can operate without delegated access, so no
+ *       credentials are vended.
  *   <li>If exactly one delegation mode is requested:
  *       <ul>
  *         <li>If {@link AccessDelegationMode#VENDED_CREDENTIALS} is requested on an external
@@ -86,6 +90,15 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
   public @NonNull Optional<AccessDelegationMode> resolve(
       @NonNull EnumSet<AccessDelegationMode> requestedModes,
       @Nullable CatalogEntity catalogEntity) {
+
+    // Case 0: The client can operate without delegated access. Treat the request like one
+    // without the header, regardless of any other mode listed alongside `none`.
+    if (requestedModes.contains(NONE)) {
+      LOGGER.debug(
+          "Client accepts no access delegation. This request will not use any client-side "
+              + "delegation mechanisms.");
+      return Optional.empty();
+    }
 
     // Case 1: No valid delegation mode found, or none requested
     if (requestedModes.isEmpty()) {

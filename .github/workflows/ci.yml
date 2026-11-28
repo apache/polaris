@@ -29,7 +29,7 @@ on:
 jobs:
   changes:
     name: Detect Changes
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     outputs:
@@ -38,6 +38,8 @@ jobs:
       regtests: ${{ github.event_name != 'pull_request' || steps.filter.outputs.regtests == 'true' }}
       python_client: ${{ github.event_name != 'pull_request' || steps.filter.outputs.python_client == 'true' }}
       docs: ${{ github.event_name != 'pull_request' || steps.filter.outputs.docs == 'true' }}
+      changelog: ${{ github.event_name != 'pull_request' || steps.filter.outputs.changelog == 'true' }}
+      build_logic: ${{ github.event_name != 'pull_request' || steps.filter.outputs.build_logic == 'true' }}
     steps:
       - name: Checkout
         # Needed for git-based diffing below; the default GitHub-API-based mode of
@@ -90,6 +92,8 @@ jobs:
               - '!plugins/*/regtests/**'
               - '!client/python/**'
               - '!site/**'
+              # Changelog fragments are validated by the changelog-fragments-check job
+              - '!changelog.d/**'
               # Only root-level doc files (README.md, CONTRIBUTING.md, ...) are excluded
               # here, not '**/*.md': a markdown file inside a module (e.g. a test
               # resource/fixture consumed by an actual Java test) is still backend input.
@@ -104,6 +108,12 @@ jobs:
             docs:
               - '**/*.md'
               - 'site/**'
+            changelog:
+              - 'changelog.d/**'
+            build_logic:
+              - 'build-logic/**'
+              # build-logic imports this catalog, which has the dependencies of its tests
+              - 'gradle/baselibs.versions.toml'
             # 'some-with-excludes' makes exclusions final, so these generated-doc paths
             # can't be re-included within the 'backend'/'helm' filters above; they're
             # OR-ed into the job outputs instead (see `outputs:` above).
@@ -118,7 +128,7 @@ jobs:
 
   license-check:
     name: License Header Check
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -127,14 +137,14 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with: &setup-java-vars
           java-version: '21'
           distribution: 'temurin'
       - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
+        uses: $/.github/actions/setup-test-env
       - name: Prepare Gradle build cache
-        uses: ./.github/actions/ci-incr-build-cache-prepare
+        uses: $/.github/actions/ci-incr-build-cache-prepare
       - name: Run RAT license check
         env: &gradle_env_vars
           GRADLE_TOS_ACCEPTED: ${{ vars.GRADLE_TOS_ACCEPTED }}
@@ -144,13 +154,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # zizmor: ignore[secrets-outside-env]
         run: ./gradlew rat
       - name: Save partial Gradle build cache
-        uses: ./.github/actions/ci-incr-build-cache-save
+        uses: $/.github/actions/ci-incr-build-cache-save
 
-  build-checks:
-    name: Gradle Build Checks
+  changelog-fragments-check:
+    name: Changelog Fragments Check
     needs: changes
-    if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-24.04
+    if: needs.changes.outputs.changelog == 'true'
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -159,12 +169,54 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with: *setup-java-vars
+      - name: Prepare Gradle build cache
+        uses: $/.github/actions/ci-incr-build-cache-prepare
+      - name: Check changelog fragments
+        env: *gradle_env_vars
+        run: ./gradlew checkChangelogFragments
+
+  build-logic-tests:
+    name: Build Logic Tests
+    needs: changes
+    if: needs.changes.outputs.build_logic == 'true'
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up JDK 21
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with: *setup-java-vars
+      - name: Prepare Gradle build cache
+        uses: $/.github/actions/ci-incr-build-cache-prepare
+      - name: Run build logic tests
+        env: *gradle_env_vars
+        run: ./gradlew :polaris-build-logic:test :polaris-build-logic:integrationTest
+
+  build-checks:
+    name: Gradle Build Checks
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up JDK 21
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with: *setup-java-vars
       - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
+        uses: $/.github/actions/setup-test-env
       - name: Prepare Gradle build cache
-        uses: ./.github/actions/ci-incr-build-cache-prepare
+        uses: $/.github/actions/ci-incr-build-cache-prepare
       - name: Run Checks
         env: *gradle_env_vars
         run: |
@@ -177,7 +229,7 @@ jobs:
       - name: Verify configuration reference is up to date
         run: make config-doc-verify
       - name: Save partial Gradle build cache
-        uses: ./.github/actions/ci-incr-build-cache-save
+        uses: $/.github/actions/ci-incr-build-cache-save
       - name: Archive test results
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
@@ -193,10 +245,10 @@ jobs:
       #
       - name: Verify Copilot instructions
         run: .github/scripts/check-copilot-instructions.sh
-      - name: Set up Node 24
+      - name: Set up Node 26
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: '24'
+          node-version: '26'
       - name: Renovate Configuration Validation
         run: npx --yes --package renovate renovate-config-validator --strict --no-global .github/renovate.json5
       - name: Verify bundled OpenAPI spec is up to date
@@ -208,7 +260,7 @@ jobs:
     name: Runtime Service Tests
     needs: changes
     if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -217,17 +269,17 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with: *setup-java-vars
       - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
+        uses: $/.github/actions/setup-test-env
       - name: Prepare Gradle build cache
-        uses: ./.github/actions/ci-incr-build-cache-prepare
+        uses: $/.github/actions/ci-incr-build-cache-prepare
       - name: Run Quarkus runtime tests
         env: *gradle_env_vars
         run: ./gradlew :polaris-runtime-service:test --continue
       - name: Save partial Gradle build cache
-        uses: ./.github/actions/ci-incr-build-cache-save
+        uses: $/.github/actions/ci-incr-build-cache-save
       - name: Archive test results
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
@@ -239,7 +291,7 @@ jobs:
     name: Runtime Service Integration Tests
     needs: changes
     if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -248,15 +300,15 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with: *setup-java-vars
       - name: Prepare Gradle build cache
-        uses: ./.github/actions/ci-incr-build-cache-prepare
+        uses: $/.github/actions/ci-incr-build-cache-prepare
       - name: Run Quarkus runtime tests
         env: *gradle_env_vars
         run: ./gradlew :polaris-runtime-service:intTest --continue
       - name: Save partial Gradle build cache
-        uses: ./.github/actions/ci-incr-build-cache-save
+        uses: $/.github/actions/ci-incr-build-cache-save
       - name: Archive test results
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
@@ -268,7 +320,7 @@ jobs:
     name: Admin Tool Tests
     needs: changes
     if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -277,15 +329,15 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with: *setup-java-vars
       - name: Prepare Gradle build cache
-        uses: ./.github/actions/ci-incr-build-cache-prepare
+        uses: $/.github/actions/ci-incr-build-cache-prepare
       - name: Run Quarkus admin tests
         env: *gradle_env_vars
         run: ./gradlew :polaris-admin:test --continue
       - name: Save partial Gradle build cache
-        uses: ./.github/actions/ci-incr-build-cache-save
+        uses: $/.github/actions/ci-incr-build-cache-save
       - name: Archive test results
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
@@ -297,7 +349,7 @@ jobs:
     name: Other Integration Tests
     needs: changes
     if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -306,12 +358,12 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with: *setup-java-vars
       - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
+        uses: $/.github/actions/setup-test-env
       - name: Prepare Gradle build cache
-        uses: ./.github/actions/ci-incr-build-cache-prepare
+        uses: $/.github/actions/ci-incr-build-cache-prepare
       - name: Run integration tests
         env: *gradle_env_vars
         run: |
@@ -320,7 +372,7 @@ jobs:
             -x :polaris-runtime-service:intTest \
             --continue
       - name: Save partial Gradle build cache
-        uses: ./.github/actions/ci-incr-build-cache-save
+        uses: $/.github/actions/ci-incr-build-cache-save
       - name: Archive test results
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
@@ -336,7 +388,7 @@ jobs:
       needs.changes.outputs.helm == 'true' ||
       needs.changes.outputs.regtests == 'true' ||
       needs.changes.outputs.python_client == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
     permissions:
       contents: read
@@ -347,12 +399,12 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with: *setup-java-vars
       - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
+        uses: $/.github/actions/setup-test-env
       - name: Prepare Gradle build cache
-        uses: ./.github/actions/ci-incr-build-cache-prepare
+        uses: $/.github/actions/ci-incr-build-cache-prepare
       - name: Image build
         env: *gradle_env_vars
         run: |
@@ -378,7 +430,7 @@ jobs:
   docker-image-scan:
     name: Polaris Docker Image Scan
     if: github.repository == 'apache/polaris'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs:
       - docker-image-build
     timeout-minutes: 20
@@ -424,7 +476,7 @@ jobs:
           exit-code: '0'
       - name: Upload SARIF to GitHub Code Scanning
         if: ${{ startsWith(github.ref, 'refs/heads/') }}
-        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        uses: github/codeql-action/upload-sarif@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
         with:
           sarif_file: trivy-results.sarif
           category: trivy-image
@@ -437,7 +489,7 @@ jobs:
 
   helm-tests:
     name: Helm Tests (Helm ${{ matrix.helm-version }} - K8s ${{ matrix.kubernetes-version }})
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs:
       - changes
       - docker-image-build
@@ -461,7 +513,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Set up Helm
-        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e # v5.1.0
         with:
           version: ${{ matrix.helm-version }}
       - name: Set up chart-testing
@@ -480,8 +532,26 @@ jobs:
           pip install yamllint yamale
       - name: Set up helm-docs
         run: |
-          go install github.com/norwoodj/helm-docs/cmd/helm-docs@latest
-          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+          HELM_DOCS_VERSION=1.14.2
+          ARCH=$(uname -m)
+          case "$ARCH" in
+            x86_64|amd64)
+              ARCH=x86_64
+              SHA256=a8cf72ada34fad93285ba2a452b38bdc5bd52cc9a571236244ec31022928d6cc
+              ;;
+            aarch64|arm64)
+              ARCH=arm64
+              SHA256=c3787212332386dcd122debef7848feb165aa701467ae3e3442df7638f3ac4e4
+              ;;
+            *)
+              echo "Unsupported architecture: $ARCH" >&2
+              exit 1
+              ;;
+          esac
+          curl -fsSL --retry 3 -o helm-docs.tar.gz "https://github.com/norwoodj/helm-docs/releases/download/v${HELM_DOCS_VERSION}/helm-docs_${HELM_DOCS_VERSION}_Linux_${ARCH}.tar.gz"
+          echo "${SHA256}  helm-docs.tar.gz" | sha256sum -c -
+          sudo tar -xzf helm-docs.tar.gz -C /usr/local/bin helm-docs
+          rm helm-docs.tar.gz
       - name: Install Helm plugins
         run: make helm-install-plugins
       - name: Verify Helm schema is up to date
@@ -535,7 +605,7 @@ jobs:
 
   python-client:
     name: Polaris Python Client Tests
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     needs:
@@ -551,7 +621,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
+        uses: $/.github/actions/setup-test-env
       - name: Download server-app artifact
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -573,7 +643,7 @@ jobs:
 
   regtest:
     name: Regression Tests (${{ matrix.s3-backend }})
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     needs:
@@ -596,9 +666,9 @@ jobs:
         with:
           persist-credentials: false
       - name: Free disk space
-        uses: ./.github/actions/free-disk-space
+        uses: $/.github/actions/free-disk-space
       - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
+        uses: $/.github/actions/setup-test-env
       - name: Fix permissions
         run: mkdir -p regtests/output && chmod 777 regtests/output && chmod 777 regtests/t_*/ref/*
       - name: Download image artifact
@@ -614,10 +684,10 @@ jobs:
           S3_TEST_BACKEND: ${{ matrix.s3-backend }}
         run: docker compose --profile ${{ matrix.s3-backend }} -f regtests/docker-compose.yml up --build --exit-code-from regtest
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with: *setup-java-vars
       - name: Prepare Gradle build cache
-        uses: ./.github/actions/ci-incr-build-cache-prepare
+        uses: $/.github/actions/ci-incr-build-cache-prepare
       - name: Build Spark plugin artifacts
         env: *gradle_env_vars
         run: |
@@ -639,7 +709,7 @@ jobs:
     if: |
       github.repository == 'apache/polaris' &&
       (needs.changes.outputs.backend == 'true' || needs.changes.outputs.docs == 'true')
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -648,7 +718,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
+        uses: $/.github/actions/setup-test-env
       - name: Markdown link check
         uses: tcort/github-action-markdown-link-check@e047c5b37f24ab722bbef1a27b6fab7f96bc4068 # v1.1.3
         with:
@@ -661,7 +731,7 @@ jobs:
     name: "Site Generation"
     needs: changes
     if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.docs == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -678,7 +748,7 @@ jobs:
         # Do not let this step fail when the versioned-docs branch does not exist, as on most forks
         continue-on-error: true
       - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
+        uses: $/.github/actions/setup-test-env
       - name: Install docker-compose
         run: |
           sudo curl --fail-with-body -SL \
@@ -694,13 +764,13 @@ jobs:
   test-site-guides:
     needs: changes
     if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.docs == 'true'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -708,7 +778,7 @@ jobs:
         with:
           python-version: '3.15'
       - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
+        uses: $/.github/actions/setup-test-env
 
       - name: Test site testing
         working-directory: site/it
@@ -726,9 +796,9 @@ jobs:
           echo "::endgroup::"
 
       - name: Free disk space
-        uses: ./.github/actions/free-disk-space
+        uses: $/.github/actions/free-disk-space
       - name: Prepare Gradle build cache
-        uses: ./.github/actions/ci-incr-build-cache-prepare
+        uses: $/.github/actions/ci-incr-build-cache-prepare
       - name: Guide testing
         working-directory: site
         run: it/markdown-testing.py
@@ -759,10 +829,10 @@ jobs:
         with:
           persist-credentials: false
       - name: Set up JDK 21
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with: *setup-java-vars
       - name: Collect partial Gradle build caches
-        uses: ./.github/actions/ci-incr-build-cache-prepare
+        uses: $/.github/actions/ci-incr-build-cache-prepare
         with:
           cache-read-only: false
 
@@ -772,6 +842,8 @@ jobs:
     needs:
       - changes
       - license-check
+      - changelog-fragments-check
+      - build-logic-tests
       - build-checks
       - runtime-service-tests
       - runtime-service-int-tests

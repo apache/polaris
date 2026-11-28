@@ -24,8 +24,9 @@ plugins {
   alias(libs.plugins.quarkus)
   id("org.kordamp.gradle.jandex")
   id("polaris-runtime")
-  id("polaris-license-report")
 }
+
+apply(from = "../licensee.gradle.kts")
 
 val quarkusRunner =
   configurations.create("quarkusRunner") {
@@ -53,6 +54,7 @@ dependencies {
   runtimeOnly(project(":polaris-extensions-openlineage"))
   runtimeOnly(project(":polaris-extensions-metrics-reports"))
   runtimeOnly(project(":polaris-extensions-metrics-reports-jdbc"))
+  runtimeOnly(project(":polaris-extensions-storage-cloudflare-r2"))
 
   val nonRestCatalogs = providers.gradleProperty("NonRESTCatalogs").orNull
   if (nonRestCatalogs?.contains("HIVE") == true) {
@@ -71,6 +73,7 @@ dependencies {
     exclude(group = "com.google.protobuf", module = "protobuf-java-util")
   }
   implementation("io.quarkus:quarkus-container-image-docker")
+  implementation("io.quarkus:quarkus-cyclonedx")
 }
 
 quarkus {
@@ -135,6 +138,7 @@ artifacts {
   }
   add(distributionElements.name, layout.buildDirectory.dir("quarkus-app")) {
     builtBy("quarkusBuild")
+    builtBy("checkDistributionLicenses")
   }
   add(licenseNoticeElements.name, layout.projectDirectory.dir("distribution"))
 }

@@ -31,6 +31,7 @@ dependencies {
     api(project(":polaris-api-management-model"))
     api(project(":polaris-api-management-service"))
     api(project(":polaris-api-openlineage-service"))
+    api(project(":polaris-extensions-metrics-reports-api"))
 
     api(project(":polaris-container-spec-helper"))
     api(project(":polaris-floci-aws-testcontainer"))
@@ -85,6 +86,7 @@ dependencies {
     api(project(":polaris-persistence-nosql-inmemory"))
     api(project(":polaris-persistence-nosql-mongodb"))
     api(project(":polaris-persistence-nosql-dynamodb"))
+    api(project(":polaris-persistence-nosql-cassandra"))
 
     api(project(":polaris-persistence-nosql-maintenance-api"))
     api(project(":polaris-persistence-nosql-maintenance-impl"))
@@ -106,10 +108,12 @@ dependencies {
     api(project(":polaris-extensions-federation-bigquery"))
     api(project(":polaris-extensions-federation-hadoop"))
     api(project(":polaris-extensions-federation-hive"))
+    api(project(":polaris-extensions-metrics-reports-spi"))
     api(project(":polaris-extensions-metrics-reports"))
     api(project(":polaris-extensions-metrics-reports-jdbc"))
     api(project(":polaris-extensions-openlineage"))
     api(project(":polaris-extensions-semantic-models"))
+    api(project(":polaris-extensions-storage-cloudflare-r2"))
     api(project(":polaris-hms-testcontainer"))
 
     api(project(":polaris-spark-3.5_2.12"))
@@ -147,7 +151,6 @@ tasks.register<VerifyBomDependenciesTask>("verifyBomDependencies") {
   excludedProjectPaths.set(
     setOf(
       ":polaris-bom",
-      ":aggregated-license-report",
       ":polaris-config-docs-site",
       ":polaris-distribution",
     ),

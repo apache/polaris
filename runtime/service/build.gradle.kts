@@ -30,6 +30,8 @@ dependencies {
   implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
   implementation(project(":polaris-api-catalog-service"))
+  implementation(project(":polaris-extensions-metrics-reports-api"))
+  implementation(project(":polaris-extensions-metrics-reports-spi"))
 
   runtimeOnly(project(":polaris-relational-jdbc"))
 
@@ -112,6 +114,7 @@ dependencies {
   }
   implementation(platform(libs.azuresdk.bom))
   implementation("com.azure:azure-core")
+  implementation("com.azure:azure-identity")
   implementation("com.azure:azure-storage-blob")
   implementation("com.azure:azure-storage-file-datalake")
   implementation(libs.msal4j)

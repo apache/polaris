@@ -90,9 +90,17 @@ public class BootstrapCommand extends BaseMetaStoreCommand {
       Iterable<String> realms;
 
       if (inputOptions.rootCredentialsOptions.fileOptions != null) {
-        rootCredentialsSet =
-            RootCredentialsSet.fromUri(
-                inputOptions.rootCredentialsOptions.fileOptions.file.toUri());
+        Path credentialsFile = inputOptions.rootCredentialsOptions.fileOptions.file;
+        rootCredentialsSet = RootCredentialsSet.fromUri(credentialsFile.toUri());
+        if (rootCredentialsSet.credentials().isEmpty()) {
+          spec.commandLine()
+              .getErr()
+              .printf(
+                  "No root credentials found in %s. The file must name at least one realm and its"
+                      + " root principal credentials.%n",
+                  credentialsFile);
+          return EXIT_CODE_BOOTSTRAP_ERROR;
+        }
         realms = rootCredentialsSet.credentials().keySet();
       } else {
         realms = inputOptions.rootCredentialsOptions.stdinOptions.realms;

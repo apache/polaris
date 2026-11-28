@@ -159,19 +159,68 @@ public interface StorageConfiguration extends S3AccessConfig {
     Path credentialsFile();
   }
 
+  @WithName("azure")
+  AzureStorageConfig azure();
+
+  interface AzureStorageConfig {
+    /**
+     * The Microsoft Entra tenant of the service principal to use for authentication. If the tenant,
+     * client ID and client secret are not present, the {@code DefaultAzureCredential} chain is
+     * used. It must match the {@code tenantId} of every storage configuration that uses these
+     * credentials.
+     */
+    @WithName("tenant-id")
+    Optional<String> tenantId();
+
+    /**
+     * The application (client) ID of the service principal to use for authentication. If the
+     * tenant, client ID and client secret are not present, the {@code DefaultAzureCredential} chain
+     * is used.
+     */
+    @WithName("client-id")
+    Optional<String> clientId();
+
+    /**
+     * The client secret of the service principal to use for authentication. If the tenant, client
+     * ID and client secret are not present, the {@code DefaultAzureCredential} chain is used.
+     */
+    @WithName("client-secret")
+    Optional<String> clientSecret();
+
+    @WithParentName
+    @ConfigDocs.ConfigPropertyName("storage")
+    Map<String, AzureNamedStorageConfig> storages();
+  }
+
+  interface AzureNamedStorageConfig {
+    /**
+     * The Microsoft Entra tenant of the service principal when using named storages. It must match
+     * the {@code tenantId} of every storage configuration that uses this name.
+     */
+    @WithName("tenant-id")
+    String tenantId();
+
+    /** The application (client) ID of the service principal when using named storages. */
+    @WithName("client-id")
+    String clientId();
+
+    /** The client secret of the service principal when using named storages. */
+    @WithName("client-secret")
+    String clientSecret();
+  }
+
   default Supplier<StsClient> stsClientSupplier() {
     return stsClientSupplier(true);
   }
 
   default Supplier<StsClient> stsClientSupplier(boolean withCredentials) {
-    return Suppliers.memoize(
-        () -> {
-          StsClientBuilder stsClientBuilder = StsClient.builder();
-          if (withCredentials) {
-            stsClientBuilder.credentialsProvider(stsCredentials());
-          }
-          return stsClientBuilder.build();
-        });
+    return Suppliers.memoize(() -> {
+      StsClientBuilder stsClientBuilder = StsClient.builder();
+      if (withCredentials) {
+        stsClientBuilder.credentialsProvider(stsCredentials());
+      }
+      return stsClientBuilder.build();
+    });
   }
 
   default AwsCredentialsProvider stsCredentials() {
@@ -199,32 +248,28 @@ public interface StorageConfiguration extends S3AccessConfig {
   }
 
   default Supplier<GoogleCredentials> gcpCredentialsSupplier(Clock clock) {
-    return Suppliers.memoize(
-        () -> {
-          if (gcpAccessToken().isEmpty()) {
-            try {
-              return GoogleCredentials.getApplicationDefault();
-            } catch (IOException e) {
-              throw new RuntimeException("Failed to get GCP credentials", e);
-            }
-          } else {
-            // A statically configured token has no token endpoint to call, and
-            // GoogleCredentials.create(..) returns a credential that cannot refresh. Vending calls
-            // refresh() on the source credential before downscoping, so with that credential the
-            // first vend fails with an IllegalStateException regardless of expiry (#2253). Wrap the
-            // token in a credential that supports refresh by returning it with a fixed expiry: the
-            // configured gcp.expiry if set, otherwise computed once here from the configured
-            // lifespan.
-            Instant expiry =
-                gcpAccessTokenExpiry()
-                    .orElseGet(
-                        () ->
-                            clock
-                                .instant()
-                                .plus(gcpAccessTokenLifespan().orElse(DEFAULT_TOKEN_LIFESPAN)));
-            return new FixedGcpAccessTokenCredentials(gcpAccessToken().orElseThrow(), expiry);
-          }
-        });
+    return Suppliers.memoize(() -> {
+      if (gcpAccessToken().isEmpty()) {
+        try {
+          return GoogleCredentials.getApplicationDefault();
+        } catch (IOException e) {
+          throw new RuntimeException("Failed to get GCP credentials", e);
+        }
+      } else {
+        // A statically configured token has no token endpoint to call, and
+        // GoogleCredentials.create(..) returns a credential that cannot refresh. Vending calls
+        // refresh() on the source credential before downscoping, so with that credential the
+        // first vend fails with an IllegalStateException regardless of expiry (#2253). Wrap the
+        // token in a credential that supports refresh by returning it with a fixed expiry: the
+        // configured gcp.expiry if set, otherwise computed once here from the configured
+        // lifespan.
+        Instant expiry =
+            gcpAccessTokenExpiry()
+                .orElseGet(() ->
+                    clock.instant().plus(gcpAccessTokenLifespan().orElse(DEFAULT_TOKEN_LIFESPAN)));
+        return new FixedGcpAccessTokenCredentials(gcpAccessToken().orElseThrow(), expiry);
+      }
+    });
   }
 
   /**
@@ -238,21 +283,20 @@ public interface StorageConfiguration extends S3AccessConfig {
     ImmutableMap.Builder<String, Supplier<GoogleCredentials>> suppliers = ImmutableMap.builder();
     gcp()
         .storages()
-        .forEach(
-            (storageName, storageConfig) -> {
-              if (RESERVED_GCP_STORAGE_NAMES.contains(storageName)) {
-                throw new IllegalStateException(
-                    "'"
-                        + storageName
-                        + "' cannot be used as a GCP storage name, because polaris.storage.gcp."
-                        + storageName
-                        + " is a property of the default GCP credentials");
-              }
-              suppliers.put(
-                  storageName,
-                  Suppliers.memoize(
-                      () -> loadGcpCredentials(storageName, storageConfig.credentialsFile())));
-            });
+        .forEach((storageName, storageConfig) -> {
+          if (RESERVED_GCP_STORAGE_NAMES.contains(storageName)) {
+            throw new IllegalStateException(
+                "'"
+                    + storageName
+                    + "' cannot be used as a GCP storage name, because polaris.storage.gcp."
+                    + storageName
+                    + " is a property of the default GCP credentials");
+          }
+          suppliers.put(
+              storageName,
+              Suppliers.memoize(
+                  () -> loadGcpCredentials(storageName, storageConfig.credentialsFile())));
+        });
     return suppliers.build();
   }
 

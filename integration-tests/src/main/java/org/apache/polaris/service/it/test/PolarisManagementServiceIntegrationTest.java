@@ -33,6 +33,7 @@ import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.ImmutableMap;
 import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.time.Duration;
@@ -518,6 +519,25 @@ public class PolarisManagementServiceIntegrationTest {
       assertThat(error)
           .isNotNull()
           .returns("Unsupported connection type: HADOOP", ErrorResponse::message);
+    }
+  }
+
+  @Test
+  public void testRequestBodyErrorsReturnErrorDetails() {
+    String principalPath = "v1/principals/" + client.newEntityName("body-error-principal");
+    // The message permutations are covered by ExceptionMapperTest; this only checks that both
+    // runtime paths reach the Polaris mappers: a body that does not match the model is raised
+    // directly by Jackson, while malformed JSON arrives wrapped by the Quarkus body reader.
+    assertBadRequestWithMessage(
+        principalPath, "{\"properties\": {}}", "missing required property 'currentEntityVersion'");
+    assertBadRequestWithMessage(principalPath, "{\"currentEntityVersion\": 1, ", "Invalid JSON: ");
+  }
+
+  private static void assertBadRequestWithMessage(String path, String body, String message) {
+    try (Response response =
+        managementApi.request(path).put(Entity.entity(body, MediaType.APPLICATION_JSON))) {
+      assertThat(response.getStatus()).isEqualTo(Response.Status.BAD_REQUEST.getStatusCode());
+      assertThat(response.readEntity(ErrorResponse.class).message()).contains(message);
     }
   }
 
@@ -1585,12 +1605,10 @@ public class PolarisManagementServiceIntegrationTest {
           .extracting(r -> r.readEntity(CatalogRoles.class))
           .extracting(CatalogRoles::getRoles)
           .asInstanceOf(InstanceOfAssertFactories.list(CatalogRole.class))
-          .satisfiesExactly(
-              cr ->
-                  assertThat(cr)
-                      .returns(
-                          PolarisEntityConstants.getNameOfCatalogAdminRole(),
-                          CatalogRole::getName));
+          .satisfiesExactly(cr ->
+              assertThat(cr)
+                  .returns(
+                      PolarisEntityConstants.getNameOfCatalogAdminRole(), CatalogRole::getName));
     }
 
     UpdateCatalogRoleRequest updateRequest =
@@ -2100,10 +2118,8 @@ public class PolarisManagementServiceIntegrationTest {
 
     // The grant should appear exactly once.
     assertThat(managementApi.listGrants(catalogName, catalogRoleName).getGrants())
-        .filteredOn(
-            g ->
-                g instanceof CatalogGrant cg
-                    && cg.getPrivilege() == CatalogPrivilege.TABLE_WRITE_DATA)
+        .filteredOn(g ->
+            g instanceof CatalogGrant cg && cg.getPrivilege() == CatalogPrivilege.TABLE_WRITE_DATA)
         .hasSize(1);
   }
 
@@ -2127,18 +2143,16 @@ public class PolarisManagementServiceIntegrationTest {
 
     managementApi.addGrant(catalogName, catalogRoleName, grant);
     assertThat(managementApi.listGrants(catalogName, catalogRoleName).getGrants())
-        .filteredOn(
-            g ->
-                g instanceof CatalogGrant cg
-                    && cg.getPrivilege() == CatalogPrivilege.TABLE_READ_METRICS)
+        .filteredOn(g ->
+            g instanceof CatalogGrant cg
+                && cg.getPrivilege() == CatalogPrivilege.TABLE_READ_METRICS)
         .hasSize(1);
 
     managementApi.revokeGrant(catalogName, catalogRoleName, grant);
     assertThat(managementApi.listGrants(catalogName, catalogRoleName).getGrants())
-        .noneMatch(
-            g ->
-                g instanceof CatalogGrant cg
-                    && cg.getPrivilege() == CatalogPrivilege.TABLE_READ_METRICS);
+        .noneMatch(g ->
+            g instanceof CatalogGrant cg
+                && cg.getPrivilege() == CatalogPrivilege.TABLE_READ_METRICS);
   }
 
   @Test
@@ -2426,14 +2440,12 @@ public class PolarisManagementServiceIntegrationTest {
         .atMost(Duration.ofSeconds(20))
         .pollDelay(Duration.ofSeconds(1))
         .pollInterval(Duration.ofSeconds(1))
-        .untilAsserted(
-            () -> {
-              try (Response response =
-                  client.managementApi(newToken).request("v1/principals").get()) {
-                assertThat(response)
-                    .returns(Response.Status.UNAUTHORIZED.getStatusCode(), Response::getStatus);
-              }
-            });
+        .untilAsserted(() -> {
+          try (Response response = client.managementApi(newToken).request("v1/principals").get()) {
+            assertThat(response)
+                .returns(Response.Status.UNAUTHORIZED.getStatusCode(), Response::getStatus);
+          }
+        });
   }
 
   @Test

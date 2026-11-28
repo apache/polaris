@@ -22,6 +22,8 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
+import java.nio.BufferOverflowException;
+import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import org.jspecify.annotations.NonNull;
@@ -54,6 +56,9 @@ import tools.jackson.databind.annotation.JsonSerialize;
  *
  * <p>{@link IndexKey}s are comparable, the results reflect the outcome of the <em>unsigned</em>
  * comparison of the respective byte representations.
+ *
+ * <p>Array-backed fast paths and generic buffer paths must preserve the same encoding, length
+ * checks, and buffer-position behavior.
  */
 @JsonSerialize(using = IndexKey.IndexKeySerializer.class)
 @JsonDeserialize(using = IndexKey.IndexKeyDeserializer.class)
@@ -110,7 +115,6 @@ public final class IndexKey implements Comparable<IndexKey> {
 
   private final byte[] key;
 
-  private boolean hasHash;
   private int hash;
 
   private IndexKey(byte[] key) {
@@ -136,31 +140,95 @@ public final class IndexKey implements Comparable<IndexKey> {
 
   @Nullable
   public static IndexKey deserializeKey(ByteBuffer buffer) {
-    var tmp = new byte[MAX_LENGTH];
+    if (buffer.hasArray()) {
+      return deserializeArrayKey(buffer);
+    }
+    // UTF-8 names and their zero separators normally require no unescaping.
+    var start = buffer.position();
     var l = 0;
     while (true) {
       var b = buffer.get();
       if (b == EOF) {
-        return new IndexKey(Arrays.copyOf(tmp, l));
+        var key = new byte[l];
+        buffer.get(start, key);
+        return new IndexKey(key);
       }
       if (b == ESC) {
-        b = buffer.get();
-        switch (b) {
-          case NULL_ESCAPED -> {
-            checkState(l == 0, "NULL escape position");
-            return null;
-          }
-          case EOF_ESCAPED -> b = EOF;
-          case ESC_ESCAPED -> b = ESC;
-          default -> throw new IllegalArgumentException("Invalid escaped value " + b);
-        }
+        return deserializeEscaped(buffer, start, l);
       }
-      tmp[l++] = b;
+      l++;
       checkArgument(l <= MAX_LENGTH, "Deserialized key too long");
     }
   }
 
+  @Nullable
+  private static IndexKey deserializeArrayKey(ByteBuffer buffer) {
+    var array = buffer.array();
+    var offset = buffer.arrayOffset();
+    var start = offset + buffer.position();
+    var end = offset + buffer.limit();
+    var cursor = start;
+    try {
+      while (true) {
+        if (cursor == end) {
+          throw new BufferUnderflowException();
+        }
+        var b = array[cursor++];
+        if (b == EOF) {
+          return new IndexKey(Arrays.copyOfRange(array, start, cursor - 1));
+        }
+        if (b == ESC) {
+          break;
+        }
+        checkArgument(cursor - start <= MAX_LENGTH, "Deserialized key too long");
+      }
+    } finally {
+      buffer.position(cursor - offset);
+    }
+    return deserializeEscaped(buffer, start - offset, cursor - start - 1);
+  }
+
+  @Nullable
+  private static IndexKey deserializeEscaped(ByteBuffer buffer, int start, int l) {
+    var escaped = buffer.get();
+    if (escaped == NULL_ESCAPED) {
+      checkState(l == 0, "NULL escape position");
+      return null;
+    }
+    // The wire bytes remaining bound the decoded suffix, including the first escaped byte.
+    var tmp = new byte[Math.min(MAX_LENGTH, l + buffer.remaining() + 1)];
+    buffer.get(start, tmp, 0, l);
+    var b = ESC;
+    while (true) {
+      if (b == EOF) {
+        return new IndexKey(Arrays.copyOf(tmp, l));
+      }
+      if (b == ESC) {
+        switch (escaped) {
+          case NULL_ESCAPED -> {
+            // The check above handles the first escape; this handles later escapes in the key.
+            checkState(l == 0, "NULL escape position");
+            return null;
+          }
+          case EOF_ESCAPED -> b = EOF;
+          case ESC_ESCAPED -> {}
+          default -> throw new IllegalArgumentException("Invalid escaped value " + escaped);
+        }
+      }
+      checkArgument(l < MAX_LENGTH, "Deserialized key too long");
+      tmp[l++] = b;
+      b = buffer.get();
+      if (b == ESC) {
+        escaped = buffer.get();
+      }
+    }
+  }
+
   public static void skip(ByteBuffer buffer) {
+    if (buffer.hasArray()) {
+      skipArrayKey(buffer);
+      return;
+    }
     // Count decoded key length, matching deserializeKey. Escaped ESC/EOF bytes are one decoded
     // unit each; counting wire bytes here would reject keys that serialize and deserialize fine.
     var l = 0;
@@ -185,6 +253,43 @@ public final class IndexKey implements Comparable<IndexKey> {
     }
   }
 
+  private static void skipArrayKey(ByteBuffer buffer) {
+    var array = buffer.array();
+    var offset = buffer.arrayOffset();
+    var cursor = offset + buffer.position();
+    var end = offset + buffer.limit();
+    var l = 0;
+    try {
+      while (true) {
+        if (cursor == end) {
+          throw new BufferUnderflowException();
+        }
+        var b = array[cursor++];
+        if (b == EOF) {
+          return;
+        }
+        if (b == ESC) {
+          if (cursor == end) {
+            throw new BufferUnderflowException();
+          }
+          b = array[cursor++];
+          switch (b) {
+            case EOF_ESCAPED, ESC_ESCAPED -> {}
+            case NULL_ESCAPED -> {
+              checkState(l == 0, "NULL escape position");
+              return;
+            }
+            default -> throw new IllegalArgumentException("Invalid escaped value " + b);
+          }
+        }
+        l++;
+        checkArgument(l <= MAX_LENGTH, "Deserialized key too long");
+      }
+    } finally {
+      buffer.position(cursor - offset);
+    }
+  }
+
   public int serializedSize() {
     var l = 1;
     for (byte b : key) {
@@ -199,6 +304,12 @@ public final class IndexKey implements Comparable<IndexKey> {
   }
 
   public ByteBuffer serialize(ByteBuffer target) {
+    if (target.hasArray()) {
+      if (!serializeArray(target)) {
+        throw new BufferOverflowException();
+      }
+      return target;
+    }
     for (byte b : key) {
       switch (b) {
         case ESC:
@@ -219,6 +330,10 @@ public final class IndexKey implements Comparable<IndexKey> {
   }
 
   public void serializeNoFail(ByteBuffer target) {
+    if (target.hasArray()) {
+      serializeArray(target);
+      return;
+    }
     var remain = target.remaining();
     var k = key;
     var l = k.length;
@@ -253,6 +368,37 @@ public final class IndexKey implements Comparable<IndexKey> {
     target.put(EOF);
   }
 
+  /** Writes the available encoded prefix and returns whether the terminator also fit. */
+  private boolean serializeArray(ByteBuffer target) {
+    var array = target.array();
+    var offset = target.arrayOffset();
+    var cursor = offset + target.position();
+    var end = offset + target.limit();
+    try {
+      for (byte b : key) {
+        if (cursor == end) {
+          return false;
+        }
+        if (b == ESC || b == EOF) {
+          array[cursor++] = ESC;
+          if (cursor == end) {
+            return false;
+          }
+          array[cursor++] = b == EOF ? EOF_ESCAPED : ESC_ESCAPED;
+        } else {
+          array[cursor++] = b;
+        }
+      }
+      if (cursor == end) {
+        return false;
+      }
+      array[cursor++] = EOF;
+      return true;
+    } finally {
+      target.position(cursor - offset);
+    }
+  }
+
   @Override
   public int compareTo(IndexKey that) {
     return Arrays.compareUnsigned(this.key, that.key);
@@ -260,11 +406,12 @@ public final class IndexKey implements Comparable<IndexKey> {
 
   @Override
   public int hashCode() {
-    if (!hasHash) {
-      hash = Arrays.hashCode(key);
-      hasHash = true;
+    var h = hash;
+    if (h == 0) {
+      h = Arrays.hashCode(key);
+      hash = h;
     }
-    return hash;
+    return h;
   }
 
   @Override
@@ -285,11 +432,18 @@ public final class IndexKey implements Comparable<IndexKey> {
     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'
   };
 
+  /**
+   * Printable staging key for persisting an index stripe. Non-printable bytes (and {@code 'x'}) are
+   * encoded as {@code x} plus two hex digits so the mapping is injective. {@code 'x'} is escaped
+   * because it is the escape prefix: otherwise {@code "a b"} and {@code "ax20b"} both become {@code
+   * ax20b} and two stripes in one commit can replace each other.
+   */
   public String toSafeString(String prefix) {
     var sb = new StringBuilder(prefix.length() + key.length);
     sb.append(prefix);
     for (byte b : key) {
-      if (b > 32 && b < 127) {
+      // 'x' is the escape marker; leaving it unescaped is not injective.
+      if (b > 32 && b < 127 && b != 'x') {
         sb.append((char) b);
       } else {
         sb.append('x');
@@ -305,18 +459,7 @@ public final class IndexKey implements Comparable<IndexKey> {
     var preLen = preKey.length;
     checkArgument(preLen > 0, "prefix must not be empty");
     var key = this.key;
-    var len = key.length;
-    for (var i = 0; ; i++) {
-      if (i == preLen) {
-        return true;
-      }
-      if (i >= len) {
-        return false;
-      }
-      if (key[i] != preKey[i]) {
-        return false;
-      }
-    }
+    return key.length >= preLen && Arrays.equals(key, 0, preLen, preKey, 0, preLen);
   }
 
   public long asLong() {

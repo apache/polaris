@@ -238,6 +238,11 @@ backfill state is known to be correct.
 See [Storage Layout]({{% ref "../storage-layout.md" %}}) for how these flags change where tables
 are stored, and how they interact with each other.
 
+Disabling `ALLOW_UNSTRUCTURED_TABLE_LOCATION` after it has been enabled does not validate existing
+tables and views, which may then fail with HTTP 403. See
+[Structured and Unstructured Table Locations]({{% ref "../structured-and-unstructured-table-locations.md" %}})
+before making that change.
+
 ### Polaris Server Header
 
 Polaris can emit an informational `Server` HTTP response header using Quarkus' built-in header

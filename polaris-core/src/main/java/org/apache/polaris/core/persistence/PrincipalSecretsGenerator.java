@@ -82,12 +82,11 @@ public interface PrincipalSecretsGenerator {
       RootCredentialsSet rootCredentialsSet) {
     if (principalName.equals(PolarisEntityConstants.getRootPrincipalName())) {
       return Optional.ofNullable(rootCredentialsSet.credentials().get(realmName))
-          .map(
-              credentials -> {
-                String clientId = credentials.clientId();
-                String secret = credentials.clientSecret();
-                return new PolarisPrincipalSecrets(principalId, clientId, secret, secret);
-              });
+          .map(credentials -> {
+            String clientId = credentials.clientId();
+            String secret = credentials.clientSecret();
+            return new PolarisPrincipalSecrets(principalId, clientId, secret, secret);
+          });
     }
     return Optional.empty();
   }

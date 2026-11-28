@@ -25,8 +25,8 @@ import static org.apache.polaris.core.config.FeatureConfiguration.AZURE_TIMEOUT_
 import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
 
 import com.azure.core.credential.AccessToken;
+import com.azure.core.credential.TokenCredential;
 import com.azure.core.credential.TokenRequestContext;
-import com.azure.identity.DefaultAzureCredential;
 import com.azure.identity.DefaultAzureCredentialBuilder;
 import com.azure.storage.blob.BlobContainerClientBuilder;
 import com.azure.storage.blob.BlobServiceClient;
@@ -64,6 +64,7 @@ import org.apache.polaris.core.storage.LocationGrant;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.StorageAccessConfig;
 import org.apache.polaris.core.storage.StorageAccessProperty;
+import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCacheKey;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
@@ -83,7 +84,7 @@ public class AzureCredentialsStorageIntegration
   // https://learn.microsoft.com/en-us/azure/storage/blobs/storage-blob-user-delegation-sas-create-java.
   private static final long SAS_CLOCK_SKEW_BUFFER_SECONDS = Duration.ofMinutes(5).toSeconds();
 
-  final DefaultAzureCredential defaultAzureCredential;
+  final TokenCredential credential;
 
   public AzureCredentialsStorageIntegration(
       AzureStorageConfigurationInfo storageConfig, RealmConfig realmConfig) {
@@ -91,13 +92,21 @@ public class AzureCredentialsStorageIntegration
   }
 
   public AzureCredentialsStorageIntegration(
-      org.apache.polaris.core.storage.cache.StorageCredentialCache cache,
+      StorageCredentialCache cache,
+      AzureStorageConfigurationInfo storageConfig,
+      RealmConfig realmConfig) {
+    // The DefaultAzureCredential will by default load the environment variables for client id,
+    // client secret, tenant id
+    this(new DefaultAzureCredentialBuilder().build(), cache, storageConfig, realmConfig);
+  }
+
+  public AzureCredentialsStorageIntegration(
+      TokenCredential credential,
+      StorageCredentialCache cache,
       AzureStorageConfigurationInfo storageConfig,
       RealmConfig realmConfig) {
     super(cache, realmConfig, storageConfig);
-    // The DefaultAzureCredential will by default load the environment variables for client id,
-    // client secret, tenant id
-    defaultAzureCredential = new DefaultAzureCredentialBuilder().build();
+    this.credential = credential;
   }
 
   @Override
@@ -110,12 +119,9 @@ public class AzureCredentialsStorageIntegration
   protected StorageAccessConfig addExtraProperties(
       @NonNull StorageAccessConfig accessConfig, @NonNull Optional<String> refreshEndpoint) {
     return refreshEndpoint
-        .map(
-            endpoint ->
-                withExtraProperty(
-                    accessConfig,
-                    StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT,
-                    endpoint))
+        .map(endpoint ->
+            withExtraProperty(
+                accessConfig, StorageAccessProperty.AZURE_REFRESH_CREDENTIALS_ENDPOINT, endpoint))
         .orElse(accessConfig);
   }
 
@@ -131,11 +137,10 @@ public class AzureCredentialsStorageIntegration
 
   private static Set<String> writeLocations(List<LocationGrant> grants) {
     return grants.stream()
-        .filter(
-            g ->
-                g.actions().contains(PolarisStorageActions.WRITE)
-                    || g.actions().contains(PolarisStorageActions.DELETE)
-                    || g.actions().contains(PolarisStorageActions.ALL))
+        .filter(g ->
+            g.actions().contains(PolarisStorageActions.WRITE)
+                || g.actions().contains(PolarisStorageActions.DELETE)
+                || g.actions().contains(PolarisStorageActions.ALL))
         .flatMap(g -> g.locations().stream())
         .collect(Collectors.toSet());
   }
@@ -151,7 +156,7 @@ public class AzureCredentialsStorageIntegration
         allowList,
         locations,
         writeLocations,
-        defaultAzureCredential,
+        credential,
         realmConfig());
   }
 
@@ -159,7 +164,7 @@ public class AzureCredentialsStorageIntegration
   static StorageAccessConfig compute(AzureStorageCredentialCacheKey key) {
     RealmConfig realmConfig = key.realmConfig();
     AzureStorageConfigurationInfo azureStorageConfig = key.storageConfig();
-    DefaultAzureCredential defaultAzureCredential = key.defaultAzureCredential();
+    TokenCredential credential = key.credential();
     boolean allowList = key.allowedListAction();
     Set<String> locations = key.allowedReadLocations();
     Set<String> writeLocations = key.allowedWriteLocations();
@@ -202,7 +207,7 @@ public class AzureCredentialsStorageIntegration
     Instant start = Instant.now();
 
     AccessToken accessToken =
-        getAccessToken(defaultAzureCredential, realmConfig, azureStorageConfig.getTenantId());
+        getAccessToken(credential, realmConfig, azureStorageConfig.getTenantId());
     // Backdate the user delegation key start time by five minutes, following Microsoft's Java
     // user-delegation SAS example, to prevent authorization failures caused by clock skew.
     // Microsoft's general SAS guidance recommends a 15-minute backdate for an explicit SAS start
@@ -415,16 +420,15 @@ public class AzureCredentialsStorageIntegration
     Set<String> allLocations = new HashSet<>();
     allLocations.addAll(readLocations);
     allLocations.addAll(writeLocations);
-    allLocations.forEach(
-        loc -> {
-          AzureLocation location = new AzureLocation(loc);
-          if (!Objects.equals(location.getStorageAccount(), target.getStorageAccount())
-              || !Objects.equals(location.getContainer(), target.getContainer())
-              || !Objects.equals(location.getEndpoint(), target.getEndpoint())) {
-            throw new RuntimeException(
-                "Expect allowed read write locations belong to the same storage account and container");
-          }
-        });
+    allLocations.forEach(loc -> {
+      AzureLocation location = new AzureLocation(loc);
+      if (!Objects.equals(location.getStorageAccount(), target.getStorageAccount())
+          || !Objects.equals(location.getContainer(), target.getContainer())
+          || !Objects.equals(location.getEndpoint(), target.getEndpoint())) {
+        throw new RuntimeException(
+            "Expect allowed read write locations belong to the same storage account and container");
+      }
+    });
   }
 
   /**
@@ -449,7 +453,7 @@ public class AzureCredentialsStorageIntegration
    * @throws RuntimeException if token fetch fails after all retries or times out
    */
   private static AccessToken getAccessToken(
-      DefaultAzureCredential defaultAzureCredential, RealmConfig realmConfig, String tenantId) {
+      TokenCredential credential, RealmConfig realmConfig, String tenantId) {
     int timeoutMillis = realmConfig.getConfig(AZURE_TIMEOUT_MILLIS);
     int retryCount = realmConfig.getConfig(AZURE_RETRY_COUNT);
     int initialDelayMillis = realmConfig.getConfig(AZURE_RETRY_DELAY_MILLIS);
@@ -458,30 +462,27 @@ public class AzureCredentialsStorageIntegration
 
     String scope = "https://storage.azure.com/.default";
     AccessToken accessToken =
-        defaultAzureCredential
+        credential
             .getToken(new TokenRequestContext().addScopes(scope).setTenantId(tenantId))
             .timeout(Duration.ofMillis(timeoutMillis))
-            .doOnError(
-                error ->
-                    LOGGER.warn("Error fetching Azure access token for tenant {}", tenantId, error))
+            .doOnError(error ->
+                LOGGER.warn("Error fetching Azure access token for tenant {}", tenantId, error))
             .retryWhen(
                 Retry.backoff(retryCount, Duration.ofMillis(initialDelayMillis))
                     .jitter(jitter) // Apply jitter factor to computed delay
                     .filter(AzureCredentialsStorageIntegration::isRetriableAzureException)
-                    .doBeforeRetry(
-                        retrySignal ->
-                            LOGGER.info(
-                                "Retrying Azure token fetch for tenant {} (attempt {}/{})",
-                                tenantId,
-                                retrySignal.totalRetries() + 1,
-                                maxAttempts))
-                    .onRetryExhaustedThrow(
-                        (retryBackoffSpec, retrySignal) ->
-                            new RuntimeException(
-                                String.format(
-                                    "Azure token fetch exhausted after %d attempts for tenant %s",
-                                    retrySignal.totalRetries(), tenantId),
-                                retrySignal.failure())))
+                    .doBeforeRetry(retrySignal ->
+                        LOGGER.info(
+                            "Retrying Azure token fetch for tenant {} (attempt {}/{})",
+                            tenantId,
+                            retrySignal.totalRetries() + 1,
+                            maxAttempts))
+                    .onRetryExhaustedThrow((retryBackoffSpec, retrySignal) ->
+                        new RuntimeException(
+                            String.format(
+                                "Azure token fetch exhausted after %d attempts for tenant %s",
+                                retrySignal.totalRetries(), tenantId),
+                            retrySignal.failure())))
             .blockOptional()
             .orElse(null);
 

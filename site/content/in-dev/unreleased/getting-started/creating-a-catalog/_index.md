@@ -39,17 +39,18 @@ Check full list of options for the `polaris catalogs create` command [here]({{% 
 ### Example
 
 ```shell
-CLIENT_ID=root \
-CLIENT_SECRET=s3cr3t \
-DEFAULT_BASE_LOCATION=s3://example-bucket/my_data \
-ROLE_ARN=arn:aws:iam::111122223333:role/ExampleCorpRole \
+CLIENT_ID=root
+CLIENT_SECRET=s3cr3t
+DEFAULT_BASE_LOCATION=s3://example-bucket/my_data
+ROLE_ARN=arn:aws:iam::111122223333:role/ExampleCorpRole
+
 polaris \
-  --client-id ${CLIENT_ID} \
-  --client-secret ${CLIENT_SECRET} \
+  --client-id "${CLIENT_ID}" \
+  --client-secret "${CLIENT_SECRET}" \
   catalogs \
   create \
   --storage-type s3 \
-  --default-base-location ${DEFAULT_BASE_LOCATION} \
-  --role-arn ${ROLE_ARN} \
+  --default-base-location "${DEFAULT_BASE_LOCATION}" \
+  --role-arn "${ROLE_ARN}" \
   my_catalog
 ```

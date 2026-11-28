@@ -25,4 +25,4 @@ build:
 
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
-| `polaris.rate-limiter.filter.type` |  | `string` | The type of the rate limiter. Must be a registered (`org.apache.polaris.service.ratelimiter.RateLimiter`) identifier.  |
+| `polaris.rate-limiter.filter.type` |  | `string` | The type of the rate limiter. Must be a registered (`org.apache.polaris.service.ratelimiter.RateLimiter`) identifier. |

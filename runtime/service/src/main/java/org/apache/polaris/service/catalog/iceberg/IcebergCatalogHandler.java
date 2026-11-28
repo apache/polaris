@@ -477,7 +477,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
 
-    authorizeCreateTableDirect(namespace, request, !delegationModes.isEmpty());
+    authorizeCreateTableDirect(
+        namespace, request, AccessDelegationMode.requiresDelegation(delegationModes));
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, request.name());
@@ -740,7 +741,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       EnumSet<AccessDelegationMode> delegationModes,
       Optional<String> refreshCredentialsEndpoint) {
 
-    authorizeCreateTableStaged(namespace, request, !delegationModes.isEmpty());
+    authorizeCreateTableStaged(
+        namespace, request, AccessDelegationMode.requiresDelegation(delegationModes));
 
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
@@ -1033,7 +1035,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       EnumSet<AccessDelegationMode> delegationModes,
       boolean overwrite) {
 
-    if (delegationModes.isEmpty()) {
+    if (!AccessDelegationMode.requiresDelegation(delegationModes)) {
 
       if (overwrite) {
         authorizeRegisterTableOverwriteOrThrow(
@@ -1169,7 +1171,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       Optional<String> refreshCredentialsEndpoint) {
 
     Set<PolarisStorageActions> actionsRequested =
-        authorizeLoadTable(tableIdentifier, !delegationModes.isEmpty());
+        authorizeLoadTable(
+            tableIdentifier, AccessDelegationMode.requiresDelegation(delegationModes));
     Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     return loadTableWithResolvedAuthorization(
@@ -1259,22 +1262,25 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       // allowedLocations before vending credentials. This protects against cases where
       // allowedLocations were tightened after the table was created.
       validateTableLocations(tableIdentifier, tableLocations, resolvedStoragePath);
-      if (VENDED_CREDENTIALS.equals(delegationMode.orElse(null))
-          && baseCatalog instanceof LocalIcebergCatalog localCatalog) {
+      boolean vendingCredentials = VENDED_CREDENTIALS.equals(delegationMode.orElse(null));
+      if (vendingCredentials && baseCatalog instanceof LocalIcebergCatalog localCatalog) {
         localCatalog.validateNoLocationOverlapForCredentialVending(
             tableIdentifier, tableMetadata.location(), tableLocations, resolvedStoragePath);
       }
 
+      // The storage integration decides whether the refresh endpoint ends up in the response, based
+      // on whether it vended credentials. Only offer it when this request resolves to credential
+      // vending, so a plain metadata load never advertises the credentials endpoint.
       StorageAccessConfig storageAccessConfig =
           storageAccessConfigProvider()
               .getStorageAccessConfig(
                   tableIdentifier,
                   tableLocations,
                   actions,
-                  refreshCredentialsEndpoint,
+                  vendingCredentials ? refreshCredentialsEndpoint : Optional.empty(),
                   resolvedStoragePath);
       Map<String, String> credentialConfig = storageAccessConfig.credentials();
-      if (VENDED_CREDENTIALS.equals(delegationMode.orElse(null))) {
+      if (vendingCredentials) {
         if (!credentialConfig.isEmpty()) {
           responseBuilder.addAllConfig(credentialConfig);
           responseBuilder.addCredential(
@@ -1333,18 +1339,17 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     List<UpdateRequirement> requirements = request.requirements();
     List<MetadataUpdate> updates =
         request.updates().stream()
-            .map(
-                update -> {
-                  if (!isFederated && update instanceof MetadataUpdate.SetLocation setLocation) {
-                    String requestedLocation = setLocation.location();
-                    String filteredLocation =
-                        ((LocalIcebergCatalog) baseCatalog)
-                            .transformTableLikeLocation(identifier, requestedLocation);
-                    return new MetadataUpdate.SetLocation(filteredLocation);
-                  } else {
-                    return update;
-                  }
-                })
+            .map(update -> {
+              if (!isFederated && update instanceof MetadataUpdate.SetLocation setLocation) {
+                String requestedLocation = setLocation.location();
+                String filteredLocation =
+                    ((LocalIcebergCatalog) baseCatalog)
+                        .transformTableLikeLocation(identifier, requestedLocation);
+                return new MetadataUpdate.SetLocation(filteredLocation);
+              } else {
+                return update;
+              }
+            })
             .toList();
     return UpdateTableRequest.create(identifier, requirements, updates);
   }
@@ -1549,101 +1554,80 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // complex) alternative that would intercept at the MetaStoreManager layer.
     List<TableMetadata> tableMetadataObjs = new ArrayList<>();
     Map<TableIdentifier, FileIO> tableFileIOs = new HashMap<>();
-    changesByTable.forEach(
-        (tableIdentifier, changes) -> {
-          Table table = baseCatalog.loadTable(tableIdentifier);
-          if (!(table instanceof BaseTable baseTable)) {
-            throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
-          }
+    boolean persistenceAttempted = false;
+    try {
+      changesByTable.forEach((tableIdentifier, changes) -> {
+        Table table = baseCatalog.loadTable(tableIdentifier);
+        if (!(table instanceof BaseTable baseTable)) {
+          throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
+        }
 
-          TableOperations tableOps = baseTable.operations();
-          TableMetadata baseMetadata = tableOps.current();
+        TableOperations tableOps = baseTable.operations();
+        TableMetadata baseMetadata = tableOps.current();
 
-          // Apply each change sequentially: validate requirements against current state,
-          // then apply updates. This ensures conflicts are detected (e.g., if two changes
-          // both expect schema ID 0, the second will fail after the first increments it).
-          TableMetadata currentMetadata = baseMetadata;
-          for (UpdateTableRequest change : changes) {
-            // A multi-table transaction must not be a way to bypass the caller-specified-location
-            // gate enforced on the single-table updateTable path.
-            rejectClientSpecifiedLocationIfDisallowed(change);
+        // Apply each change sequentially: validate requirements against current state,
+        // then apply updates. This ensures conflicts are detected (e.g., if two changes
+        // both expect schema ID 0, the second will fail after the first increments it).
+        TableMetadata currentMetadata = baseMetadata;
+        for (UpdateTableRequest change : changes) {
+          // A multi-table transaction must not be a way to bypass the caller-specified-location
+          // gate enforced on the single-table updateTable path.
+          rejectClientSpecifiedLocationIfDisallowed(change);
 
-            // Validate requirements against the current metadata state
-            final TableMetadata metadataForValidation = currentMetadata;
-            change
-                .requirements()
-                .forEach(requirement -> requirement.validate(metadataForValidation));
+          // Validate requirements against the current metadata state
+          final TableMetadata metadataForValidation = currentMetadata;
+          change.requirements().forEach(requirement -> requirement.validate(metadataForValidation));
 
-            // TODO: Refactor to share/reconcile the update-application logic below with
-            // CatalogHandlerUtils to avoid divergence as complexity grows.
-            TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(currentMetadata);
-            for (MetadataUpdate singleUpdate : change.updates()) {
-              // Note: If location-overlap checking is refactored to be atomic, we could
-              // support validation within a single multi-table transaction as well, but
-              // will need to update the TransactionWorkspaceMetaStoreManager to better
-              // expose the concept of being able to read uncommitted updates.
-              if (singleUpdate instanceof MetadataUpdate.SetLocation setLocation) {
-                if (!currentMetadata.location().equals(setLocation.location())
-                    && !realmConfig()
-                        .getConfig(FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
-                  throw new BadRequestException(
-                      "Unsupported operation: commitTransaction containing SetLocation"
-                          + " for table '%s' and new location '%s'",
-                      change.identifier(), ((MetadataUpdate.SetLocation) singleUpdate).location());
-                }
-              }
-
-              // Apply updates to builder
-              try {
-                singleUpdate.applyTo(metadataBuilder);
-              } catch (RetryableValidationException e) {
-                // Surface as a retryable 409, matching CatalogHandlerUtils.commit.
-                throw new CommitFailedException(
-                    e, "Validation failed, please retry: %s", e.getMessage());
-              }
+          // TODO: Refactor to share/reconcile the update-application logic below with
+          // CatalogHandlerUtils to avoid divergence as complexity grows.
+          TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(currentMetadata);
+          for (MetadataUpdate singleUpdate : change.updates()) {
+            // Apply updates to builder
+            try {
+              singleUpdate.applyTo(metadataBuilder);
+            } catch (RetryableValidationException e) {
+              // Surface as a retryable 409, matching CatalogHandlerUtils.commit.
+              throw new CommitFailedException(
+                  e, "Validation failed, please retry: %s", e.getMessage());
             }
-
-            // Update currentMetadata to reflect this change for subsequent requirement validation
-            currentMetadata = metadataBuilder.build();
           }
 
-          // Commit all accumulated changes for this table in a single atomic operation.
-          // The delete logic (set above to collectCleanup) will record instead of delete.
-          if (!currentMetadata.changes().isEmpty()) {
-            tableOps.commit(baseMetadata, currentMetadata);
-            tableFileIOs.put(tableIdentifier, tableOps.io());
-          }
+          // Update currentMetadata to reflect this change for subsequent requirement validation
+          currentMetadata = metadataBuilder.build();
+        }
 
-          tableMetadataObjs.add(currentMetadata);
-        });
+        // Commit all accumulated changes for this table in a single atomic operation.
+        // The delete logic (set above to collectCleanup) will record instead of delete.
+        if (!currentMetadata.changes().isEmpty()) {
+          tableOps.commit(baseMetadata, currentMetadata);
+          tableFileIOs.put(tableIdentifier, tableOps.io());
+        }
 
-    List<EntityWithPath> pendingUpdates = transactionMetaStoreManager.getPendingUpdates();
-    EntitiesResult result =
-        metaStoreManager()
-            .updateEntitiesPropertiesIfNotChanged(
-                callContext().getPolarisCallContext(), pendingUpdates);
-    if (!result.isSuccess()) {
-      // TODO: Retries on failure
+        tableMetadataObjs.add(currentMetadata);
+      });
 
-      // Clean up metadata files written during doCommit() since the transaction failed.
-      // We derive locations from pendingUpdates (not tableOps.current()) because
-      // requestRefresh() triggers doRefresh() against the store where the entity
-      // hasn't been persisted yet.
-      List<FileToDelete> writtenMetadataFiles =
-          pendingUpdates.stream()
-              .map(ewp -> IcebergTableLikeEntity.of(ewp.entity()))
-              .filter(entity -> entity != null && entity.getMetadataLocation() != null)
-              .filter(entity -> tableFileIOs.containsKey(entity.getTableIdentifier()))
-              .map(
-                  entity ->
-                      new FileToDelete(
-                          tableFileIOs.get(entity.getTableIdentifier()),
-                          entity.getMetadataLocation()))
-              .toList();
-      cleanupWrittenMetadataFiles(writtenMetadataFiles);
-      throw new CommitFailedException(
-          "Transaction commit failed with status: %s, extraInfo: %s",
-          result.getReturnStatus(), result.getExtraInformation());
+      List<EntityWithPath> pendingUpdates = transactionMetaStoreManager.getPendingUpdates();
+      persistenceAttempted = true;
+      EntitiesResult result =
+          metaStoreManager()
+              .updateEntitiesPropertiesIfNotChanged(
+                  callContext().getPolarisCallContext(), pendingUpdates);
+      if (!result.isSuccess()) {
+        // TODO: Retries on failure
+        throw new CommitFailedException(
+            "Transaction commit failed with status: %s, extraInfo: %s",
+            result.getReturnStatus(), result.getExtraInformation());
+      }
+    } catch (RuntimeException e) {
+      // No catalog entity is persisted until updateEntitiesPropertiesIfNotChanged is reached, so a
+      // failure before it leaves a definite orphan whatever its type. Once it has been attempted,
+      // only delete on known failures: an ambiguous outcome must leave the files in place. Same
+      // rule as doCommit.
+      if (!persistenceAttempted || LocalIcebergCatalog.shouldCleanupMetadataOnCommitFailure(e)) {
+        cleanupWrittenMetadataFiles(
+            writtenMetadataFiles(transactionMetaStoreManager.getPendingUpdates(), tableFileIOs));
+      }
+      throw e;
     }
 
     // It is now safe to delete removed metadata files for all tables that were part of
@@ -1654,6 +1638,23 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     }
 
     eventAttributeMap().put(EventAttributes.TABLE_METADATAS, tableMetadataObjs);
+  }
+
+  /**
+   * Returns the metadata files written during a transaction, derived from the buffered entity
+   * updates rather than from {@code tableOps.current()}: {@code requestRefresh()} triggers {@code
+   * doRefresh()} against the store, where the entity has not been persisted yet.
+   */
+  private static List<FileToDelete> writtenMetadataFiles(
+      List<EntityWithPath> pendingUpdates, Map<TableIdentifier, FileIO> tableFileIOs) {
+    return pendingUpdates.stream()
+        .map(ewp -> IcebergTableLikeEntity.of(ewp.entity()))
+        .filter(entity -> entity != null && entity.getMetadataLocation() != null)
+        .filter(entity -> tableFileIOs.containsKey(entity.getTableIdentifier()))
+        .map(entity ->
+            new FileToDelete(
+                tableFileIOs.get(entity.getTableIdentifier()), entity.getMetadataLocation()))
+        .toList();
   }
 
   record FileToDelete(FileIO io, String location) {
@@ -1797,10 +1798,15 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
       // suppressHistoricalSnapshots() preserves metadataLocation() while dropping unreferenced
       // snapshots, matching org.apache.iceberg.rest.CatalogHandlers#loadTable's REFS case.
+      // Dropping a snapshot also drops its statistics and partition statistics, which the builder
+      // records as RemoveStatistics/RemovePartitionStatistics changes; build() rejects any change
+      // alongside a metadata location. The response is a view of the already-committed metadata
+      // file, not a new commit, so the change log is discarded.
       TableMetadata filteredMetadata =
           TableMetadata.buildFrom(metadata)
               .withMetadataLocation(metadata.metadataFileLocation())
               .suppressHistoricalSnapshots()
+              .discardChanges()
               .build();
 
       return LoadTableResponse.builder()
@@ -1823,47 +1829,46 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     if (useFineGrainedOperations) {
       EnumSet<PolarisAuthorizableOperation> actions =
           request.updates().stream()
-              .map(
-                  update ->
-                      switch (update) {
-                        case MetadataUpdate.AssignUUID assignUuid ->
-                            PolarisAuthorizableOperation.ASSIGN_TABLE_UUID;
-                        case MetadataUpdate.UpgradeFormatVersion upgradeFormat ->
-                            PolarisAuthorizableOperation.UPGRADE_TABLE_FORMAT_VERSION;
-                        case MetadataUpdate.AddSchema addSchema ->
-                            PolarisAuthorizableOperation.ADD_TABLE_SCHEMA;
-                        case MetadataUpdate.SetCurrentSchema setCurrentSchema ->
-                            PolarisAuthorizableOperation.SET_TABLE_CURRENT_SCHEMA;
-                        case MetadataUpdate.AddPartitionSpec addPartitionSpec ->
-                            PolarisAuthorizableOperation.ADD_TABLE_PARTITION_SPEC;
-                        case MetadataUpdate.AddSortOrder addSortOrder ->
-                            PolarisAuthorizableOperation.ADD_TABLE_SORT_ORDER;
-                        case MetadataUpdate.SetDefaultSortOrder setDefaultSortOrder ->
-                            PolarisAuthorizableOperation.SET_TABLE_DEFAULT_SORT_ORDER;
-                        case MetadataUpdate.AddSnapshot addSnapshot ->
-                            PolarisAuthorizableOperation.ADD_TABLE_SNAPSHOT;
-                        case MetadataUpdate.SetSnapshotRef setSnapshotRef ->
-                            PolarisAuthorizableOperation.SET_TABLE_SNAPSHOT_REF;
-                        case MetadataUpdate.RemoveSnapshots removeSnapshots ->
-                            PolarisAuthorizableOperation.REMOVE_TABLE_SNAPSHOTS;
-                        case MetadataUpdate.RemoveSnapshotRef removeSnapshotRef ->
-                            PolarisAuthorizableOperation.REMOVE_TABLE_SNAPSHOT_REF;
-                        case MetadataUpdate.SetLocation setLocation ->
-                            PolarisAuthorizableOperation.SET_TABLE_LOCATION;
-                        case MetadataUpdate.SetProperties setProperties ->
-                            PolarisAuthorizableOperation.SET_TABLE_PROPERTIES;
-                        case MetadataUpdate.RemoveProperties removeProperties ->
-                            PolarisAuthorizableOperation.REMOVE_TABLE_PROPERTIES;
-                        case MetadataUpdate.SetStatistics setStatistics ->
-                            PolarisAuthorizableOperation.SET_TABLE_STATISTICS;
-                        case MetadataUpdate.RemoveStatistics removeStatistics ->
-                            PolarisAuthorizableOperation.REMOVE_TABLE_STATISTICS;
-                        case MetadataUpdate.RemovePartitionSpecs removePartitionSpecs ->
-                            PolarisAuthorizableOperation.REMOVE_TABLE_PARTITION_SPECS;
-                        default ->
-                            PolarisAuthorizableOperation
-                                .UPDATE_TABLE; // Fallback for unknown update types
-                      })
+              .map(update ->
+                  switch (update) {
+                    case MetadataUpdate.AssignUUID assignUuid ->
+                        PolarisAuthorizableOperation.ASSIGN_TABLE_UUID;
+                    case MetadataUpdate.UpgradeFormatVersion upgradeFormat ->
+                        PolarisAuthorizableOperation.UPGRADE_TABLE_FORMAT_VERSION;
+                    case MetadataUpdate.AddSchema addSchema ->
+                        PolarisAuthorizableOperation.ADD_TABLE_SCHEMA;
+                    case MetadataUpdate.SetCurrentSchema setCurrentSchema ->
+                        PolarisAuthorizableOperation.SET_TABLE_CURRENT_SCHEMA;
+                    case MetadataUpdate.AddPartitionSpec addPartitionSpec ->
+                        PolarisAuthorizableOperation.ADD_TABLE_PARTITION_SPEC;
+                    case MetadataUpdate.AddSortOrder addSortOrder ->
+                        PolarisAuthorizableOperation.ADD_TABLE_SORT_ORDER;
+                    case MetadataUpdate.SetDefaultSortOrder setDefaultSortOrder ->
+                        PolarisAuthorizableOperation.SET_TABLE_DEFAULT_SORT_ORDER;
+                    case MetadataUpdate.AddSnapshot addSnapshot ->
+                        PolarisAuthorizableOperation.ADD_TABLE_SNAPSHOT;
+                    case MetadataUpdate.SetSnapshotRef setSnapshotRef ->
+                        PolarisAuthorizableOperation.SET_TABLE_SNAPSHOT_REF;
+                    case MetadataUpdate.RemoveSnapshots removeSnapshots ->
+                        PolarisAuthorizableOperation.REMOVE_TABLE_SNAPSHOTS;
+                    case MetadataUpdate.RemoveSnapshotRef removeSnapshotRef ->
+                        PolarisAuthorizableOperation.REMOVE_TABLE_SNAPSHOT_REF;
+                    case MetadataUpdate.SetLocation setLocation ->
+                        PolarisAuthorizableOperation.SET_TABLE_LOCATION;
+                    case MetadataUpdate.SetProperties setProperties ->
+                        PolarisAuthorizableOperation.SET_TABLE_PROPERTIES;
+                    case MetadataUpdate.RemoveProperties removeProperties ->
+                        PolarisAuthorizableOperation.REMOVE_TABLE_PROPERTIES;
+                    case MetadataUpdate.SetStatistics setStatistics ->
+                        PolarisAuthorizableOperation.SET_TABLE_STATISTICS;
+                    case MetadataUpdate.RemoveStatistics removeStatistics ->
+                        PolarisAuthorizableOperation.REMOVE_TABLE_STATISTICS;
+                    case MetadataUpdate.RemovePartitionSpecs removePartitionSpecs ->
+                        PolarisAuthorizableOperation.REMOVE_TABLE_PARTITION_SPECS;
+                    default ->
+                        PolarisAuthorizableOperation
+                            .UPDATE_TABLE; // Fallback for unknown update types
+                  })
               .collect(
                   () -> EnumSet.noneOf(PolarisAuthorizableOperation.class),
                   EnumSet::add,
@@ -2053,10 +2058,8 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     // filter) are dropped silently.
     List<Candidate<T>> resolvable =
         candidates.stream()
-            .filter(
-                candidate ->
-                    filterManifest.getResolvedPath(ResolvedPathKey.of(candidate.path()), true)
-                        != null)
+            .filter(candidate ->
+                filterManifest.getResolvedPath(ResolvedPathKey.of(candidate.path()), true) != null)
             .toList();
 
     List<AuthorizationDecision> decisions =

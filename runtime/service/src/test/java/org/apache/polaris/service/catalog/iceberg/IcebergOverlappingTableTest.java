@@ -255,7 +255,7 @@ public class IcebergOverlappingTableTest {
   }
 
   @ParameterizedTest
-  @MethodSource()
+  @MethodSource
   @DisplayName("Test restrictions on table locations")
   void testTableLocationRestrictions(
       Map<String, Object> serverConfig,
@@ -336,7 +336,7 @@ public class IcebergOverlappingTableTest {
   }
 
   @ParameterizedTest
-  @MethodSource()
+  @MethodSource
   @DisplayName("Test tables getting created at standard locations")
   void testStandardTableLocations(Map<String, String> catalogConfig, @TempDir Path tempDir) {
     Map<String, Object> strictServices =
@@ -392,7 +392,7 @@ public class IcebergOverlappingTableTest {
   }
 
   @ParameterizedTest
-  @MethodSource()
+  @MethodSource
   @DisplayName("Test invalid configurations for enabling prefixed locations")
   void testInvalidSetupsForObjectStorageLocation(
       Map<String, String> catalogConfig, @TempDir Path tempDir) {
@@ -540,18 +540,17 @@ public class IcebergOverlappingTableTest {
 
     CreateTableRequest request =
         CreateTableRequest.builder().withName(existing).withSchema(SCHEMA).stageCreate().build();
-    assertThatThrownBy(
-            () ->
-                services
-                    .restApi()
-                    .createTable(
-                        catalog,
-                        namespace,
-                        request,
-                        null,
-                        IDEMPOTENCY_KEY,
-                        services.realmContext(),
-                        services.securityContext()))
+    assertThatThrownBy(() ->
+            services
+                .restApi()
+                .createTable(
+                    catalog,
+                    namespace,
+                    request,
+                    null,
+                    IDEMPOTENCY_KEY,
+                    services.realmContext(),
+                    services.securityContext()))
         .isInstanceOf(AlreadyExistsException.class);
   }
 
@@ -586,18 +585,17 @@ public class IcebergOverlappingTableTest {
     // derived default location will overlap
     CreateTableRequest request2 =
         CreateTableRequest.builder().withName("table_1").withSchema(SCHEMA).stageCreate().build();
-    assertThatThrownBy(
-            () ->
-                services
-                    .restApi()
-                    .createTable(
-                        catalog,
-                        namespace,
-                        request2,
-                        null,
-                        IDEMPOTENCY_KEY,
-                        services.realmContext(),
-                        services.securityContext()))
+    assertThatThrownBy(() ->
+            services
+                .restApi()
+                .createTable(
+                    catalog,
+                    namespace,
+                    request2,
+                    null,
+                    IDEMPOTENCY_KEY,
+                    services.realmContext(),
+                    services.securityContext()))
         .isInstanceOf(ForbiddenException.class);
   }
 

@@ -192,10 +192,8 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     var pageToken = PageToken.build(responsePage.encodedResponseToken(), null, -1, () -> true);
 
     assertThatIllegalArgumentException()
-        .isThrownBy(
-            () ->
-                metaStore.listFullEntities(
-                    callContext, List.of(), CATALOG, NULL_SUBTYPE, pageToken))
+        .isThrownBy(() ->
+            metaStore.listFullEntities(callContext, List.of(), CATALOG, NULL_SUBTYPE, pageToken))
         .withMessage("Invalid or expired NoSQL pagination token");
   }
 
@@ -338,9 +336,8 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
   @Test
   public void commitCatalogChangeRejectsInvalidCatalogId() {
     var wrapper =
-        new CatalogChangeCommitterWrapper<String>(
-            (state, ref, byName, byId, changes, locations) ->
-                new ChangeResult.NoChange<>("unchanged"));
+        new CatalogChangeCommitterWrapper<String>((state, ref, byName, byId, changes, locations) ->
+            new ChangeResult.NoChange<>("unchanged"));
 
     assertThatThrownBy(
             () -> catalogChangeCommitter().commitCatalogChange(0L, String.class, wrapper))

@@ -198,14 +198,12 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // from/to these entities has been removed, hence we need to update the grant version of
     // each entity. Collect the id of each.
     Set<PolarisEntityId> entityIdsGrantChanged = new HashSet<>();
-    grantsOnGrantee.forEach(
-        gr ->
-            entityIdsGrantChanged.add(
-                new PolarisEntityId(gr.getSecurableCatalogId(), gr.getSecurableId())));
-    grantsOnSecurable.forEach(
-        gr ->
-            entityIdsGrantChanged.add(
-                new PolarisEntityId(gr.getGranteeCatalogId(), gr.getGranteeId())));
+    grantsOnGrantee.forEach(gr ->
+        entityIdsGrantChanged.add(
+            new PolarisEntityId(gr.getSecurableCatalogId(), gr.getSecurableId())));
+    grantsOnSecurable.forEach(gr ->
+        entityIdsGrantChanged.add(
+            new PolarisEntityId(gr.getGranteeCatalogId(), gr.getGranteeId())));
 
     // Bump up the grant version of these entities
     List<PolarisBaseEntity> entities =
@@ -1819,10 +1817,8 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // find all unique grantees
     List<PolarisEntityId> entityIds =
         returnGrantRecords.stream()
-            .map(
-                grantRecord ->
-                    new PolarisEntityId(
-                        grantRecord.getGranteeCatalogId(), grantRecord.getGranteeId()))
+            .map(grantRecord ->
+                new PolarisEntityId(grantRecord.getGranteeCatalogId(), grantRecord.getGranteeId()))
             .distinct()
             .collect(Collectors.toList());
     List<PolarisBaseEntity> entities = ms.lookupEntitiesInCurrentTxn(callCtx, entityIds);
@@ -1874,10 +1870,9 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // find all unique securables
     List<PolarisEntityId> entityIds =
         returnGrantRecords.stream()
-            .map(
-                grantRecord ->
-                    new PolarisEntityId(
-                        grantRecord.getSecurableCatalogId(), grantRecord.getSecurableId()))
+            .map(grantRecord ->
+                new PolarisEntityId(
+                    grantRecord.getSecurableCatalogId(), grantRecord.getSecurableId()))
             .distinct()
             .collect(Collectors.toList());
     List<PolarisBaseEntity> entities = ms.lookupEntitiesInCurrentTxn(callCtx, entityIds);
@@ -1990,36 +1985,35 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
 
     List<PolarisBaseEntity> loadedTasks =
         availableTasks.items().stream()
-            .map(
-                task -> {
-                  PolarisBaseEntity.Builder updatedTask = new PolarisBaseEntity.Builder(task);
-                  Map<String, String> properties = task.getPropertiesAsMap();
-                  properties.put(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, executorId);
-                  properties.put(
-                      PolarisTaskConstants.LAST_ATTEMPT_START_TIME, String.valueOf(clock.millis()));
-                  properties.put(
-                      PolarisTaskConstants.ATTEMPT_COUNT,
-                      String.valueOf(
-                          Integer.parseInt(
-                                  properties.getOrDefault(PolarisTaskConstants.ATTEMPT_COUNT, "0"))
-                              + 1));
-                  updatedTask.propertiesAsMap(properties);
-                  EntityResult result =
-                      updateEntityPropertiesIfNotChanged(callCtx, ms, null, updatedTask.build());
-                  if (result.getReturnStatus() == BaseResult.ReturnStatus.SUCCESS) {
-                    return result.getEntity();
-                  } else {
-                    // TODO: Consider performing incremental leasing of individual tasks one at a
-                    // time
-                    // instead of requiring all-or-none semantics for all the tasks we think we
-                    // listed,
-                    // or else contention could be very bad.
-                    ms.rollback();
-                    throw new RetryOnConcurrencyException(
-                        "Failed to lease available task with status %s, info: %s",
-                        result.getReturnStatus(), result.getExtraInformation());
-                  }
-                })
+            .map(task -> {
+              PolarisBaseEntity.Builder updatedTask = new PolarisBaseEntity.Builder(task);
+              Map<String, String> properties = task.getPropertiesAsMap();
+              properties.put(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, executorId);
+              properties.put(
+                  PolarisTaskConstants.LAST_ATTEMPT_START_TIME, String.valueOf(clock.millis()));
+              properties.put(
+                  PolarisTaskConstants.ATTEMPT_COUNT,
+                  String.valueOf(
+                      Integer.parseInt(
+                              properties.getOrDefault(PolarisTaskConstants.ATTEMPT_COUNT, "0"))
+                          + 1));
+              updatedTask.propertiesAsMap(properties);
+              EntityResult result =
+                  updateEntityPropertiesIfNotChanged(callCtx, ms, null, updatedTask.build());
+              if (result.getReturnStatus() == BaseResult.ReturnStatus.SUCCESS) {
+                return result.getEntity();
+              } else {
+                // TODO: Consider performing incremental leasing of individual tasks one at a
+                // time
+                // instead of requiring all-or-none semantics for all the tasks we think we
+                // listed,
+                // or else contention could be very bad.
+                ms.rollback();
+                throw new RetryOnConcurrencyException(
+                    "Failed to lease available task with status %s, info: %s",
+                    result.getReturnStatus(), result.getExtraInformation());
+              }
+            })
             .collect(Collectors.toList());
     return EntitiesResult.fromPage(Page.fromItems(loadedTasks));
   }
@@ -2194,15 +2188,14 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     // mimic the behavior of loadEntity above, return null if not found or type mismatch
     List<ResolvedPolarisEntity> ret =
         IntStream.range(0, entityIds.size())
-            .mapToObj(
-                i -> {
-                  if (entities.get(i) != null
-                      && !entities.get(i).getType().equals(entityTypeForIndex.apply(i))) {
-                    return null;
-                  } else {
-                    return entities.get(i);
-                  }
-                })
+            .mapToObj(i -> {
+              if (entities.get(i) != null
+                  && !entities.get(i).getType().equals(entityTypeForIndex.apply(i))) {
+                return null;
+              } else {
+                return entities.get(i);
+              }
+            })
             .map(e -> toResolvedPolarisEntity(callCtx, e, ms))
             .collect(Collectors.toList());
     return new ResolvedEntitiesResult(ret);
@@ -2550,11 +2543,9 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @NonNull List<PolarisPolicyMappingRecord> policyMappingRecords) {
     List<PolarisEntityId> policyEntityIds =
         policyMappingRecords.stream()
-            .map(
-                policyMappingRecord ->
-                    new PolarisEntityId(
-                        policyMappingRecord.getPolicyCatalogId(),
-                        policyMappingRecord.getPolicyId()))
+            .map(policyMappingRecord ->
+                new PolarisEntityId(
+                    policyMappingRecord.getPolicyCatalogId(), policyMappingRecord.getPolicyId()))
             .distinct()
             .collect(Collectors.toList());
     return ms.lookupEntitiesInCurrentTxn(callCtx, policyEntityIds);

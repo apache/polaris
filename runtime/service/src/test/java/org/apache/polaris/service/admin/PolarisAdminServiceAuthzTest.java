@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -74,7 +75,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         authenticatedPrincipal,
         polarisAuthorizer,
         reservedProperties,
-        vendingMechanisms);
+        vendingMechanisms,
+        new CatalogConfigValidators(List.of()));
   }
 
   private PolarisAdminService newExternalTestAdminService(String principalName) {
@@ -94,7 +96,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         externalPrincipal,
         polarisAuthorizer,
         reservedProperties,
-        vendingMechanisms);
+        vendingMechanisms,
+        new CatalogConfigValidators(List.of()));
   }
 
   private PolarisAdminService newTestAdminService(Set<String> activatedPrincipalRoles) {
@@ -120,14 +123,12 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   Stream<DynamicNode> testListCatalogsPrivileges() {
     return authzTestsBuilder("listCatalogs")
         .action(() -> newTestAdminService().listCatalogs())
-        .grantAction(
-            privilege ->
-                newRootAdminService()
-                    .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
-        .revokeAction(
-            privilege ->
-                newRootAdminService()
-                    .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .grantAction(privilege ->
+            newRootAdminService()
+                .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .revokeAction(privilege ->
+            newRootAdminService()
+                .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.CATALOG_LIST)
         .shouldPassWith(PolarisPrivilege.CATALOG_CREATE)
         .shouldPassWith(PolarisPrivilege.CATALOG_FULL_METADATA)
@@ -154,14 +155,12 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         .action(() -> newTestAdminService(Set.of(PRINCIPAL_ROLE1)).createCatalog(createRequest))
         .cleanupAction(
             () -> newTestAdminService(Set.of(PRINCIPAL_ROLE2)).deleteCatalog(newCatalog.getName()))
-        .grantAction(
-            privilege ->
-                newRootAdminService()
-                    .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
-        .revokeAction(
-            privilege ->
-                newRootAdminService()
-                    .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .grantAction(privilege ->
+            newRootAdminService()
+                .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .revokeAction(privilege ->
+            newRootAdminService()
+                .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.CATALOG_CREATE)
         .shouldPassWith(PolarisPrivilege.CATALOG_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
@@ -172,14 +171,12 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   Stream<DynamicNode> testGetCatalogPrivileges() {
     return authzTestsBuilder("getCatalog")
         .action(() -> newTestAdminService().getCatalog(CATALOG_NAME))
-        .grantAction(
-            privilege ->
-                newRootAdminService()
-                    .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
-        .revokeAction(
-            privilege ->
-                newRootAdminService()
-                    .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .grantAction(privilege ->
+            newRootAdminService()
+                .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .revokeAction(privilege ->
+            newRootAdminService()
+                .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.CATALOG_READ_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.CATALOG_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -192,27 +189,24 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @TestFactory
   Stream<DynamicNode> testUpdateCatalogPrivileges() {
     return authzTestsBuilder("updateCatalog")
-        .action(
-            () -> {
-              // Use the test-permission admin service instead of the root adminService to also
-              // perform the initial GET to illustrate that the actual user workflow for update
-              // *must* also encompass GET privileges to be able to set entityVersion properly.
-              UpdateCatalogRequest updateRequest =
-                  UpdateCatalogRequest.builder()
-                      .setCurrentEntityVersion(
-                          newTestAdminService().getCatalog(CATALOG_NAME).getEntityVersion())
-                      .setProperties(Map.of("foo", Long.toString(System.currentTimeMillis())))
-                      .build();
-              newTestAdminService().updateCatalog(CATALOG_NAME, updateRequest);
-            })
-        .grantAction(
-            privilege ->
-                newRootAdminService()
-                    .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
-        .revokeAction(
-            privilege ->
-                newRootAdminService()
-                    .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .action(() -> {
+          // Use the test-permission admin service instead of the root adminService to also
+          // perform the initial GET to illustrate that the actual user workflow for update
+          // *must* also encompass GET privileges to be able to set entityVersion properly.
+          UpdateCatalogRequest updateRequest =
+              UpdateCatalogRequest.builder()
+                  .setCurrentEntityVersion(
+                      newTestAdminService().getCatalog(CATALOG_NAME).getEntityVersion())
+                  .setProperties(Map.of("foo", Long.toString(System.currentTimeMillis())))
+                  .build();
+          newTestAdminService().updateCatalog(CATALOG_NAME, updateRequest);
+        })
+        .grantAction(privilege ->
+            newRootAdminService()
+                .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .revokeAction(privilege ->
+            newRootAdminService()
+                .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.CATALOG_WRITE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.CATALOG_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_CONTENT)
@@ -238,14 +232,12 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
             () -> newTestAdminService(Set.of(PRINCIPAL_ROLE1)).deleteCatalog(newCatalog.getName()))
         .cleanupAction(
             () -> newTestAdminService(Set.of(PRINCIPAL_ROLE2)).createCatalog(createRequest))
-        .grantAction(
-            privilege ->
-                newRootAdminService()
-                    .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
-        .revokeAction(
-            privilege ->
-                newRootAdminService()
-                    .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .grantAction(privilege ->
+            newRootAdminService()
+                .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .revokeAction(privilege ->
+            newRootAdminService()
+                .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.CATALOG_DROP)
         .shouldPassWith(PolarisPrivilege.CATALOG_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
@@ -256,14 +248,12 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   Stream<DynamicNode> testListPrincipalsPrivileges() {
     return authzTestsBuilder("listPrincipals")
         .action(() -> newTestAdminService().listPrincipals())
-        .grantAction(
-            privilege ->
-                newRootAdminService()
-                    .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
-        .revokeAction(
-            privilege ->
-                newRootAdminService()
-                    .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .grantAction(privilege ->
+            newRootAdminService()
+                .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .revokeAction(privilege ->
+            newRootAdminService()
+                .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_LIST)
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_CREATE)
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_READ_PROPERTIES)
@@ -285,18 +275,14 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
 
     return authzTestsBuilder("createPrincipal")
         .action(() -> newTestAdminService(Set.of(PRINCIPAL_ROLE1)).createPrincipal(newPrincipal))
-        .cleanupAction(
-            () ->
-                newTestAdminService(Set.of(PRINCIPAL_ROLE2))
-                    .deletePrincipal(newPrincipal.getName()))
-        .grantAction(
-            privilege ->
-                newRootAdminService()
-                    .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
-        .revokeAction(
-            privilege ->
-                newRootAdminService()
-                    .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .cleanupAction(() ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE2)).deletePrincipal(newPrincipal.getName()))
+        .grantAction(privilege ->
+            newRootAdminService()
+                .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .revokeAction(privilege ->
+            newRootAdminService()
+                .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_CREATE)
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
@@ -307,14 +293,12 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   Stream<DynamicNode> testGetPrincipalPrivileges() {
     return authzTestsBuilder("getPrincipal")
         .action(() -> newTestAdminService().getPrincipal(PRINCIPAL_NAME))
-        .grantAction(
-            privilege ->
-                newRootAdminService()
-                    .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
-        .revokeAction(
-            privilege ->
-                newRootAdminService()
-                    .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .grantAction(privilege ->
+            newRootAdminService()
+                .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .revokeAction(privilege ->
+            newRootAdminService()
+                .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_READ_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_WRITE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_FULL_METADATA)
@@ -325,27 +309,24 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @TestFactory
   Stream<DynamicNode> testUpdatePrincipalPrivileges() {
     return authzTestsBuilder("updatePrincipal")
-        .action(
-            () -> {
-              // Use the test-permission admin service instead of the root adminService to also
-              // perform the initial GET to illustrate that the actual user workflow for update
-              // *must* also encompass GET privileges to be able to set entityVersion properly.
-              UpdatePrincipalRequest updateRequest =
-                  UpdatePrincipalRequest.builder()
-                      .setCurrentEntityVersion(
-                          newTestAdminService().getPrincipal(PRINCIPAL_NAME).getEntityVersion())
-                      .setProperties(Map.of("foo", Long.toString(System.currentTimeMillis())))
-                      .build();
-              newTestAdminService().updatePrincipal(PRINCIPAL_NAME, updateRequest);
-            })
-        .grantAction(
-            privilege ->
-                newRootAdminService()
-                    .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
-        .revokeAction(
-            privilege ->
-                newRootAdminService()
-                    .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .action(() -> {
+          // Use the test-permission admin service instead of the root adminService to also
+          // perform the initial GET to illustrate that the actual user workflow for update
+          // *must* also encompass GET privileges to be able to set entityVersion properly.
+          UpdatePrincipalRequest updateRequest =
+              UpdatePrincipalRequest.builder()
+                  .setCurrentEntityVersion(
+                      newTestAdminService().getPrincipal(PRINCIPAL_NAME).getEntityVersion())
+                  .setProperties(Map.of("foo", Long.toString(System.currentTimeMillis())))
+                  .build();
+          newTestAdminService().updatePrincipal(PRINCIPAL_NAME, updateRequest);
+        })
+        .grantAction(privilege ->
+            newRootAdminService()
+                .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .revokeAction(privilege ->
+            newRootAdminService()
+                .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_WRITE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
@@ -364,20 +345,16 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
     newRootAdminService().createPrincipal(newPrincipal);
 
     return authzTestsBuilder("deletePrincipal")
-        .action(
-            () ->
-                newTestAdminService(Set.of(PRINCIPAL_ROLE1))
-                    .deletePrincipal(newPrincipal.getName()))
+        .action(() ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1)).deletePrincipal(newPrincipal.getName()))
         .cleanupAction(
             () -> newTestAdminService(Set.of(PRINCIPAL_ROLE2)).createPrincipal(newPrincipal))
-        .grantAction(
-            privilege ->
-                newRootAdminService()
-                    .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
-        .revokeAction(
-            privilege ->
-                newRootAdminService()
-                    .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .grantAction(privilege ->
+            newRootAdminService()
+                .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .revokeAction(privilege ->
+            newRootAdminService()
+                .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_DROP)
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
@@ -388,14 +365,12 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   Stream<DynamicNode> testListPrincipalRolesPrivileges() {
     return authzTestsBuilder("listPrincipalRoles")
         .action(() -> newTestAdminService().listPrincipalRoles())
-        .grantAction(
-            privilege ->
-                newRootAdminService()
-                    .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
-        .revokeAction(
-            privilege ->
-                newRootAdminService()
-                    .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .grantAction(privilege ->
+            newRootAdminService()
+                .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .revokeAction(privilege ->
+            newRootAdminService()
+                .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_LIST)
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_CREATE)
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_READ_PROPERTIES)
@@ -416,21 +391,17 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         new PrincipalRoleEntity.Builder().setName("new_principal_role").build();
 
     return authzTestsBuilder("createPrincipalRole")
-        .action(
-            () ->
-                newTestAdminService(Set.of(PRINCIPAL_ROLE1)).createPrincipalRole(newPrincipalRole))
-        .cleanupAction(
-            () ->
-                newTestAdminService(Set.of(PRINCIPAL_ROLE2))
-                    .deletePrincipalRole(newPrincipalRole.getName()))
-        .grantAction(
-            privilege ->
-                newRootAdminService()
-                    .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
-        .revokeAction(
-            privilege ->
-                newRootAdminService()
-                    .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .action(() ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1)).createPrincipalRole(newPrincipalRole))
+        .cleanupAction(() ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE2))
+                .deletePrincipalRole(newPrincipalRole.getName()))
+        .grantAction(privilege ->
+            newRootAdminService()
+                .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .revokeAction(privilege ->
+            newRootAdminService()
+                .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_CREATE)
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
@@ -441,14 +412,12 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   Stream<DynamicNode> testGetPrincipalRolePrivileges() {
     return authzTestsBuilder("getPrincipalRole")
         .action(() -> newTestAdminService().getPrincipalRole(PRINCIPAL_ROLE2))
-        .grantAction(
-            privilege ->
-                newRootAdminService()
-                    .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
-        .revokeAction(
-            privilege ->
-                newRootAdminService()
-                    .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .grantAction(privilege ->
+            newRootAdminService()
+                .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .revokeAction(privilege ->
+            newRootAdminService()
+                .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_READ_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_WRITE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA)
@@ -459,29 +428,24 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @TestFactory
   Stream<DynamicNode> testUpdatePrincipalRolePrivileges() {
     return authzTestsBuilder("updatePrincipalRole")
-        .action(
-            () -> {
-              // Use the test-permission admin service instead of the root adminService to also
-              // perform the initial GET to illustrate that the actual user workflow for update
-              // *must* also encompass GET privileges to be able to set entityVersion properly.
-              UpdatePrincipalRoleRequest updateRequest =
-                  UpdatePrincipalRoleRequest.builder()
-                      .setCurrentEntityVersion(
-                          newTestAdminService()
-                              .getPrincipalRole(PRINCIPAL_ROLE2)
-                              .getEntityVersion())
-                      .setProperties(Map.of("foo", Long.toString(System.currentTimeMillis())))
-                      .build();
-              newTestAdminService().updatePrincipalRole(PRINCIPAL_ROLE2, updateRequest);
-            })
-        .grantAction(
-            privilege ->
-                newRootAdminService()
-                    .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
-        .revokeAction(
-            privilege ->
-                newRootAdminService()
-                    .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .action(() -> {
+          // Use the test-permission admin service instead of the root adminService to also
+          // perform the initial GET to illustrate that the actual user workflow for update
+          // *must* also encompass GET privileges to be able to set entityVersion properly.
+          UpdatePrincipalRoleRequest updateRequest =
+              UpdatePrincipalRoleRequest.builder()
+                  .setCurrentEntityVersion(
+                      newTestAdminService().getPrincipalRole(PRINCIPAL_ROLE2).getEntityVersion())
+                  .setProperties(Map.of("foo", Long.toString(System.currentTimeMillis())))
+                  .build();
+          newTestAdminService().updatePrincipalRole(PRINCIPAL_ROLE2, updateRequest);
+        })
+        .grantAction(privilege ->
+            newRootAdminService()
+                .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .revokeAction(privilege ->
+            newRootAdminService()
+                .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_WRITE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
@@ -500,21 +464,17 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
     newRootAdminService().createPrincipalRole(newPrincipalRole);
 
     return authzTestsBuilder("deletePrincipalRole")
-        .action(
-            () ->
-                newTestAdminService(Set.of(PRINCIPAL_ROLE1))
-                    .deletePrincipalRole(newPrincipalRole.getName()))
-        .cleanupAction(
-            () ->
-                newTestAdminService(Set.of(PRINCIPAL_ROLE2)).createPrincipalRole(newPrincipalRole))
-        .grantAction(
-            privilege ->
-                newRootAdminService()
-                    .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
-        .revokeAction(
-            privilege ->
-                newRootAdminService()
-                    .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .action(() ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .deletePrincipalRole(newPrincipalRole.getName()))
+        .cleanupAction(() ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE2)).createPrincipalRole(newPrincipalRole))
+        .grantAction(privilege ->
+            newRootAdminService()
+                .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .revokeAction(privilege ->
+            newRootAdminService()
+                .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_DROP)
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
@@ -545,14 +505,12 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         new CatalogRoleEntity.Builder().setName("new_catalog_role").build();
 
     return authzTestsBuilder("createCatalogRole")
-        .action(
-            () ->
-                newTestAdminService(Set.of(PRINCIPAL_ROLE1))
-                    .createCatalogRole(CATALOG_NAME, newCatalogRole))
-        .cleanupAction(
-            () ->
-                newTestAdminService(Set.of(PRINCIPAL_ROLE2))
-                    .deleteCatalogRole(CATALOG_NAME, newCatalogRole.getName()))
+        .action(() ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .createCatalogRole(CATALOG_NAME, newCatalogRole))
+        .cleanupAction(() ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE2))
+                .deleteCatalogRole(CATALOG_NAME, newCatalogRole.getName()))
         .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_CREATE)
         .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
@@ -573,21 +531,20 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @TestFactory
   Stream<DynamicNode> testUpdateCatalogRolePrivileges() {
     return authzTestsBuilder("updateCatalogRole")
-        .action(
-            () -> {
-              // Use the test-permission admin service instead of the root adminService to also
-              // perform the initial GET to illustrate that the actual user workflow for update
-              // *must* also encompass GET privileges to be able to set entityVersion properly.
-              UpdateCatalogRoleRequest updateRequest =
-                  UpdateCatalogRoleRequest.builder()
-                      .setCurrentEntityVersion(
-                          newTestAdminService()
-                              .getCatalogRole(CATALOG_NAME, CATALOG_ROLE2)
-                              .getEntityVersion())
-                      .setProperties(Map.of("foo", Long.toString(System.currentTimeMillis())))
-                      .build();
-              newTestAdminService().updateCatalogRole(CATALOG_NAME, CATALOG_ROLE2, updateRequest);
-            })
+        .action(() -> {
+          // Use the test-permission admin service instead of the root adminService to also
+          // perform the initial GET to illustrate that the actual user workflow for update
+          // *must* also encompass GET privileges to be able to set entityVersion properly.
+          UpdateCatalogRoleRequest updateRequest =
+              UpdateCatalogRoleRequest.builder()
+                  .setCurrentEntityVersion(
+                      newTestAdminService()
+                          .getCatalogRole(CATALOG_NAME, CATALOG_ROLE2)
+                          .getEntityVersion())
+                  .setProperties(Map.of("foo", Long.toString(System.currentTimeMillis())))
+                  .build();
+          newTestAdminService().updateCatalogRole(CATALOG_NAME, CATALOG_ROLE2, updateRequest);
+        })
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_WRITE_PROPERTIES)
         .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_FULL_METADATA)
@@ -606,14 +563,12 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
     newRootAdminService().createCatalogRole(CATALOG_NAME, newCatalogRole);
 
     return authzTestsBuilder("deleteCatalogRole")
-        .action(
-            () ->
-                newTestAdminService(Set.of(PRINCIPAL_ROLE1))
-                    .deleteCatalogRole(CATALOG_NAME, newCatalogRole.getName()))
-        .cleanupAction(
-            () ->
-                newTestAdminService(Set.of(PRINCIPAL_ROLE2))
-                    .createCatalogRole(CATALOG_NAME, newCatalogRole))
+        .action(() ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .deleteCatalogRole(CATALOG_NAME, newCatalogRole.getName()))
+        .cleanupAction(() ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE2))
+                .createCatalogRole(CATALOG_NAME, newCatalogRole))
         .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_DROP)
         .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_FULL_METADATA)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
@@ -627,18 +582,15 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
 
     // Assign only requires privileges on the securable.
     return authzTestsBuilder("assignPrincipalRole")
-        .action(
-            () ->
-                newTestAdminService(Set.of(PRINCIPAL_ROLE1))
-                    .assignPrincipalRole("newprincipal", PRINCIPAL_ROLE2))
-        .grantAction(
-            privilege ->
-                newRootAdminService()
-                    .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
-        .revokeAction(
-            privilege ->
-                newRootAdminService()
-                    .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .action(() ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .assignPrincipalRole("newprincipal", PRINCIPAL_ROLE2))
+        .grantAction(privilege ->
+            newRootAdminService()
+                .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .revokeAction(privilege ->
+            newRootAdminService()
+                .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE)
         .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
         .createTests();
@@ -652,18 +604,15 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
     // Revoke requires privileges both on the "securable" (PrincipalRole) as well as the "grantee"
     // (Principal).
     return authzTestsBuilder("revokePrincipalRole")
-        .action(
-            () ->
-                newTestAdminService(Set.of(PRINCIPAL_ROLE1))
-                    .revokePrincipalRole("newprincipal", PRINCIPAL_ROLE2))
-        .grantAction(
-            privilege ->
-                newRootAdminService()
-                    .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
-        .revokeAction(
-            privilege ->
-                newRootAdminService()
-                    .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .action(() ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .revokePrincipalRole("newprincipal", PRINCIPAL_ROLE2))
+        .grantAction(privilege ->
+            newRootAdminService()
+                .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .revokeAction(privilege ->
+            newRootAdminService()
+                .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
         .shouldPassWith(
             PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE,
@@ -675,18 +624,15 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   Stream<DynamicNode> testAssignCatalogRoleToPrincipalRolePrivileges() {
     // Assign only requires privileges on the securable.
     return authzTestsBuilder("assignCatalogRoleToPrincipalRole")
-        .action(
-            () ->
-                newTestAdminService(Set.of(PRINCIPAL_ROLE1))
-                    .assignCatalogRoleToPrincipalRole(PRINCIPAL_ROLE2, CATALOG_NAME, CATALOG_ROLE1))
-        .grantAction(
-            privilege ->
-                newRootAdminService()
-                    .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
-        .revokeAction(
-            privilege ->
-                newRootAdminService()
-                    .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .action(() ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .assignCatalogRoleToPrincipalRole(PRINCIPAL_ROLE2, CATALOG_NAME, CATALOG_ROLE1))
+        .grantAction(privilege ->
+            newRootAdminService()
+                .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .revokeAction(privilege ->
+            newRootAdminService()
+                .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .createTests();
@@ -696,19 +642,15 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   Stream<DynamicNode> testRevokeCatalogRoleFromPrincipalRolePrivileges() {
     // Revoke only requires privileges on the securable (CatalogRole).
     return authzTestsBuilder("revokeCatalogRoleFromPrincipalRole")
-        .action(
-            () ->
-                newTestAdminService(Set.of(PRINCIPAL_ROLE1))
-                    .revokeCatalogRoleFromPrincipalRole(
-                        PRINCIPAL_ROLE2, CATALOG_NAME, CATALOG_ROLE1))
-        .grantAction(
-            privilege ->
-                newRootAdminService()
-                    .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
-        .revokeAction(
-            privilege ->
-                newRootAdminService()
-                    .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .action(() ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .revokeCatalogRoleFromPrincipalRole(PRINCIPAL_ROLE2, CATALOG_NAME, CATALOG_ROLE1))
+        .grantAction(privilege ->
+            newRootAdminService()
+                .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .revokeAction(privilege ->
+            newRootAdminService()
+                .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .createTests();
@@ -717,18 +659,15 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @TestFactory
   Stream<DynamicNode> testListAssigneePrincipalRolesForCatalogRolePrivileges() {
     return authzTestsBuilder("listAssigneePrincipalRolesForCatalogRole")
-        .action(
-            () ->
-                newTestAdminService(Set.of(PRINCIPAL_ROLE1))
-                    .listAssigneePrincipalRolesForCatalogRole(CATALOG_NAME, CATALOG_ROLE2))
-        .grantAction(
-            privilege ->
-                newRootAdminService()
-                    .grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege))
-        .revokeAction(
-            privilege ->
-                newRootAdminService()
-                    .revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege))
+        .action(() ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .listAssigneePrincipalRolesForCatalogRole(CATALOG_NAME, CATALOG_ROLE2))
+        .grantAction(privilege ->
+            newRootAdminService()
+                .grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege))
+        .revokeAction(privilege ->
+            newRootAdminService()
+                .revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_LIST_GRANTS)
         .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE)
         .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE)
@@ -739,18 +678,15 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @TestFactory
   Stream<DynamicNode> testListGrantsForCatalogRolePrivileges() {
     return authzTestsBuilder("listGrantsForCatalogRole")
-        .action(
-            () ->
-                newTestAdminService(Set.of(PRINCIPAL_ROLE1))
-                    .listGrantsForCatalogRole(CATALOG_NAME, CATALOG_ROLE2))
-        .grantAction(
-            privilege ->
-                newRootAdminService()
-                    .grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege))
-        .revokeAction(
-            privilege ->
-                newRootAdminService()
-                    .revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege))
+        .action(() ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .listGrantsForCatalogRole(CATALOG_NAME, CATALOG_ROLE2))
+        .grantAction(privilege ->
+            newRootAdminService()
+                .grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege))
+        .revokeAction(privilege ->
+            newRootAdminService()
+                .revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_LIST_GRANTS)
         .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE)
         .shouldPassWith(PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE)
@@ -761,19 +697,16 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @TestFactory
   Stream<DynamicNode> testGrantPrivilegeOnRootContainerToPrincipalRolePrivileges() {
     return authzTestsBuilder("grantPrivilegeOnRootContainerToPrincipalRole")
-        .action(
-            () ->
-                newTestAdminService(Set.of(PRINCIPAL_ROLE1))
-                    .grantPrivilegeOnRootContainerToPrincipalRole(
-                        PRINCIPAL_ROLE2, PolarisPrivilege.SERVICE_MANAGE_ACCESS))
-        .grantAction(
-            privilege ->
-                newRootAdminService()
-                    .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
-        .revokeAction(
-            privilege ->
-                newRootAdminService()
-                    .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .action(() ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .grantPrivilegeOnRootContainerToPrincipalRole(
+                    PRINCIPAL_ROLE2, PolarisPrivilege.SERVICE_MANAGE_ACCESS))
+        .grantAction(privilege ->
+            newRootAdminService()
+                .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .revokeAction(privilege ->
+            newRootAdminService()
+                .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
         .createTests();
   }
@@ -781,19 +714,16 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @TestFactory
   Stream<DynamicNode> testRevokePrivilegeOnRootContainerFromPrincipalRolePrivileges() {
     return authzTestsBuilder("revokePrivilegeOnRootContainerFromPrincipalRole")
-        .action(
-            () ->
-                newTestAdminService(Set.of(PRINCIPAL_ROLE1))
-                    .revokePrivilegeOnRootContainerFromPrincipalRole(
-                        PRINCIPAL_ROLE2, PolarisPrivilege.SERVICE_MANAGE_ACCESS))
-        .grantAction(
-            privilege ->
-                newRootAdminService()
-                    .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
-        .revokeAction(
-            privilege ->
-                newRootAdminService()
-                    .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .action(() ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .revokePrivilegeOnRootContainerFromPrincipalRole(
+                    PRINCIPAL_ROLE2, PolarisPrivilege.SERVICE_MANAGE_ACCESS))
+        .grantAction(privilege ->
+            newRootAdminService()
+                .grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege))
+        .revokeAction(privilege ->
+            newRootAdminService()
+                .revokePrivilegeOnRootContainerFromPrincipalRole(PRINCIPAL_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.SERVICE_MANAGE_ACCESS)
         .createTests();
   }
@@ -801,11 +731,10 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @TestFactory
   Stream<DynamicNode> testGrantPrivilegeOnCatalogToRolePrivileges() {
     return authzTestsBuilder("grantPrivilegeOnCatalogToRole")
-        .action(
-            () ->
-                newTestAdminService(Set.of(PRINCIPAL_ROLE1))
-                    .grantPrivilegeOnCatalogToRole(
-                        CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_MANAGE_ACCESS))
+        .action(() ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .grantPrivilegeOnCatalogToRole(
+                    CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_MANAGE_ACCESS))
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_GRANTS_ON_SECURABLE)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .createTests();
@@ -814,11 +743,10 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @TestFactory
   Stream<DynamicNode> testRevokePrivilegeOnCatalogFromRolePrivileges() {
     return authzTestsBuilder("revokePrivilegeOnCatalogFromRole")
-        .action(
-            () ->
-                newTestAdminService(Set.of(PRINCIPAL_ROLE1))
-                    .revokePrivilegeOnCatalogFromRole(
-                        CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_MANAGE_ACCESS))
+        .action(() ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .revokePrivilegeOnCatalogFromRole(
+                    CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_MANAGE_ACCESS))
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .shouldPassWith(
             PolarisPrivilege.CATALOG_MANAGE_GRANTS_ON_SECURABLE,
@@ -829,54 +757,43 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @TestFactory
   Stream<DynamicNode> testGrantPrivilegeOnNamespaceToRolePrivileges() {
     return Stream.of(CATALOG_NAME, FEDERATED_CATALOG_NAME)
-        .flatMap(
-            catalogName ->
-                authzTestsBuilder("grantPrivilegeOnNamespaceToRole[" + catalogName + "]")
-                    .action(
-                        () ->
-                            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
-                                .grantPrivilegeOnNamespaceToRole(
-                                    catalogName,
-                                    CATALOG_ROLE2,
-                                    NS1,
-                                    PolarisPrivilege.CATALOG_MANAGE_ACCESS))
-                    .grantAction(
-                        privilege ->
-                            newRootAdminService()
-                                .grantPrivilegeOnCatalogToRole(
-                                    catalogName, CATALOG_ROLE1, privilege))
-                    .revokeAction(
-                        privilege ->
-                            newRootAdminService()
-                                .revokePrivilegeOnCatalogFromRole(
-                                    catalogName, CATALOG_ROLE1, privilege))
-                    .shouldPassWith(PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE)
-                    .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
-                    .createTests());
+        .flatMap(catalogName ->
+            authzTestsBuilder("grantPrivilegeOnNamespaceToRole[" + catalogName + "]")
+                .action(() ->
+                    newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                        .grantPrivilegeOnNamespaceToRole(
+                            catalogName,
+                            CATALOG_ROLE2,
+                            NS1,
+                            PolarisPrivilege.CATALOG_MANAGE_ACCESS))
+                .grantAction(privilege ->
+                    newRootAdminService()
+                        .grantPrivilegeOnCatalogToRole(catalogName, CATALOG_ROLE1, privilege))
+                .revokeAction(privilege ->
+                    newRootAdminService()
+                        .revokePrivilegeOnCatalogFromRole(catalogName, CATALOG_ROLE1, privilege))
+                .shouldPassWith(PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE)
+                .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
+                .createTests());
   }
 
   @TestFactory
   Stream<DynamicNode>
       testGrantPrivilegeOnNamespaceToRoleSufficientPrivileges_FederationNestedNamespace() {
     return authzTestsBuilder("grantPrivilegeOnNamespaceToRole_FederationNestedNamespace")
-        .action(
-            () ->
-                newTestAdminService(Set.of(PRINCIPAL_ROLE1))
-                    .grantPrivilegeOnNamespaceToRole(
-                        FEDERATED_CATALOG_NAME,
-                        CATALOG_ROLE2,
-                        NS1AA,
-                        PolarisPrivilege.CATALOG_MANAGE_ACCESS))
-        .grantAction(
-            privilege ->
-                newRootAdminService()
-                    .grantPrivilegeOnCatalogToRole(
-                        FEDERATED_CATALOG_NAME, CATALOG_ROLE1, privilege))
-        .revokeAction(
-            privilege ->
-                newRootAdminService()
-                    .revokePrivilegeOnCatalogFromRole(
-                        FEDERATED_CATALOG_NAME, CATALOG_ROLE1, privilege))
+        .action(() ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .grantPrivilegeOnNamespaceToRole(
+                    FEDERATED_CATALOG_NAME,
+                    CATALOG_ROLE2,
+                    NS1AA,
+                    PolarisPrivilege.CATALOG_MANAGE_ACCESS))
+        .grantAction(privilege ->
+            newRootAdminService()
+                .grantPrivilegeOnCatalogToRole(FEDERATED_CATALOG_NAME, CATALOG_ROLE1, privilege))
+        .revokeAction(privilege ->
+            newRootAdminService()
+                .revokePrivilegeOnCatalogFromRole(FEDERATED_CATALOG_NAME, CATALOG_ROLE1, privilege))
         .shouldPassWith(PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .createTests();
@@ -885,11 +802,10 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @TestFactory
   Stream<DynamicNode> testRevokePrivilegeOnNamespaceFromRolePrivileges() {
     return authzTestsBuilder("revokePrivilegeOnNamespaceFromRole")
-        .action(
-            () ->
-                newTestAdminService(Set.of(PRINCIPAL_ROLE1))
-                    .revokePrivilegeOnNamespaceFromRole(
-                        CATALOG_NAME, CATALOG_ROLE2, NS1, PolarisPrivilege.CATALOG_MANAGE_ACCESS))
+        .action(() ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .revokePrivilegeOnNamespaceFromRole(
+                    CATALOG_NAME, CATALOG_ROLE2, NS1, PolarisPrivilege.CATALOG_MANAGE_ACCESS))
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .shouldPassWith(
             PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE,
@@ -900,43 +816,36 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @TestFactory
   Stream<DynamicNode> testGrantPrivilegeOnTableToRolePrivileges() {
     return Stream.of(CATALOG_NAME, FEDERATED_CATALOG_NAME)
-        .flatMap(
-            catalogName ->
-                authzTestsBuilder("grantPrivilegeOnTableToRole[" + catalogName + "]")
-                    .action(
-                        () ->
-                            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
-                                .grantPrivilegeOnTableToRole(
-                                    catalogName,
-                                    CATALOG_ROLE2,
-                                    TABLE_NS1_1,
-                                    PolarisPrivilege.CATALOG_MANAGE_ACCESS))
-                    .grantAction(
-                        privilege ->
-                            newRootAdminService()
-                                .grantPrivilegeOnCatalogToRole(
-                                    catalogName, CATALOG_ROLE1, privilege))
-                    .revokeAction(
-                        privilege ->
-                            newRootAdminService()
-                                .revokePrivilegeOnCatalogFromRole(
-                                    catalogName, CATALOG_ROLE1, privilege))
-                    .shouldPassWith(PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE)
-                    .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
-                    .createTests());
+        .flatMap(catalogName ->
+            authzTestsBuilder("grantPrivilegeOnTableToRole[" + catalogName + "]")
+                .action(() ->
+                    newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                        .grantPrivilegeOnTableToRole(
+                            catalogName,
+                            CATALOG_ROLE2,
+                            TABLE_NS1_1,
+                            PolarisPrivilege.CATALOG_MANAGE_ACCESS))
+                .grantAction(privilege ->
+                    newRootAdminService()
+                        .grantPrivilegeOnCatalogToRole(catalogName, CATALOG_ROLE1, privilege))
+                .revokeAction(privilege ->
+                    newRootAdminService()
+                        .revokePrivilegeOnCatalogFromRole(catalogName, CATALOG_ROLE1, privilege))
+                .shouldPassWith(PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE)
+                .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
+                .createTests());
   }
 
   @TestFactory
   Stream<DynamicNode> testRevokePrivilegeOnTableFromRolePrivileges() {
     return authzTestsBuilder("revokePrivilegeOnTableFromRole")
-        .action(
-            () ->
-                newTestAdminService(Set.of(PRINCIPAL_ROLE1))
-                    .revokePrivilegeOnTableFromRole(
-                        CATALOG_NAME,
-                        CATALOG_ROLE2,
-                        TABLE_NS1_1,
-                        PolarisPrivilege.CATALOG_MANAGE_ACCESS))
+        .action(() ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .revokePrivilegeOnTableFromRole(
+                    CATALOG_NAME,
+                    CATALOG_ROLE2,
+                    TABLE_NS1_1,
+                    PolarisPrivilege.CATALOG_MANAGE_ACCESS))
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .shouldPassWith(
             PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE,
@@ -947,14 +856,13 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @TestFactory
   Stream<DynamicNode> testGrantPrivilegeOnViewToRolePrivileges() {
     return authzTestsBuilder("grantPrivilegeOnViewToRole")
-        .action(
-            () ->
-                newTestAdminService(Set.of(PRINCIPAL_ROLE1))
-                    .grantPrivilegeOnViewToRole(
-                        CATALOG_NAME,
-                        CATALOG_ROLE2,
-                        VIEW_NS1_1,
-                        PolarisPrivilege.CATALOG_MANAGE_ACCESS))
+        .action(() ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .grantPrivilegeOnViewToRole(
+                    CATALOG_NAME,
+                    CATALOG_ROLE2,
+                    VIEW_NS1_1,
+                    PolarisPrivilege.CATALOG_MANAGE_ACCESS))
         .shouldPassWith(PolarisPrivilege.VIEW_MANAGE_GRANTS_ON_SECURABLE)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .createTests();
@@ -963,14 +871,13 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @TestFactory
   Stream<DynamicNode> testRevokePrivilegeOnViewFromRolePrivileges() {
     return authzTestsBuilder("revokePrivilegeOnViewFromRole")
-        .action(
-            () ->
-                newTestAdminService(Set.of(PRINCIPAL_ROLE1))
-                    .revokePrivilegeOnViewFromRole(
-                        CATALOG_NAME,
-                        CATALOG_ROLE2,
-                        VIEW_NS1_1,
-                        PolarisPrivilege.CATALOG_MANAGE_ACCESS))
+        .action(() ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .revokePrivilegeOnViewFromRole(
+                    CATALOG_NAME,
+                    CATALOG_ROLE2,
+                    VIEW_NS1_1,
+                    PolarisPrivilege.CATALOG_MANAGE_ACCESS))
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .shouldPassWith(
             PolarisPrivilege.VIEW_MANAGE_GRANTS_ON_SECURABLE,
@@ -981,14 +888,13 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @TestFactory
   Stream<DynamicNode> testGrantPrivilegeOnPolicyToRolePrivileges() {
     return authzTestsBuilder("grantPrivilegeOnPolicyToRole")
-        .action(
-            () ->
-                newTestAdminService(Set.of(PRINCIPAL_ROLE1))
-                    .grantPrivilegeOnPolicyToRole(
-                        CATALOG_NAME,
-                        CATALOG_ROLE2,
-                        POLICY_NS1_1,
-                        PolarisPrivilege.CATALOG_MANAGE_ACCESS))
+        .action(() ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .grantPrivilegeOnPolicyToRole(
+                    CATALOG_NAME,
+                    CATALOG_ROLE2,
+                    POLICY_NS1_1,
+                    PolarisPrivilege.CATALOG_MANAGE_ACCESS))
         .shouldPassWith(PolarisPrivilege.POLICY_MANAGE_GRANTS_ON_SECURABLE)
         .shouldPassWith(PolarisPrivilege.CATALOG_MANAGE_ACCESS)
         .createTests();

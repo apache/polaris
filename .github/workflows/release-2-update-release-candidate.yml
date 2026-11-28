@@ -31,7 +31,7 @@ on:
 jobs:
   update-release-candidate:
     name: Release - 2 - Update version and Changelog for Release Candidate
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
 
@@ -45,7 +45,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }} # zizmor: ignore[secrets-outside-env]
 
       - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
+        uses: $/.github/actions/setup-test-env
 
       - name: Configure Git
         run: |
@@ -142,7 +142,7 @@ jobs:
           echo "All GitHub checks are passing for commit \`${current_commit}\`" >> $GITHUB_STEP_SUMMARY
 
       - name: Set up Java
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: 'temurin'
           java-version: '21'
@@ -150,8 +150,26 @@ jobs:
       - name: Set up helm-docs
         if: env.rc_number == '0'
         run: |
-          go install github.com/norwoodj/helm-docs/cmd/helm-docs@latest
-          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+          HELM_DOCS_VERSION=1.14.2
+          ARCH=$(uname -m)
+          case "$ARCH" in
+            x86_64|amd64)
+              ARCH=x86_64
+              SHA256=a8cf72ada34fad93285ba2a452b38bdc5bd52cc9a571236244ec31022928d6cc
+              ;;
+            aarch64|arm64)
+              ARCH=arm64
+              SHA256=c3787212332386dcd122debef7848feb165aa701467ae3e3442df7638f3ac4e4
+              ;;
+            *)
+              echo "Unsupported architecture: $ARCH" >&2
+              exit 1
+              ;;
+          esac
+          curl -fsSL --retry 3 -o helm-docs.tar.gz "https://github.com/norwoodj/helm-docs/releases/download/v${HELM_DOCS_VERSION}/helm-docs_${HELM_DOCS_VERSION}_Linux_${ARCH}.tar.gz"
+          echo "${SHA256}  helm-docs.tar.gz" | sha256sum -c -
+          sudo tar -xzf helm-docs.tar.gz -C /usr/local/bin helm-docs
+          rm helm-docs.tar.gz
 
       - name: Update project versions
         if: env.rc_number == '0'
@@ -168,11 +186,11 @@ jobs:
         if: env.rc_number == '0'
         run: |
           source "${LIBS_DIR}/_exec.sh"
-          exec_process ./gradlew patchChangelog
+          exec_process ./gradlew releaseChangelog --release-version="${version_without_rc}"
 
           cat <<EOT >> $GITHUB_STEP_SUMMARY
           ## Changelog
-          Changelog patched successfully
+          Changelog updated successfully
           EOT
 
       - name: Generate Helm schema and documentation
@@ -201,11 +219,37 @@ jobs:
             "$HELM_REFERENCE_DOC_FILE" \
             "$PYTHON_PYPROJECT_FILE" \
             "$PYTHON_UV_LOCK_FILE" \
-            "$CHANGELOG_FILE"
+            "$CHANGELOG_FILE" \
+            "$CHANGELOG_FRAGMENTS_DIR"
           exec_process git commit -m "[chore] Bump version to ${version_without_rc}"
 
           # Push the changes
           exec_process git push origin "${release_branch}"
+
+      - name: Merge changelog fragments of cherry-picked changes
+        # RC0 merges the fragments above. For later release candidates, the fragments of the
+        # cherry-picked changes go into the already existing section of the release.
+        if: env.rc_number != '0'
+        run: |
+          source "${LIBS_DIR}/_constants.sh"
+          source "${LIBS_DIR}/_exec.sh"
+
+          exec_process ./gradlew mergeChangelogFragments --release-version="${version_without_rc}"
+          exec_process git add "$CHANGELOG_FILE" "$CHANGELOG_FRAGMENTS_DIR"
+          if ! git diff --cached --quiet; then
+            exec_process git commit -m "[chore] Update changelog for ${version_without_rc}-rc${rc_number}"
+            exec_process git push origin "${release_branch}"
+          fi
+
+      - name: Verify that all changelog fragments were merged
+        run: |
+          source "${LIBS_DIR}/_constants.sh"
+
+          # In dry-run mode nothing was merged. Like in exec_process, DRY_RUN defaults to 1.
+          if [[ ${DRY_RUN:-1} -ne 1 ]] && [[ -n "$(find "$CHANGELOG_FRAGMENTS_DIR" -mindepth 1 -maxdepth 1 -type f ! -name README.md ! -name '.*')" ]]; then
+            echo "❌ Unmerged changelog fragments remain in \`changelog.d\`, they would be missing from the release notes." >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
 
       - name: Create RC tag at new commit
         run: |

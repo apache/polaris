@@ -192,10 +192,11 @@ Use the PR template (`.github/pull_request_template.md`). At minimum:
 2. Link the issue: `Fixes #NNN` or `Related to #NNN`.
 3. State your understanding of the current behavior and what you expect to change.
 4. Complete every checklist item.
-5. Update `CHANGELOG.md` only for changes worth calling out to users in release
+5. Add a changelog entry only for changes worth calling out to users in release
    notes, such as breaking changes, metastore schema changes, or changes requiring manual
-   steps during an upgrade. An entry is not required for every PR. Add entries
-   under `## [Unreleased]` in the appropriate subsection.
+   steps during an upgrade. An entry is not required for every PR. Do not edit
+   `CHANGELOG.md` directly: add a fragment file under `changelog.d/` as described
+   in [changelog.d/README.md](changelog.d/README.md).
 6. If your change affects user-facing behavior or configuration, check whether
    `site/content/in-dev/unreleased/` needs updates.
 
@@ -276,9 +277,26 @@ silently comply. Explain the contradiction in the PR description and propose an
 alternative. Reviewers would rather see a thoughtful objection than a PR that
 introduces inconsistency.
 
-**AI self-references in output.** [DISCIPLINE]
-Do not include AI tool names or model identifiers in code, comments, or commit
-messages. For PR descriptions, follow the disclosure guidance in
+**AI disclosure.** [DISCIPLINE]
+Disclosing AI assistance is recommended, not mandatory, but agents should always
+do it. Every commit you help produce SHOULD carry an `Assisted-By` trailer in its
+commit message, naming the tool and the model, each with its version:
+
+```
+Assisted-By: <Tool name> <Tool version> (<Model name> <Model version>)
+```
+
+No standard classification system for AI tools exists, so these values are
+free-form: use the names and versions the tool reports for itself. Always use
+`Assisted-By`, the preferred trailer; avoid `Co-Authored-By`, which GitHub
+may display as a human co-author. Do not put AI tool names or model identifiers in
+code or comments.
+
+The PR description SHOULD also mention the tool and model used, and which parts of
+the change were AI-generated. Never tick the PR template checkbox confirming that
+the author understands the change and can explain it: only the human author can
+do it. Tell the human author what disclosure you added, and which checkbox is
+theirs to tick, in your output (e.g. the CLI log). See
 [CONTRIBUTING.md](CONTRIBUTING.md#guidelines-for-ai-assisted-contributions).
 The human author owns the contribution.
 

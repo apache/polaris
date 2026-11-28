@@ -36,31 +36,30 @@ class PolarisIntegrationTestExtensionTest {
 
   @RegisterExtension
   static final PolarisIntegrationTestExtension extension =
-      new PolarisIntegrationTestExtension(
-          context ->
-              new Server() {
-                @Override
-                public URI baseUri() {
-                  return URI.create("http://localhost:8080");
-                }
+      new PolarisIntegrationTestExtension(context ->
+          new Server() {
+            @Override
+            public URI baseUri() {
+              return URI.create("http://localhost:8080");
+            }
 
-                @Override
-                public Optional<URI> managementUri() {
-                  managementUriCalls.incrementAndGet();
-                  return Optional.empty();
-                }
+            @Override
+            public Optional<URI> managementUri() {
+              managementUriCalls.incrementAndGet();
+              return Optional.empty();
+            }
 
-                @Override
-                public ClientPrincipal adminCredentials() {
-                  return new ClientPrincipal(
-                      "root", new ClientCredentials("test-admin", "test-secret"));
-                }
+            @Override
+            public ClientPrincipal adminCredentials() {
+              return new ClientPrincipal(
+                  "root", new ClientCredentials("test-admin", "test-secret"));
+            }
 
-                @Override
-                public void close() {
-                  // Nothing to do
-                }
-              });
+            @Override
+            public void close() {
+              // Nothing to do
+            }
+          });
 
   @Test
   void resolvesPolarisEndpointsWithoutRetrievingManagementUri(PolarisApiEndpoints endpoints) {

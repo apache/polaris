@@ -1,0 +1,225 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+---
+paths:
+
+  /polaris/v1/{prefix}/metrics:
+    parameters:
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/prefix'
+
+    post:
+      tags:
+        - Metrics Reports API
+      summary: Query metrics reports for one or more catalog objects
+      operationId: queryTableMetrics
+      description: |
+        **Experimental / Beta:** The Metrics Reports API is experimental and may change in a
+        backward-incompatible way in any future release. It should not be used in production
+        environments.
+
+        Returns persisted metrics for the catalog objects listed in the request body. All requested
+        objects must belong to the catalog identified by `prefix`.
+
+        Requires the TABLE_READ_METRICS privilege on each requested table. Reports are returned for
+        the requested tables that exist and for which the caller holds that privilege. Other
+        requested tables are omitted without error, so the response does not reveal whether they
+        exist. A 403 is returned when none of the requested tables is readable by the caller,
+        whether because they do not exist or because the caller lacks the privilege. This applies
+        only to a request without a `page-token`: when none of the tables is readable on a later
+        page, for example because they were dropped or the privilege was revoked during the
+        listing, the server returns an empty `reports` list with no `next-page-token`. A 404 is
+        returned only when the catalog itself does not exist.
+
+        The response may be paginated: clients should always check `next-page-token` and, when
+        present, pass it as `page-token` to fetch the next page. Neither `page-token` nor
+        `page-size` is required on the first request. The server decides the actual page size,
+        which may be smaller than the `page-size` hint. Clients cannot request that all results be
+        returned in a single response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QueryMetricsRequest'
+      responses:
+        200:
+          description: Paginated list of metrics reports
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListMetricsResponse'
+        400:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description: >
+            Not Found - The catalog does not exist. Requested tables that do not exist never
+            produce a 404; they are omitted from the result, or produce a 403 as described above.
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+components:
+  schemas:
+    MetricType:
+      type: string
+      description: >
+        Identifies the type of a metrics report. Standard types currently defined by this
+        specification are `iceberg-scan` and `iceberg-commit`. Additional standard types may be
+        introduced in future versions.
+
+        Implementation-specific types SHOULD use an `x-` prefix followed by an implementation
+        namespace, for example, `x-my-metric`, to avoid collisions with standard types. This is a
+        naming convention, not a schema constraint.
+
+    CatalogObject:
+      type: object
+      description: >
+        Identifies a catalog object and, optionally, one of its snapshots. The identifier, type and
+        snapshot ID of an entry must match together.
+      required:
+        - identifier
+      properties:
+        identifier:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/CatalogObjectIdentifier'
+        type:
+          type: string
+          default: iceberg-table
+          description: >
+            The catalog object type. Combined with identifier, identifies the exact catalog object.
+            Defaults to `iceberg-table` when omitted. Currently, only `iceberg-table` is supported;
+            entries with unsupported values are ignored.
+        snapshot-id:
+          type: string
+          description: >
+            Optional snapshot filter for this object. An opaque identifier whose format depends on
+            the object's table format; for `iceberg-table` it is the decimal Iceberg snapshot ID. If
+            omitted, no snapshot filter is applied.
+
+    QueryMetricsRequest:
+      type: object
+      required:
+        - metric-types
+        - objects
+      properties:
+        metric-types:
+          type: array
+          minItems: 1
+          description: >
+            Types of metrics to retrieve. Reports of any of the listed types are returned.
+            Unsupported types yield no reports.
+          items:
+            $ref: '#/components/schemas/MetricType'
+        objects:
+          type: array
+          minItems: 1
+          description: >
+            Catalog objects to query, all belonging to the catalog identified by prefix in the
+            path. Entries are combined with OR semantics. Omitting `snapshot-id` on an entry applies
+            no snapshot filter; the other query filters still apply. If the same object appears
+            both with and without a snapshot ID, the entry without a snapshot ID takes precedence.
+            Overlapping entries do not duplicate reports. The server limits the number of entries
+            per request and rejects larger requests with a 400. Entries naming a table that does
+            not exist, or one the caller may not read metrics of, are omitted from the result.
+          items:
+            $ref: '#/components/schemas/CatalogObject'
+        page-token:
+          type: string
+          description: >
+            Opaque token returned as `next-page-token` by a previous response. Omit it to request
+            the first page. Any response may be paginated, whether or not the request carried a
+            `page-token` or a `page-size`.
+        page-size:
+          type: integer
+          minimum: 1
+          description: >
+            A hint for the maximum number of reports per page. The server decides the actual page
+            size and may return fewer reports than requested.
+        timestamp-from:
+          type: integer
+          format: int64
+          description: >
+            Inclusive lower bound on report timestamp (Unix epoch milliseconds). When omitted, the
+            server applies a default window that ends at `timestamp-to`, or at the time of the
+            request when `timestamp-to` is also omitted.
+        timestamp-to:
+          type: integer
+          format: int64
+          description: >
+            Exclusive upper bound on report timestamp (Unix epoch milliseconds). Must be greater
+            than `timestamp-from` when both are given.
+
+    ListMetricsResponse:
+      type: object
+      required:
+        - reports
+      properties:
+        next-page-token:
+          type: string
+          nullable: true
+          description: >
+            Opaque cursor for fetching the next page. Null or absent when no further pages exist. A
+            cursor is valid only with the same `metric-types`, `objects`, `timestamp-from` and
+            `timestamp-to` as the request that produced it; the server rejects it with a 400
+            otherwise.
+        reports:
+          type: array
+          items:
+            $ref: '#/components/schemas/MetricsReport'
+
+    MetricsReport:
+      type: object
+      description: >
+        Envelope for a single persisted metrics report. The `payload` is an opaque JSON object so
+        fields can be added without requiring a change to this API's schema.
+      required:
+        - metric-type
+        - object
+        - timestamp-ms
+        - payload
+      properties:
+        metric-type:
+          $ref: '#/components/schemas/MetricType'
+        object:
+          $ref: '#/components/schemas/CatalogObject'
+        timestamp-ms:
+          type: integer
+          format: int64
+          description: Server-side timestamp when the report was received (Unix epoch milliseconds)
+        payload:
+          type: object
+          additionalProperties: true
+          description: >
+            Opaque metrics report payload, e.g. `{"type": "iceberg.metrics.scan", "version": 1,
+            "data": {...}}`. The payload is a projection reconstructed from the persisted metrics
+            record, not the original report as received: `data` contains only the metric fields
+            the persistence backend stores, and fields of the original report that are not
+            persisted (e.g. custom metrics or report metadata) are not returned. Clients must not
+            assume every field of the original Iceberg report is present. When available, request
+            correlation identifiers are returned under `request` (`request-id`, `otel-trace-id`,
+            `otel-span-id`).

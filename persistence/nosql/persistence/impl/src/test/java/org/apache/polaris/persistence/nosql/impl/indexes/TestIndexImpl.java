@@ -693,10 +693,9 @@ public class TestIndexImpl {
           prefix
               ? allKeys.stream().filter(k -> k.startsWith(lower)).toList()
               : allKeys.stream()
-                  .filter(
-                      k ->
-                          (lower == null || k.compareTo(lower) >= 0)
-                              && (higher == null || k.compareTo(higher) <= 0))
+                  .filter(k ->
+                      (lower == null || k.compareTo(lower) >= 0)
+                          && (higher == null || k.compareTo(higher) <= 0))
                   .toList();
 
       soft.assertThatIterator(index.iterator(lower, higher, false))
@@ -1182,27 +1181,26 @@ public class TestIndexImpl {
 
       var futures =
           IntStream.range(0, threads)
-              .mapToObj(
-                  i ->
-                      CompletableFuture.runAsync(
-                          () -> {
-                            latch.countDown();
-                            try {
-                              start.acquire();
-                            } catch (InterruptedException e) {
-                              throw new RuntimeException(e);
+              .mapToObj(i ->
+                  CompletableFuture.runAsync(
+                      () -> {
+                        latch.countDown();
+                        try {
+                          start.acquire();
+                        } catch (InterruptedException e) {
+                          throw new RuntimeException(e);
+                        }
+                        for (var iter = 0; iter < 1_000; iter++) {
+                          if ((iter & 1) == 0) {
+                            if (!element.hasValue()) {
+                              throw new AssertionError("Unexpected null-value state");
                             }
-                            for (var iter = 0; iter < 1_000; iter++) {
-                              if ((iter & 1) == 0) {
-                                if (!element.hasValue()) {
-                                  throw new AssertionError("Unexpected null-value state");
-                                }
-                              } else if (!value1.equals(element.valueNullable())) {
-                                throw new AssertionError("Unexpected materialized value");
-                              }
-                            }
-                          },
-                          executor))
+                          } else if (!value1.equals(element.valueNullable())) {
+                            throw new AssertionError("Unexpected materialized value");
+                          }
+                        }
+                      },
+                      executor))
               .toArray(CompletableFuture[]::new);
 
       latch.await();
@@ -1256,11 +1254,9 @@ public class TestIndexImpl {
     var indexTestSet =
         KeyIndexTestSet.<ObjRef>newGenerator()
             .keySet(ImmutableRandomUuidKeySet.builder().numKeys(numKeys).build())
-            .elementSupplier(
-                key ->
-                    indexElement(
-                        key,
-                        everyFourthIsNull.getAndIncrement() % 4 == 0 ? null : Util.randomObjId()))
+            .elementSupplier(key ->
+                indexElement(
+                    key, everyFourthIsNull.getAndIncrement() % 4 == 0 ? null : Util.randomObjId()))
             .elementSerializer(OBJ_REF_SERIALIZER)
             .build()
             .generateIndexTestSet();
@@ -1307,21 +1303,20 @@ public class TestIndexImpl {
 
       var futures =
           IntStream.range(0, threads)
-              .mapToObj(
-                  i ->
-                      CompletableFuture.runAsync(
-                          () -> {
-                            latch.countDown();
-                            try {
-                              start.acquire();
-                            } catch (InterruptedException e) {
-                              throw new RuntimeException(e);
-                            }
-                            for (var iter = 0; iter < iterationsPerThread; iter++) {
-                              worker.accept(indexTestSet);
-                            }
-                          },
-                          executor))
+              .mapToObj(i ->
+                  CompletableFuture.runAsync(
+                      () -> {
+                        latch.countDown();
+                        try {
+                          start.acquire();
+                        } catch (InterruptedException e) {
+                          throw new RuntimeException(e);
+                        }
+                        for (var iter = 0; iter < iterationsPerThread; iter++) {
+                          worker.accept(indexTestSet);
+                        }
+                      },
+                      executor))
               .toArray(CompletableFuture[]::new);
 
       latch.await();
@@ -1400,36 +1395,35 @@ public class TestIndexImpl {
     try (var executor = Executors.newFixedThreadPool(threads)) {
       var futures =
           IntStream.range(0, threads)
-              .mapToObj(
-                  i ->
-                      CompletableFuture.runAsync(
-                          () -> {
-                            latch.countDown();
-                            try {
-                              start.acquire();
-                            } catch (InterruptedException e) {
-                              throw new RuntimeException(e);
+              .mapToObj(i ->
+                  CompletableFuture.runAsync(
+                      () -> {
+                        latch.countDown();
+                        try {
+                          start.acquire();
+                        } catch (InterruptedException e) {
+                          throw new RuntimeException(e);
+                        }
+                        for (var iter = 0; iter < iterationsPerThread; iter++) {
+                          var buf = IndexImpl.acquireScratchKeyBuffer();
+                          // Write a marker to verify no buffer is shared concurrently
+                          var marker = (byte) (Thread.currentThread().hashCode() & 0xFF);
+                          buf.put(0, marker);
+                          // Simulate work
+                          for (var j = 1; j < 16; j++) {
+                            buf.put(j, marker);
+                          }
+                          // Verify our marker is still intact (no other thread overwrote it)
+                          for (var j = 0; j < 16; j++) {
+                            if (buf.get(j) != marker) {
+                              throw new AssertionError(
+                                  "Buffer was concurrently modified at position " + j);
                             }
-                            for (var iter = 0; iter < iterationsPerThread; iter++) {
-                              var buf = IndexImpl.acquireScratchKeyBuffer();
-                              // Write a marker to verify no buffer is shared concurrently
-                              var marker = (byte) (Thread.currentThread().hashCode() & 0xFF);
-                              buf.put(0, marker);
-                              // Simulate work
-                              for (var j = 1; j < 16; j++) {
-                                buf.put(j, marker);
-                              }
-                              // Verify our marker is still intact (no other thread overwrote it)
-                              for (var j = 0; j < 16; j++) {
-                                if (buf.get(j) != marker) {
-                                  throw new AssertionError(
-                                      "Buffer was concurrently modified at position " + j);
-                                }
-                              }
-                              IndexImpl.releaseScratchKeyBuffer(buf);
-                            }
-                          },
-                          executor))
+                          }
+                          IndexImpl.releaseScratchKeyBuffer(buf);
+                        }
+                      },
+                      executor))
               .toArray(CompletableFuture[]::new);
 
       latch.await();

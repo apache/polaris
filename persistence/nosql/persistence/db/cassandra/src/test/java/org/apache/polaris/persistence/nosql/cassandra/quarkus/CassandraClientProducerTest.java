@@ -1,0 +1,210 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.polaris.persistence.nosql.cassandra.quarkus;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.when;
+
+import com.datastax.oss.driver.api.core.auth.AuthProvider;
+import com.datastax.oss.driver.api.core.auth.Authenticator;
+import com.datastax.oss.driver.api.core.auth.ProgrammaticPlainTextAuthProvider;
+import com.datastax.oss.driver.api.core.config.OptionsMap;
+import com.datastax.oss.driver.api.core.config.TypedDriverOption;
+import com.datastax.oss.driver.api.core.metadata.EndPoint;
+import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.inject.Instance;
+import java.util.Map;
+import org.apache.polaris.persistence.nosql.cassandra.CassandraConfiguration;
+import org.apache.polaris.persistence.nosql.cassandra.CassandraSessionFactory;
+import org.apache.polaris.persistence.nosql.cassandra.ImmutableBuildableCassandraConfiguration;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
+class CassandraClientProducerTest {
+
+  @Test
+  void leavesAuthenticationUnconfiguredWhenNoAuthenticationSettingsArePresent() {
+    var configuration = configuration().build();
+    Instance<AuthProvider> providers = mock();
+
+    assertThat(CassandraClientProducer.resolveAuthenticationProvider(configuration, providers))
+        .isEmpty();
+    verifyNoInteractions(providers);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"default", "custom"})
+  void selectsConfiguredProvider(String name) throws Exception {
+    var configuration =
+        ("default".equals(name)
+                ? configuration().authUsername("polaris").authPassword("secret")
+                : configuration().authProviderName(name))
+            .build();
+    Instance<AuthProvider> providers = mock();
+    Instance<AuthProvider> selected = mock();
+    AuthProvider provider = mock(AuthProvider.class);
+    when(providers.select(Identifier.Literal.of(name))).thenReturn(selected);
+    when(selected.get()).thenReturn(provider);
+
+    var resolved =
+        CassandraClientProducer.resolveAuthenticationProvider(configuration, providers)
+            .orElseThrow();
+
+    assertThat(resolved).isInstanceOf(NonClosingAuthProvider.class);
+    verify(providers).select(Identifier.Literal.of(name));
+    resolved.close();
+    verifyNoMoreInteractions(provider);
+  }
+
+  @Test
+  void delegatesAuthenticationWithoutClosingTheCdiProvider() {
+    AuthProvider provider = mock(AuthProvider.class);
+    EndPoint endPoint = mock(EndPoint.class);
+    Authenticator authenticator = mock(Authenticator.class);
+    when(provider.newAuthenticator(endPoint, "PasswordAuthenticator")).thenReturn(authenticator);
+    var wrapper = new NonClosingAuthProvider(provider);
+
+    assertThat(wrapper.newAuthenticator(endPoint, "PasswordAuthenticator")).isSameAs(authenticator);
+    wrapper.onMissingChallenge(endPoint);
+    wrapper.close();
+
+    verify(provider).newAuthenticator(endPoint, "PasswordAuthenticator");
+    verify(provider).onMissingChallenge(endPoint);
+    verifyNoMoreInteractions(provider);
+  }
+
+  @Test
+  void closesDefaultProviderWhenCdiDestroysIt() throws Exception {
+    AuthProvider provider = mock(AuthProvider.class);
+
+    new CassandraClientProducer().closeDefaultAuthenticationProvider(provider);
+
+    verify(provider).close();
+  }
+
+  @Test
+  void createsPlainTextProviderWithAuthorizationId() {
+    var configuration =
+        configuration()
+            .authUsername("polaris")
+            .authPassword("secret")
+            .authAuthorizationId("proxy")
+            .build();
+
+    assertThat(new CassandraClientProducer().defaultAuthenticationProvider(configuration))
+        .isInstanceOf(ProgrammaticPlainTextAuthProvider.class);
+  }
+
+  @Test
+  void rejectsPartialPlainTextCredentials() {
+    var configuration = configuration().authUsername("polaris").build();
+    Instance<AuthProvider> providers = mock();
+
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () -> CassandraClientProducer.resolveAuthenticationProvider(configuration, providers))
+        .withMessageContaining("must either both be configured or both be absent");
+  }
+
+  @Test
+  void rejectsPlainTextCredentialsWithCustomProvider() {
+    var configuration =
+        configuration()
+            .authProviderName("custom")
+            .authUsername("polaris")
+            .authPassword("secret")
+            .build();
+    Instance<AuthProvider> providers = mock();
+
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () -> CassandraClientProducer.resolveAuthenticationProvider(configuration, providers))
+        .withMessageContaining("only be used with the default authentication provider");
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void rejectsUnresolvableNamedProvider(boolean ambiguous) {
+    var configuration = configuration().authProviderName("custom").build();
+    Instance<AuthProvider> providers = mock();
+    Instance<AuthProvider> selected = mock();
+    when(providers.select(Identifier.Literal.of("custom"))).thenReturn(selected);
+    when(selected.isUnsatisfied()).thenReturn(!ambiguous);
+    when(selected.isAmbiguous()).thenReturn(ambiguous);
+
+    assertThatIllegalArgumentException()
+        .isThrownBy(
+            () -> CassandraClientProducer.resolveAuthenticationProvider(configuration, providers))
+        .withMessageContaining(
+            ambiguous
+                ? "Cassandra authentication provider 'custom' is ambiguous"
+                : "No Cassandra authentication provider named 'custom' is available");
+  }
+
+  @Test
+  void enablesConservativeMetricDefaults() {
+    var options = OptionsMap.driverDefaults();
+    CassandraClientProducer.configureMetrics(options);
+    assertThat(options.get(TypedDriverOption.METRICS_SESSION_ENABLED))
+        .containsExactly("connected-nodes", "cql-requests");
+    assertThat(options.get(TypedDriverOption.METRICS_NODE_ENABLED))
+        .contains("pool.open-connections", "errors.request.read-timeouts")
+        .doesNotContain("cql-messages");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"advanced.metrics.node.enabled", "advanced-metrics-node-enabled"})
+  void explicitMetricListsOverrideDefaults(String path) {
+    var options = OptionsMap.driverDefaults();
+    CassandraClientProducer.configureMetrics(options);
+    CassandraSessionFactory.configureDriverOptions(
+        configuration().driverOptions(Map.of(path, "pool.in-flight")).build(), false, options);
+    assertThat(options.get(TypedDriverOption.METRICS_NODE_ENABLED))
+        .containsExactly("pool.in-flight");
+    assertThat(options.get(TypedDriverOption.METRICS_SESSION_ENABLED))
+        .containsExactly("connected-nodes", "cql-requests");
+  }
+
+  @Test
+  void emptyMetricListsDisableBothCategories() {
+    var options = OptionsMap.driverDefaults();
+    CassandraClientProducer.configureMetrics(options);
+    CassandraSessionFactory.configureDriverOptions(
+        configuration()
+            .driverOptions(
+                Map.of(
+                    "advanced.metrics.node.enabled", "",
+                    "advanced.metrics.session.enabled", ""))
+            .build(),
+        false,
+        options);
+    assertThat(options.get(TypedDriverOption.METRICS_NODE_ENABLED)).isEmpty();
+    assertThat(options.get(TypedDriverOption.METRICS_SESSION_ENABLED)).isEmpty();
+  }
+
+  private static ImmutableBuildableCassandraConfiguration.Builder configuration() {
+    return CassandraConfiguration.BuildableCassandraConfiguration.builder();
+  }
+}

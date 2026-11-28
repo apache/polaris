@@ -55,9 +55,9 @@ Using properties file:
 
 ```properties
 polaris.persistence.type=relational-jdbc
-quarkus.datasource.jdbc.username=<your-username>
-quarkus.datasource.jdbc.password=<your-password>
-quarkus.datasource.jdbc.jdbc-url=<jdbc-url-of-postgres>
+quarkus.datasource.username=<your-username>
+quarkus.datasource.password=<your-password>
+quarkus.datasource.jdbc.url=<jdbc-url-of-postgres>
 ```
 
 ### 2. AWS Aurora PostgreSQL metastore using IAM AWS authentication
@@ -89,7 +89,8 @@ The following `polaris.persistence.relational.jdbc.*` properties tune retry beha
 type detection:
 
 ```properties
-# Maximum number of attempts for retryable operations (default: 1, i.e. no retries)
+# Maximum number of attempts for retryable operations (default: 1, i.e. no retries).
+# Values below 1 still run the operation once.
 polaris.persistence.relational.jdbc.max-retries=3
 
 # Maximum total time to spend on retries in milliseconds (default: 5000)

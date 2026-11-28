@@ -233,7 +233,7 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
             .build();
     AwsCredentialsStorageIntegration storageIntegration =
         new AwsCredentialsStorageIntegration(
-            (destination) -> stsClient,
+            destination -> stsClient,
             config -> java.util.Optional.empty(),
             storageCredentialCache,
             mockAwsConfig,
@@ -242,7 +242,12 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
         .thenReturn(storageIntegration);
 
     this.genericTableCatalog =
-        new PolarisGenericTableCatalog(metaStoreManager, polarisContext, passthroughView);
+        new PolarisGenericTableCatalog(
+            metaStoreManager,
+            polarisContext,
+            passthroughView,
+            resolutionManifestFactory,
+            authenticatedRoot);
     this.genericTableCatalog.initialize(CATALOG_NAME, Map.of());
     this.icebergCatalog =
         new LocalIcebergCatalog(
@@ -272,10 +277,9 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
   public void testCreateGenericTableDoesNotThrow() {
     Namespace namespace = Namespace.of("ns");
     icebergCatalog.createNamespace(namespace);
-    Assertions.assertThatCode(
-            () ->
-                genericTableCatalog.createGenericTable(
-                    TableIdentifier.of("ns", "t1"), "test-format", null, "doc", Map.of()))
+    Assertions.assertThatCode(() ->
+            genericTableCatalog.createGenericTable(
+                TableIdentifier.of("ns", "t1"), "test-format", null, "doc", Map.of()))
         .doesNotThrowAnyException();
   }
 
@@ -286,20 +290,18 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     genericTableCatalog.createGenericTable(
         TableIdentifier.of("ns", "t1"), "format1", null, "doc", Map.of());
 
-    Assertions.assertThatCode(
-            () ->
-                genericTableCatalog.createGenericTable(
-                    TableIdentifier.of("ns", "t1"), "format2", null, "doc", Map.of()))
+    Assertions.assertThatCode(() ->
+            genericTableCatalog.createGenericTable(
+                TableIdentifier.of("ns", "t1"), "format2", null, "doc", Map.of()))
         .hasMessageContaining("already exists");
 
-    Assertions.assertThatCode(
-            () ->
-                genericTableCatalog.createGenericTable(
-                    TableIdentifier.of("ns", "t1"),
-                    "format2",
-                    "s3://other-bucket/ns/t1",
-                    "doc",
-                    Map.of()))
+    Assertions.assertThatCode(() ->
+            genericTableCatalog.createGenericTable(
+                TableIdentifier.of("ns", "t1"),
+                "format2",
+                "s3://other-bucket/ns/t1",
+                "doc",
+                Map.of()))
         .hasMessageContaining("already exists");
 
     Assertions.assertThatCode(
@@ -313,10 +315,9 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     icebergCatalog.createNamespace(namespace);
     icebergCatalog.createTable(TableIdentifier.of("ns", "t1"), SCHEMA);
 
-    Assertions.assertThatCode(
-            () ->
-                genericTableCatalog.createGenericTable(
-                    TableIdentifier.of("ns", "t1"), "format2", null, "doc", Map.of()))
+    Assertions.assertThatCode(() ->
+            genericTableCatalog.createGenericTable(
+                TableIdentifier.of("ns", "t1"), "format2", null, "doc", Map.of()))
         .hasMessageContaining("already exists");
 
     Assertions.assertThatCode(
@@ -367,10 +368,9 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
     icebergCatalog.createNamespace(Namespace.of("ns"));
     TableIdentifier identifier = TableIdentifier.of("ns", "t1");
 
-    Assertions.assertThatThrownBy(
-            () ->
-                genericTableCatalog.createGenericTable(
-                    identifier, "delta", baseLocation, "doc", Map.of()))
+    Assertions.assertThatThrownBy(() ->
+            genericTableCatalog.createGenericTable(
+                identifier, "delta", baseLocation, "doc", Map.of()))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Invalid locations");
     Assertions.assertThatThrownBy(() -> genericTableCatalog.loadGenericTable(identifier))
@@ -545,7 +545,9 @@ public abstract class AbstractPolarisGenericTableCatalogTest {
             concurrentlyDeleted,
             polarisContext,
             new PolarisPassthroughResolutionView(
-                resolutionManifestFactory, authenticatedRoot, CATALOG_NAME));
+                resolutionManifestFactory, authenticatedRoot, CATALOG_NAME),
+            resolutionManifestFactory,
+            authenticatedRoot);
 
     Assertions.assertThatThrownBy(() -> catalog.dropGenericTable(TABLE))
         .isInstanceOf(NoSuchTableException.class)

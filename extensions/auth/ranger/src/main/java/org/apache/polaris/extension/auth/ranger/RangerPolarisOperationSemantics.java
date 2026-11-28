@@ -66,6 +66,7 @@ public record RangerPolarisOperationSemantics(
   private static final String CATALOG_CREATE = "catalog-create";
   private static final String CATALOG_DROP = "catalog-drop";
   private static final String CATALOG_LIST = "catalog-list";
+  private static final String CATALOG_READ_CONFIG = "catalog-config-read";
   private static final String CATALOG_READ_PROPERTIES = "catalog-properties-read";
   private static final String CATALOG_WRITE_PROPERTIES = "catalog-properties-write";
   private static final String CATALOG_ATTACH_POLICY = "catalog-policy-attach";
@@ -86,6 +87,7 @@ public record RangerPolarisOperationSemantics(
   private static final String TABLE_WRITE_PROPERTIES = "table-properties-write";
   private static final String TABLE_READ_DATA = "table-data-read";
   private static final String TABLE_WRITE_DATA = "table-data-write";
+  private static final String TABLE_READ_METRICS = "table-metrics-read";
   private static final String TABLE_ATTACH_POLICY = "table-policy-attach";
   private static final String TABLE_DETACH_POLICY = "table-policy-detach";
   private static final String TABLE_ASSIGN_UUID = "table-uuid-assign";
@@ -120,6 +122,11 @@ public record RangerPolarisOperationSemantics(
   private static final String POLICY_LIST = "policy-list";
   private static final String POLICY_ATTACH = "policy-attach";
   private static final String POLICY_DETACH = "policy-detach";
+
+  private static final String TABLE_LINEAGE_QUERY = "table-lineage-query";
+  private static final String TABLE_LINEAGE_INGEST = "table-lineage-ingest";
+  private static final String VIEW_LINEAGE_QUERY = "view-lineage-query";
+  private static final String VIEW_LINEAGE_INGEST = "view-lineage-ingest";
 
   private static final EnumMap<PolarisAuthorizableOperation, RangerPolarisOperationSemantics>
       RBAC_SEMANTICS_BY_OPERATION = new EnumMap<>(PolarisAuthorizableOperation.class);
@@ -267,6 +274,10 @@ public record RangerPolarisOperationSemantics(
         new RangerPolarisOperationSemantics(
             toSet(TABLE_READ_DATA), null, ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.LIST_TABLE_METRICS,
+        new RangerPolarisOperationSemantics(
+            toSet(TABLE_READ_METRICS), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.REPORT_WRITE_METRICS,
         new RangerPolarisOperationSemantics(
             toSet(TABLE_WRITE_DATA), null, ResolvedPathRooting.ROOT));
@@ -292,12 +303,10 @@ public record RangerPolarisOperationSemantics(
         PolarisAuthorizableOperation.GET_CATALOG,
         new RangerPolarisOperationSemantics(
             toSet(CATALOG_READ_PROPERTIES), null, ResolvedPathRooting.ROOT));
-    // No dedicated Ranger access type for the catalog config endpoint yet; protect it with the
-    // existing catalog-properties-read access type.
     RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.GET_CATALOG_CONFIG,
         new RangerPolarisOperationSemantics(
-            toSet(CATALOG_READ_PROPERTIES), null, ResolvedPathRooting.ROOT));
+            toSet(CATALOG_READ_CONFIG), null, ResolvedPathRooting.ROOT));
     RBAC_SEMANTICS_BY_OPERATION.put(
         PolarisAuthorizableOperation.UPDATE_CATALOG,
         new RangerPolarisOperationSemantics(
@@ -450,6 +459,31 @@ public record RangerPolarisOperationSemantics(
         PolarisAuthorizableOperation.REMOVE_TABLE_PARTITION_SPECS,
         new RangerPolarisOperationSemantics(
             toSet(TABLE_REMOVE_PARTITION_SPECS), null, ResolvedPathRooting.ROOT));
+
+    RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.QUERY_TABLE_LINEAGE,
+        new RangerPolarisOperationSemantics(
+            toSet(TABLE_LINEAGE_QUERY), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.QUERY_VIEW_LINEAGE,
+        new RangerPolarisOperationSemantics(
+            toSet(VIEW_LINEAGE_QUERY), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.INGEST_TABLE_LINEAGE,
+        new RangerPolarisOperationSemantics(
+            toSet(TABLE_LINEAGE_INGEST), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.INGEST_VIEW_LINEAGE,
+        new RangerPolarisOperationSemantics(
+            toSet(VIEW_LINEAGE_INGEST), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.REFERENCE_LINEAGE_INPUT_TABLE,
+        new RangerPolarisOperationSemantics(
+            toSet(TABLE_READ_PROPERTIES), null, ResolvedPathRooting.ROOT));
+    RBAC_SEMANTICS_BY_OPERATION.put(
+        PolarisAuthorizableOperation.REFERENCE_LINEAGE_INPUT_VIEW,
+        new RangerPolarisOperationSemantics(
+            toSet(VIEW_READ_PROPERTIES), null, ResolvedPathRooting.ROOT));
 
     if (LOG.isDebugEnabled()) {
       EnumSet<PolarisAuthorizableOperation> missing =

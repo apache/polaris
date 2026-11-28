@@ -84,30 +84,27 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
         Arrays.asList(
             "abfss://container@icebergdfsstorageacct.dfs.core.windows.net/polaris-test/",
             "abfss://container@icebergdfsstorageacct.blob.core.windows.net/polaris-test/");
-    Assertions.assertThatThrownBy(
-            () ->
-                subscopedCredsForOperations(
-                    differentEndpointList, /* allowedWriteLoc= */ new ArrayList<>(), true))
+    Assertions.assertThatThrownBy(() ->
+            subscopedCredsForOperations(
+                differentEndpointList, /* allowedWriteLoc= */ new ArrayList<>(), true))
         .isInstanceOf(RuntimeException.class);
 
     List<String> differentStorageAccts =
         Arrays.asList(
             "abfss://container@polarisadls.dfs.core.windows.net/polaris-test/",
             "abfss://container@icebergdfsstorageacct.dfs.core.windows.net/polaris-test/");
-    Assertions.assertThatThrownBy(
-            () ->
-                subscopedCredsForOperations(
-                    differentStorageAccts, /* allowedWriteLoc= */ new ArrayList<>(), true))
+    Assertions.assertThatThrownBy(() ->
+            subscopedCredsForOperations(
+                differentStorageAccts, /* allowedWriteLoc= */ new ArrayList<>(), true))
         .isInstanceOf(RuntimeException.class);
     List<String> differentContainers =
         Arrays.asList(
             "abfss://container1@icebergdfsstorageacct.dfs.core.windows.net/polaris-test/",
             "abfss://container2@icebergdfsstorageacct.dfs.core.windows.net/polaris-test/");
 
-    Assertions.assertThatThrownBy(
-            () ->
-                subscopedCredsForOperations(
-                    differentContainers, /* allowedWriteLoc= */ new ArrayList<>(), true))
+    Assertions.assertThatThrownBy(() ->
+            subscopedCredsForOperations(
+                differentContainers, /* allowedWriteLoc= */ new ArrayList<>(), true))
         .isInstanceOf(RuntimeException.class);
   }
 
@@ -140,42 +137,39 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
     if (allowListAction) {
       // LIST succeed
       Assertions.assertThatNoException()
-          .isThrownBy(
-              () -> {
-                if (isBlobService) {
-                  containerClient
-                      .listBlobs(
-                          new ListBlobsOptions().setPrefix(Utility.urlEncode("polaris-test/")),
-                          Duration.ofSeconds(5))
-                      .streamByPage()
-                      .findFirst()
-                      .orElse(null);
-                } else {
-                  fileSystemClient
-                      .getDirectoryClient("polaris-test")
-                      .listPaths()
-                      .forEach(PathItem::getName);
-                }
-              });
+          .isThrownBy(() -> {
+            if (isBlobService) {
+              containerClient
+                  .listBlobs(
+                      new ListBlobsOptions().setPrefix(Utility.urlEncode("polaris-test/")),
+                      Duration.ofSeconds(5))
+                  .streamByPage()
+                  .findFirst()
+                  .orElse(null);
+            } else {
+              fileSystemClient
+                  .getDirectoryClient("polaris-test")
+                  .listPaths()
+                  .forEach(PathItem::getName);
+            }
+          });
     } else {
       if (isBlobService) {
-        Assertions.assertThatThrownBy(
-                () ->
-                    containerClient
-                        .listBlobs(
-                            new ListBlobsOptions().setPrefix(Utility.urlEncode("polaris-test/")),
-                            Duration.ofSeconds(5))
-                        .streamByPage()
-                        .findFirst()
-                        .orElse(null))
+        Assertions.assertThatThrownBy(() ->
+                containerClient
+                    .listBlobs(
+                        new ListBlobsOptions().setPrefix(Utility.urlEncode("polaris-test/")),
+                        Duration.ofSeconds(5))
+                    .streamByPage()
+                    .findFirst()
+                    .orElse(null))
             .isInstanceOf(BlobStorageException.class);
       } else {
-        Assertions.assertThatThrownBy(
-                () ->
-                    fileSystemClient
-                        .getDirectoryClient("polaris-test")
-                        .listPaths()
-                        .forEach(PathItem::getName))
+        Assertions.assertThatThrownBy(() ->
+                fileSystemClient
+                    .getDirectoryClient("polaris-test")
+                    .listPaths()
+                    .forEach(PathItem::getName))
             .isInstanceOf(DataLakeStorageException.class);
       }
     }
@@ -208,25 +202,17 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
 
     // READ succeed
     Assertions.assertThatNoException()
-        .isThrownBy(
-            () ->
-                blobClient.downloadStreamWithResponse(
-                    new ByteArrayOutputStream(),
-                    null,
-                    null,
-                    null,
-                    false,
-                    Duration.ofSeconds(5),
-                    null));
+        .isThrownBy(() ->
+            blobClient.downloadStreamWithResponse(
+                new ByteArrayOutputStream(), null, null, null, false, Duration.ofSeconds(5), null));
 
     // read will fail because only READ permission allowed
-    Assertions.assertThatThrownBy(
-            () ->
-                blobClient.uploadWithResponse(
-                    new BlobParallelUploadOptions(
-                        new ByteArrayInputStream("polaris".getBytes(StandardCharsets.UTF_8))),
-                    Duration.ofSeconds(5),
-                    null))
+    Assertions.assertThatThrownBy(() ->
+            blobClient.uploadWithResponse(
+                new BlobParallelUploadOptions(
+                    new ByteArrayInputStream("polaris".getBytes(StandardCharsets.UTF_8))),
+                Duration.ofSeconds(5),
+                null))
         .isInstanceOf(BlobStorageException.class);
 
     // read fail because container is blocked
@@ -237,16 +223,9 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
             "regtest",
             blockedPrefix);
 
-    Assertions.assertThatThrownBy(
-            () ->
-                blobClientReadFail.downloadStreamWithResponse(
-                    new ByteArrayOutputStream(),
-                    null,
-                    null,
-                    null,
-                    false,
-                    Duration.ofSeconds(5),
-                    null))
+    Assertions.assertThatThrownBy(() ->
+            blobClientReadFail.downloadStreamWithResponse(
+                new ByteArrayOutputStream(), null, null, null, false, Duration.ofSeconds(5), null))
         .isInstanceOf(BlobStorageException.class);
   }
 
@@ -287,22 +266,20 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
     ByteArrayInputStream inputStream =
         new ByteArrayInputStream("polaris".getBytes(StandardCharsets.UTF_8));
     Assertions.assertThatNoException()
-        .isThrownBy(
-            () -> {
-              if (isBlobService) {
-                blobClient.uploadWithResponse(
-                    new BlobParallelUploadOptions(inputStream), Duration.ofSeconds(5), null);
-              } else {
-                fileClient.upload(inputStream, "polaris".length(), /*override*/ true);
-              }
-            });
+        .isThrownBy(() -> {
+          if (isBlobService) {
+            blobClient.uploadWithResponse(
+                new BlobParallelUploadOptions(inputStream), Duration.ofSeconds(5), null);
+          } else {
+            fileClient.upload(inputStream, "polaris".length(), /*override*/ true);
+          }
+        });
     ByteArrayOutputStream outStream = new ByteArrayOutputStream();
     // READ not allowed
     if (isBlobService) {
-      Assertions.assertThatThrownBy(
-              () ->
-                  blobClient.downloadStreamWithResponse(
-                      outStream, null, null, null, false, Duration.ofSeconds(5), null))
+      Assertions.assertThatThrownBy(() ->
+              blobClient.downloadStreamWithResponse(
+                  outStream, null, null, null, false, Duration.ofSeconds(5), null))
           .isInstanceOf(BlobStorageException.class);
     } else {
       Assertions.assertThatThrownBy(() -> fileClient.read(outStream))
@@ -326,13 +303,12 @@ public class AzureCredentialStorageIntegrationTest extends BaseStorageIntegratio
             "00000-65ffa17b-fe64-4c38-bcb9-06f9bd12aa2a.metadata.json");
 
     if (isBlobService) {
-      Assertions.assertThatThrownBy(
-              () ->
-                  blobClientWriteFail.uploadWithResponse(
-                      new BlobParallelUploadOptions(
-                          new ByteArrayInputStream("polaris".getBytes(StandardCharsets.UTF_8))),
-                      Duration.ofSeconds(5),
-                      null))
+      Assertions.assertThatThrownBy(() ->
+              blobClientWriteFail.uploadWithResponse(
+                  new BlobParallelUploadOptions(
+                      new ByteArrayInputStream("polaris".getBytes(StandardCharsets.UTF_8))),
+                  Duration.ofSeconds(5),
+                  null))
           .isInstanceOf(BlobStorageException.class);
     } else {
       Assertions.assertThatThrownBy(() -> fileClientFail.upload(inputStream, "polaris".length()))

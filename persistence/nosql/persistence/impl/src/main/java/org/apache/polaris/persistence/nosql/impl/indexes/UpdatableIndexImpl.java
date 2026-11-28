@@ -80,10 +80,17 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
     checkNotFinalized();
     finalized = true;
 
+    var spillRequired =
+        embedded.estimatedSerializedSize() > params.maxEmbeddedIndexSize().asLong()
+            || hasOversizedEmbeddedEntry;
+    if (indexContainer != null && !spillRequired && !isModified()) {
+      // Preserve existing tombstones; unchanged containers need no removal-marker cleanup.
+      return indexContainer;
+    }
+
     var indexContainerBuilder = ImmutableIndexContainer.<V>builder();
 
-    if (embedded.estimatedSerializedSize() > params.maxEmbeddedIndexSize().asLong()
-        || hasOversizedEmbeddedEntry) {
+    if (spillRequired) {
       // The serialized representation of the embedded index is probably bigger than the configured
       // limit. Spill out the embedded index.
       spillOutEmbedded(prefix, persistObj, indexContainerBuilder);
@@ -112,9 +119,9 @@ final class UpdatableIndexImpl<V> extends AbstractLayeredIndexImpl<V> implements
     var newEmbedded = newStoreIndex(serializer);
     for (var elemIter = embedded.elementIterator(); elemIter.hasNext(); ) {
       var elem = elemIter.next();
-      var key = elem.key();
       var value = elem.valueNullable();
       if (value == null) {
+        var key = elem.key();
         if (reference.contains(key)) {
           // 'key' is being removed, only keep it in the embedded index, if it is required to shadow
           // a value from the reference index.

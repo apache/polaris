@@ -40,6 +40,6 @@ jobs:
     permissions:
       contents: read
       security-events: write
-    uses: ./.github/workflows/ci.yml
+    uses: $/.github/workflows/ci.yml
     secrets:
       DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}

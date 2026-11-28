@@ -89,13 +89,11 @@ public final class CloudEventsEventJsonMapper {
     event
         .attributes()
         .getOptional(EventAttributes.RENAME_TABLE_REQUEST)
-        .ifPresent(
-            renameTableRequest -> {
-              data.set("source", MAPPER.valueToTree(tableIdToList(renameTableRequest.source())));
-              data.set(
-                  "destination",
-                  MAPPER.valueToTree(tableIdToList(renameTableRequest.destination())));
-            });
+        .ifPresent(renameTableRequest -> {
+          data.set("source", MAPPER.valueToTree(tableIdToList(renameTableRequest.source())));
+          data.set(
+              "destination", MAPPER.valueToTree(tableIdToList(renameTableRequest.destination())));
+        });
     event
         .attributes()
         .getOptional(EventAttributes.TABLE_NAME)
@@ -110,16 +108,14 @@ public final class CloudEventsEventJsonMapper {
         .attributes()
         .getOptional(EventAttributes.TABLE_IDENTIFIER)
         .map(this::tableIdToList)
-        .ifPresent(
-            idAsList ->
-                data.set(EventAttributes.TABLE_IDENTIFIER.key(), MAPPER.valueToTree(idAsList)));
+        .ifPresent(idAsList ->
+            data.set(EventAttributes.TABLE_IDENTIFIER.key(), MAPPER.valueToTree(idAsList)));
     event
         .attributes()
         .getOptional(EventAttributes.VIEW_IDENTIFIER)
         .map(this::tableIdToList)
-        .ifPresent(
-            idAsList ->
-                data.set(EventAttributes.VIEW_IDENTIFIER.key(), MAPPER.valueToTree(idAsList)));
+        .ifPresent(idAsList ->
+            data.set(EventAttributes.VIEW_IDENTIFIER.key(), MAPPER.valueToTree(idAsList)));
     event
         .attributes()
         .getOptional(EventAttributes.VIEW_NAME)
@@ -136,11 +132,10 @@ public final class CloudEventsEventJsonMapper {
     event
         .metadata()
         .user()
-        .ifPresent(
-            user -> {
-              data.put("principal", user.getName());
-              data.set("activated_roles", MAPPER.valueToTree(user.getRoles()));
-            });
+        .ifPresent(user -> {
+          data.put("principal", user.getName());
+          data.set("activated_roles", MAPPER.valueToTree(user.getRoles()));
+        });
     event.metadata().requestId().ifPresent(id -> data.put("request_id", id));
 
     return data;

@@ -258,8 +258,8 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
 
     Assertions.assertThat(catalog().viewExists(identifier)).as("View should not exist").isFalse();
 
-    // CAN create a view with a custom metadata location `baseLocation/customLocation`,
-    // as long as the location is within the parent namespace's `write.metadata.path=baseLocation`
+    // Custom metadata paths must be within the catalog's allowed locations. Cloud storage
+    // credentials must cover the custom path as well as the view's base location.
     View view =
         catalog()
             .buildView(identifier)
@@ -277,6 +277,14 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
     Assertions.assertThat(view.properties()).containsEntry("write.metadata.path", customLocation);
     Assertions.assertThat(((BaseView) view).operations().current().metadataFileLocation())
         .isNotNull()
-        .startsWith(customLocation);
+        .startsWith(customLocation + "/");
+
+    String updatedLocation = customLocation + "-updated";
+    view.updateProperties().set("write.metadata.path", updatedLocation).commit();
+    View updatedView = catalog().loadView(identifier);
+    Assertions.assertThat(updatedView.properties())
+        .containsEntry("write.metadata.path", updatedLocation);
+    Assertions.assertThat(((BaseView) updatedView).operations().current().metadataFileLocation())
+        .startsWith(updatedLocation + "/");
   }
 }

@@ -56,11 +56,10 @@ class ProductionReadinessChecksCatalogConfigAuthTest {
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors())
         .singleElement()
-        .satisfies(
-            error -> {
-              assertThat(error.offendingProperty()).contains(FLAG_KEY);
-              assertThat(error.severe()).isFalse();
-            });
+        .satisfies(error -> {
+          assertThat(error.offendingProperty()).contains(FLAG_KEY);
+          assertThat(error.severe()).isFalse();
+        });
   }
 
   @Test
@@ -97,9 +96,8 @@ class ProductionReadinessChecksCatalogConfigAuthTest {
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors())
         .singleElement()
-        .satisfies(
-            error ->
-                assertThat(error.offendingProperty()).contains("test-realm").contains(FLAG_KEY));
+        .satisfies(error ->
+            assertThat(error.offendingProperty()).contains("test-realm").contains(FLAG_KEY));
   }
 
   @ParameterizedTest

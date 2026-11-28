@@ -29,4 +29,5 @@ This section covers how to configure Apache Polaris.
 - [Configuration Reference]({{% ref "configuration-reference.md" %}}) - A comprehensive reference of all Polaris configuration options.
 - [Production Configuration]({{% ref "configuring-polaris-for-production" %}}) - Tips and best practices for deploying Polaris in production environments.
 - [Storage Layout]({{% ref "storage-layout.md" %}}) - Where Polaris places namespaces, tables, and views in storage, and the settings that change this layout.
+- [Structured and Unstructured Table Locations]({{% ref "structured-and-unstructured-table-locations.md" %}}) - Where Iceberg tables and views may be located, and the impact of switching between the two modes on existing tables and views.
 

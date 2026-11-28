@@ -41,7 +41,8 @@ public interface AccessDelegationModeResolver {
    * @throws IllegalArgumentException if the client requests a mode that is explicitly disallowed
    *     for the catalog and no viable fallback mode exists (e.g., {@link
    *     AccessDelegationMode#VENDED_CREDENTIALS} on an external catalog whose credential vending
-   *     feature is disabled).
+   *     feature is disabled). Never thrown when the request contains {@link
+   *     AccessDelegationMode#NONE}; the result is empty in that case.
    */
   @NonNull Optional<AccessDelegationMode> resolve(
       @NonNull EnumSet<AccessDelegationMode> requestedModes, @Nullable CatalogEntity catalogEntity);

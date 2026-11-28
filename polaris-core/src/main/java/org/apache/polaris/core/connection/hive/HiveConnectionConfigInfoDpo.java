@@ -133,9 +133,8 @@ public class HiveConnectionConfigInfoDpo extends ConnectionConfigInfoDpo {
             getAuthenticationParameters().asAuthenticationParametersModel())
         .setServiceIdentity(
             Optional.ofNullable(getServiceIdentity())
-                .map(
-                    serviceIdentityInfoDpo ->
-                        serviceIdentityInfoDpo.asServiceIdentityInfoModel(serviceIdentityProvider))
+                .map(serviceIdentityInfoDpo ->
+                    serviceIdentityInfoDpo.asServiceIdentityInfoModel(serviceIdentityProvider))
                 .orElse(null))
         .setProperties(getProperties())
         .build();
