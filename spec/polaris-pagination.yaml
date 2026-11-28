@@ -18,7 +18,7 @@
 #
 
 # Pagination definitions shared by the Polaris-specific APIs. A list operation references the two
-# parameters and uses the PageToken schema for the token in its response.
+# parameters and uses the PolarisPageToken schema for the token in its response.
 #
 # These rules differ from the Iceberg REST Catalog API, where a server must return all results when
 # the request has no `pageToken`. Operations defined by the Iceberg REST Catalog API keep its rules.
