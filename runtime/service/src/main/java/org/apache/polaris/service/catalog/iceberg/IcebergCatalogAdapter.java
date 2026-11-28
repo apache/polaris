@@ -26,6 +26,7 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
@@ -49,6 +50,7 @@ import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.StructuredLogKeys;
 import org.apache.polaris.core.auth.PolarisPrincipal;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -85,6 +87,7 @@ public class IcebergCatalogAdapter
   private final ReservedProperties reservedProperties;
   private final IcebergCatalogHandlerFactory handlerFactory;
   private final CatalogConfigHandler configHandler;
+  private final UriInfo uriInfo;
 
   @Inject
   public IcebergCatalogAdapter(
@@ -92,12 +95,14 @@ public class IcebergCatalogAdapter
       CatalogPrefixParser prefixParser,
       ReservedProperties reservedProperties,
       IcebergCatalogHandlerFactory handlerFactory,
-      CatalogConfigHandler configHandler) {
+      CatalogConfigHandler configHandler,
+      UriInfo uriInfo) {
     this.realmConfig = callContext.getRealmConfig();
     this.prefixParser = prefixParser;
     this.reservedProperties = reservedProperties;
     this.handlerFactory = handlerFactory;
     this.configHandler = configHandler;
+    this.uriInfo = uriInfo;
   }
 
   /**
@@ -337,6 +342,7 @@ public class IcebergCatalogAdapter
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, table);
+    List<TableIdentifier> referencedByChain = parseReferencedBy(referencedBy, tableIdentifier);
 
     IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader(ifNoneMatchString);
 
@@ -354,7 +360,8 @@ public class IcebergCatalogAdapter
                   snapshots,
                   ifNoneMatch,
                   delegationModes,
-                  Optional.of(getRefreshCredentialsEndpoint(prefix, tableIdentifier)));
+                  Optional.of(getRefreshCredentialsEndpoint(prefix, tableIdentifier)),
+                  referencedByChain);
 
           if (response.isEmpty()) {
             return Response.notModified().build();
@@ -575,12 +582,16 @@ public class IcebergCatalogAdapter
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, table);
+    List<TableIdentifier> referencedByChain = parseReferencedBy(referencedBy, tableIdentifier);
     Optional<String> refreshEndpoint =
         Optional.of(getRefreshCredentialsEndpoint(prefix, tableIdentifier));
     return withCatalog(
         securityContext,
         prefix,
-        catalog -> Response.ok(catalog.loadCredentials(tableIdentifier, refreshEndpoint)).build());
+        catalog ->
+            Response.ok(
+                    catalog.loadCredentials(tableIdentifier, refreshEndpoint, referencedByChain))
+                .build());
   }
 
   @Override
@@ -594,8 +605,19 @@ public class IcebergCatalogAdapter
     Namespace ns =
         NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, view);
+    List<TableIdentifier> referencedByChain = parseReferencedBy(referencedBy, tableIdentifier);
     return withCatalog(
-        securityContext, prefix, catalog -> Response.ok(catalog.loadView(tableIdentifier)).build());
+        securityContext,
+        prefix,
+        catalog -> Response.ok(catalog.loadView(tableIdentifier, referencedByChain)).build());
+  }
+
+  private List<TableIdentifier> parseReferencedBy(String referencedBy, TableIdentifier target) {
+    return ReferencedByChain.parse(
+        referencedBy,
+        uriInfo,
+        target,
+        realmConfig.getConfig(FeatureConfiguration.REFERENCED_BY_MAX_DEPTH));
   }
 
   @Override

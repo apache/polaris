@@ -27,6 +27,7 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Instance.Handle;
 import jakarta.enterprise.inject.spi.Bean;
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
 import java.security.Principal;
 import java.time.Clock;
 import java.time.Duration;
@@ -163,7 +164,8 @@ public record TestServices(
     StorageAccessConfigProvider storageAccessConfigProvider,
     Map<String, S3CredentialVendingMechanism> installedMechanisms,
     S3CredentialVendingMechanisms vendingMechanisms,
-    IdempotencyRequestContext idempotencyRequestContext) {
+    IdempotencyRequestContext idempotencyRequestContext,
+    UriInfo uriInfo) {
 
   public PolarisCatalogsApi catalogsApi() {
     return catalogsApiSupplier.get();
@@ -512,6 +514,9 @@ public record TestServices(
                 realmConfig);
           };
 
+      // the request URI seen by the REST adapter; stub getRequestUri() to simulate a request
+      UriInfo uriInfo = Mockito.mock(UriInfo.class);
+
       Supplier<IcebergCatalogAdapter> catalogAdapterSupplier =
           () -> {
             IcebergCatalogHandlerFactory handlerFactory =
@@ -550,7 +555,8 @@ public record TestServices(
                 new DefaultCatalogPrefixParser(),
                 reservedProperties,
                 handlerFactory,
-                catalogConfigHandlerSupplier.get());
+                catalogConfigHandlerSupplier.get(),
+                uriInfo);
           };
 
       Supplier<IcebergRestCatalogApi> restApiSupplier =
@@ -564,7 +570,8 @@ public record TestServices(
                       polarisEventDispatcher,
                       eventMetadataFactory,
                       new DefaultCatalogPrefixParser(),
-                      eventAttributeMap);
+                      eventAttributeMap,
+                      uriInfo);
             }
             return new IcebergRestCatalogApi(finalRestCatalogService);
           };
@@ -667,7 +674,8 @@ public record TestServices(
           storageAccessConfigProvider,
           vendingMechanismsMap,
           vendingMechanisms,
-          idempotencyRequestContext);
+          idempotencyRequestContext,
+          uriInfo);
     }
   }
 

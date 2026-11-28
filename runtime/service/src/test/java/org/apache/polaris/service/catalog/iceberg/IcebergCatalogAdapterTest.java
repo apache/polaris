@@ -24,6 +24,7 @@ import com.google.common.base.Strings;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -454,6 +455,79 @@ public class IcebergCatalogAdapterTest {
       Assertions.assertThat(empty.identifiers()).isEmpty();
       Assertions.assertThat(empty.nextPageToken()).isNull();
     }
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "malformed",
+        "ns%1Fv1,ns%1Fv1",
+        "ns%1Ft",
+        "n%1F0,n%1F1,n%1F2,n%1F3,n%1F4,n%1F5,n%1F6,n%1F7,n%1F8,n%1F9,n%1F10",
+        "ns%1Fv1,,ns%1Fv2",
+        "ns%1F",
+        "ns%1Fv%C3",
+      })
+  void testInvalidReferencedByIsRejected(String rawReferencedBy) {
+    // the framework-decoded value is only used to tell that a chain was sent
+    requestWithRawQuery("referenced-by=" + rawReferencedBy);
+    assertReferencedByRejected(rawReferencedBy);
+  }
+
+  @Test
+  void testReferencedByMissingFromRawQueryIsRejected() {
+    // a value was received but cannot be found in the raw query: never guess
+    requestWithRawQuery("snapshots=all");
+    assertReferencedByRejected("ns%1Fv1");
+  }
+
+  @Test
+  void testRepeatedReferencedByIsRejected() {
+    requestWithRawQuery("referenced-by=ns%1Fv1&referenced-by=ns%1Fv2");
+    assertReferencedByRejected("ns%1Fv1");
+  }
+
+  private void requestWithRawQuery(String rawQuery) {
+    Mockito.when(testServices.uriInfo().getRequestUri())
+        .thenReturn(
+            URI.create("http://localhost/api/catalog/v1/c/namespaces/ns/tables/t?" + rawQuery));
+  }
+
+  private void assertReferencedByRejected(String decodedValue) {
+    Assertions.assertThatThrownBy(() ->
+            catalogAdapter.loadTable(
+                FEDERATED_CATALOG_NAME,
+                "ns",
+                "t",
+                null,
+                null,
+                null,
+                decodedValue,
+                testServices.realmContext(),
+                testServices.securityContext()))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("referenced-by");
+    Assertions.assertThatThrownBy(() ->
+            catalogAdapter.loadCredentials(
+                FEDERATED_CATALOG_NAME,
+                "ns",
+                "t",
+                null,
+                decodedValue,
+                testServices.realmContext(),
+                testServices.securityContext()))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("referenced-by");
+    Assertions.assertThatThrownBy(() ->
+            catalogAdapter.loadView(
+                FEDERATED_CATALOG_NAME,
+                "ns",
+                "t",
+                decodedValue,
+                testServices.realmContext(),
+                testServices.securityContext()))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("referenced-by");
   }
 
   private void mockCatalogAdapter(org.apache.iceberg.catalog.Catalog catalog) {

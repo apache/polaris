@@ -19,18 +19,28 @@
 package org.apache.polaris.service.catalog.iceberg;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
+import java.net.URI;
+import java.util.List;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.TableMetadata;
+import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.collection.MutableAttributeMap;
@@ -56,6 +66,7 @@ public class IcebergRestCatalogEventServiceDelegatorLoadTableTest {
   private PolarisEventDispatcher eventDispatcher;
   private PolarisEventMetadataFactory eventMetadataFactory;
   private CatalogPrefixParser prefixParser;
+  private UriInfo uriInfo;
   private IcebergRestCatalogEventServiceDelegator delegator;
 
   @BeforeEach
@@ -64,6 +75,7 @@ public class IcebergRestCatalogEventServiceDelegatorLoadTableTest {
     eventDispatcher = mock(PolarisEventDispatcher.class);
     eventMetadataFactory = mock(PolarisEventMetadataFactory.class);
     prefixParser = mock(CatalogPrefixParser.class);
+    uriInfo = mock(UriInfo.class);
     when(prefixParser.prefixToCatalogName(anyString())).thenReturn("test-catalog");
     when(eventMetadataFactory.create())
         .thenReturn(PolarisEventMetadata.builder().realmId("test-realm").build());
@@ -76,7 +88,8 @@ public class IcebergRestCatalogEventServiceDelegatorLoadTableTest {
             eventDispatcher,
             eventMetadataFactory,
             prefixParser,
-            new MutableAttributeMap());
+            new MutableAttributeMap(),
+            uriInfo);
   }
 
   @Test
@@ -155,5 +168,147 @@ public class IcebergRestCatalogEventServiceDelegatorLoadTableTest {
     verify(eventDispatcher).dispatch(eventCaptor.capture());
     assertThat(eventCaptor.getValue().attributes().get(EventAttributes.LOAD_TABLE_RESPONSE))
         .isSameAs(loadTableResponse);
+  }
+
+  private void requestWithRawQuery(String rawQuery) {
+    when(uriInfo.getRequestUri())
+        .thenReturn(
+            URI.create("http://localhost/api/catalog/v1/c/namespaces/ns/tables/t1?" + rawQuery));
+  }
+
+  @Test
+  void loadTableEventsCarryReferencedByChain() {
+    requestWithRawQuery("referenced-by=a%1Fb%1Fouter,c%1Finner");
+    when(eventDispatcher.hasListeners(PolarisEventType.BEFORE_LOAD_TABLE)).thenReturn(true);
+    when(delegate.loadTable(
+            anyString(),
+            anyString(),
+            anyString(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(RealmContext.class),
+            any(SecurityContext.class)))
+        .thenReturn(Response.notModified().build());
+
+    delegator.loadTable(
+        "prefix",
+        "ns",
+        "t1",
+        null,
+        null,
+        null,
+        "a\u001fb\u001fouter,c\u001finner", // the decoded value is only used to detect a chain
+        mock(RealmContext.class),
+        mock(SecurityContext.class));
+
+    ArgumentCaptor<PolarisEvent> eventCaptor = ArgumentCaptor.forClass(PolarisEvent.class);
+    verify(eventDispatcher, times(2)).dispatch(eventCaptor.capture());
+    assertThat(eventCaptor.getAllValues())
+        .extracting(event -> event.attributes().get(EventAttributes.REFERENCED_BY))
+        .containsOnly(
+            List.of(
+                TableIdentifier.of(Namespace.of("a", "b"), "outer"),
+                TableIdentifier.of("c", "inner")));
+  }
+
+  @Test
+  void loadCredentialsAndLoadViewEventsCarryReferencedByChain() {
+    requestWithRawQuery("referenced-by=n%1Fv");
+    when(eventDispatcher.hasListeners(any())).thenReturn(true);
+    when(delegate.loadCredentials(
+            anyString(),
+            anyString(),
+            anyString(),
+            any(),
+            anyString(),
+            any(RealmContext.class),
+            any(SecurityContext.class)))
+        .thenReturn(Response.ok().build());
+    when(delegate.loadView(
+            anyString(),
+            anyString(),
+            anyString(),
+            anyString(),
+            any(RealmContext.class),
+            any(SecurityContext.class)))
+        .thenReturn(Response.ok().build());
+
+    delegator.loadCredentials(
+        "prefix",
+        "ns",
+        "t1",
+        null,
+        "n\u001fv",
+        mock(RealmContext.class),
+        mock(SecurityContext.class));
+    delegator.loadView(
+        "prefix", "ns", "v1", "n\u001fv", mock(RealmContext.class), mock(SecurityContext.class));
+
+    ArgumentCaptor<PolarisEvent> eventCaptor = ArgumentCaptor.forClass(PolarisEvent.class);
+    verify(eventDispatcher, times(4)).dispatch(eventCaptor.capture());
+    assertThat(eventCaptor.getAllValues())
+        .extracting(event -> event.attributes().get(EventAttributes.REFERENCED_BY))
+        .containsOnly(List.of(TableIdentifier.of("n", "v")));
+  }
+
+  @Test
+  void eventChainKeepsACommaInAViewName() {
+    when(eventDispatcher.hasListeners(any())).thenReturn(true);
+    when(delegate.loadView(
+            anyString(), anyString(), anyString(), any(), any(RealmContext.class), any()))
+        .thenReturn(Response.ok().build());
+    requestWithRawQuery("referenced-by=n%1Fv%2C1,m%1Fw");
+
+    delegator.loadView(
+        "prefix",
+        "ns",
+        "v1",
+        "n\u001fv,1,m\u001fw",
+        mock(RealmContext.class),
+        mock(SecurityContext.class));
+
+    ArgumentCaptor<PolarisEvent> eventCaptor = ArgumentCaptor.forClass(PolarisEvent.class);
+    verify(eventDispatcher, times(2)).dispatch(eventCaptor.capture());
+    assertThat(eventCaptor.getAllValues())
+        .extracting(event -> event.attributes().get(EventAttributes.REFERENCED_BY))
+        .containsOnly(List.of(TableIdentifier.of("n", "v,1"), TableIdentifier.of("m", "w")));
+  }
+
+  @Test
+  void malformedReferencedByIsRejectedBeforeAnyEventOrDelegation() {
+    when(eventDispatcher.hasListeners(any())).thenReturn(true);
+    requestWithRawQuery("referenced-by=n%1Fv,,m%1Fw");
+
+    assertThatThrownBy(() ->
+            delegator.loadView(
+                "prefix",
+                "ns",
+                "v1",
+                "n\u001fv,,m\u001fw",
+                mock(RealmContext.class),
+                mock(SecurityContext.class)))
+        .isInstanceOf(BadRequestException.class);
+
+    verify(eventDispatcher, never()).dispatch(any());
+    verifyNoInteractions(delegate);
+  }
+
+  @Test
+  void eventChainIsEmptyWhenNoReferencedBy() {
+    when(eventDispatcher.hasListeners(any())).thenReturn(true);
+    when(delegate.loadView(
+            anyString(), anyString(), anyString(), any(), any(RealmContext.class), any()))
+        .thenReturn(Response.ok().build());
+
+    delegator.loadView(
+        "prefix", "ns", "v1", null, mock(RealmContext.class), mock(SecurityContext.class));
+
+    ArgumentCaptor<PolarisEvent> eventCaptor = ArgumentCaptor.forClass(PolarisEvent.class);
+    verify(eventDispatcher, times(2)).dispatch(eventCaptor.capture());
+    assertThat(eventCaptor.getAllValues())
+        .extracting(event -> event.attributes().get(EventAttributes.REFERENCED_BY))
+        .containsOnly(List.of());
   }
 }

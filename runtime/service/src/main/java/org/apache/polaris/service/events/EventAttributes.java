@@ -99,6 +99,13 @@ public final class EventAttributes {
   public static final AttributeKey<Map<String, String>> NAMESPACE_PROPERTIES =
       new AttributeKey<>("namespace_properties");
 
+  /**
+   * The chain of views, outermost first, through which a table or view was loaded, as sent by the
+   * client in the {@code referenced-by} query parameter. Empty when no chain was sent.
+   */
+  public static final AttributeKey<List<TableIdentifier>> REFERENCED_BY =
+      new AttributeKey<>("referenced_by");
+
   // Table attributes
   public static final AttributeKey<String> TABLE_NAME = new AttributeKey<>("table_name");
   public static final AttributeKey<TableIdentifier> TABLE_IDENTIFIER =
