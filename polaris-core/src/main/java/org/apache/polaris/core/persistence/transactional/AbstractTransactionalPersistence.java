@@ -285,6 +285,25 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
     runActionInTransaction(callCtx, () -> this.deleteEntityInCurrentTxn(callCtx, entity));
   }
 
+  @Override
+  public void deleteEntityIfNotChanged(
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisBaseEntity entity) {
+    runActionInTransaction(
+        callCtx,
+        () -> {
+          PolarisBaseEntity current =
+              lookupEntityInCurrentTxn(
+                  callCtx, entity.getCatalogId(), entity.getId(), entity.getTypeCode());
+          if (current == null
+              || current.getEntityVersion() != entity.getEntityVersion()
+              || current.getGrantRecordsVersion() != entity.getGrantRecordsVersion()) {
+            throw new RetryOnConcurrencyException(
+                "Entity '%s' changed before deletion", entity.getId());
+          }
+          deleteEntityInCurrentTxn(callCtx, current);
+        });
+  }
+
   /** {@inheritDoc} */
   @Override
   public void deleteFromGrantRecords(

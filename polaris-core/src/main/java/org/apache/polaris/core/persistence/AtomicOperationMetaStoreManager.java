@@ -185,6 +185,15 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       @NonNull PolarisCallContext callCtx,
       @NonNull BasePersistence ms,
       @NonNull PolarisBaseEntity entity) {
+    dropEntity(callCtx, ms, entity, false, false);
+  }
+
+  private boolean dropEntity(
+      @NonNull PolarisCallContext callCtx,
+      @NonNull BasePersistence ms,
+      @NonNull PolarisBaseEntity entity,
+      boolean requireUnchanged,
+      boolean cleanup) {
 
     // validate the entity type and subtype
     getDiagnostics().checkNotNull(entity, "unexpected_null_dpo");
@@ -195,81 +204,101 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // Remove the main entity itself first-thing; once its id no longer resolves successfully
     // it will be pruned out of any grant-record lookups anyways.
-    ms.deleteEntity(callCtx, entity);
-
-    // Best-effort cleanup - drop grant records, update grantRecordVersions for affected
-    // other entities.
-    // TODO: Support some more formal garbage-collection mechanism so that a garbage-collector
-    // doesn't have to "guess" at whether orphaned id links are garbage vs "newly allocated" ids
-    // that just haven't been fully committed yet. Potentially pre-populate a tombstone
-    // record that only behaves as a tombstone if the main entity is also verified to be
-    // gone; then garbage-collection looks for cleanup grants based on the tombstone and only
-    // removes the tombstone once cleanup is done; cleanup can occur incrementally.
-
-    // delete ALL grant records to (if the entity is a grantee) and from that entity
-    final List<PolarisGrantRecord> grantsOnGrantee =
-        (entity.getType().isGrantee())
-            ? ms.loadAllGrantRecordsOnGrantee(callCtx, entity.getCatalogId(), entity.getId())
-            : List.of();
-    final List<PolarisGrantRecord> grantsOnSecurable =
-        ms.loadAllGrantRecordsOnSecurable(callCtx, entity.getCatalogId(), entity.getId());
-    ms.deleteAllEntityGrantRecords(callCtx, entity, grantsOnGrantee, grantsOnSecurable);
-
-    if (entity.getType() == PolarisEntityType.POLICY
-        || PolicyMappingUtil.isValidTargetEntityType(entity.getType(), entity.getSubType())) {
-      // Best-effort cleanup - for policy and potential target entities, drop all policy mapping
-      // records related
-      // TODO: Support some more formal garbage-collection mechanism similar to grant records case
-      // above
+    // An Iceberg table purge must remove the entity before it can schedule file cleanup. A
+    // concurrent unregister may have already removed it and returned its metadata to the caller.
+    if (requireUnchanged
+        || (cleanup && entity.getSubType() == PolarisEntitySubType.ICEBERG_TABLE)) {
       try {
-        final List<PolarisPolicyMappingRecord> mappingOnPolicy =
-            (entity.getType() == PolarisEntityType.POLICY)
-                ? ms.loadAllTargetsOnPolicy(
-                    callCtx,
-                    entity.getCatalogId(),
-                    entity.getId(),
-                    PolicyEntity.of(entity).getPolicyTypeCode())
-                : List.of();
-        final List<PolarisPolicyMappingRecord> mappingOnTarget =
-            (entity.getType() == PolarisEntityType.POLICY)
-                ? List.of()
-                : ms.loadAllPoliciesOnTarget(callCtx, entity.getCatalogId(), entity.getId());
-        ms.deleteAllEntityPolicyMappingRecords(callCtx, entity, mappingOnTarget, mappingOnPolicy);
-      } catch (UnsupportedOperationException e) {
-        // Policy mapping persistence not implemented, but we should not block dropping entities
+        ms.deleteEntityIfNotChanged(callCtx, entity);
+      } catch (RetryOnConcurrencyException e) {
+        return false;
       }
+    } else {
+      ms.deleteEntity(callCtx, entity);
     }
 
-    // Now determine the set of entities on the other side of the grants we just removed. Grants
-    // from/to these entities has been removed, hence we need to update the grant version of
-    // each entity. Collect the id of each.
-    Set<PolarisEntityId> entityIdsGrantChanged = new HashSet<>();
-    grantsOnGrantee.forEach(gr ->
-        entityIdsGrantChanged.add(
-            new PolarisEntityId(gr.getSecurableCatalogId(), gr.getSecurableId())));
-    grantsOnSecurable.forEach(gr ->
-        entityIdsGrantChanged.add(
-            new PolarisEntityId(gr.getGranteeCatalogId(), gr.getGranteeId())));
+    try {
+      // Best-effort cleanup - drop grant records, update grantRecordVersions for affected
+      // other entities.
+      // TODO: Support some more formal garbage-collection mechanism so that a garbage-collector
+      // doesn't have to "guess" at whether orphaned id links are garbage vs "newly allocated" ids
+      // that just haven't been fully committed yet. Potentially pre-populate a tombstone
+      // record that only behaves as a tombstone if the main entity is also verified to be
+      // gone; then garbage-collection looks for cleanup grants based on the tombstone and only
+      // removes the tombstone once cleanup is done; cleanup can occur incrementally.
 
-    // Bump up the grant version of these entities
-    List<PolarisBaseEntity> entities =
-        ms.lookupEntities(callCtx, new ArrayList<>(entityIdsGrantChanged));
-    for (PolarisBaseEntity originalEntity : entities) {
-      if (originalEntity == null) {
-        continue; // entity was concurrently dropped/purged after grants were removed
+      // delete ALL grant records to (if the entity is a grantee) and from that entity
+      final List<PolarisGrantRecord> grantsOnGrantee =
+          (entity.getType().isGrantee())
+              ? ms.loadAllGrantRecordsOnGrantee(callCtx, entity.getCatalogId(), entity.getId())
+              : List.of();
+      final List<PolarisGrantRecord> grantsOnSecurable =
+          ms.loadAllGrantRecordsOnSecurable(callCtx, entity.getCatalogId(), entity.getId());
+      ms.deleteAllEntityGrantRecords(callCtx, entity, grantsOnGrantee, grantsOnSecurable);
+
+      if (entity.getType() == PolarisEntityType.POLICY
+          || PolicyMappingUtil.isValidTargetEntityType(entity.getType(), entity.getSubType())) {
+        // Best-effort cleanup - for policy and potential target entities, drop all policy mapping
+        // records related
+        // TODO: Support some more formal garbage-collection mechanism similar to grant records case
+        // above
+        try {
+          final List<PolarisPolicyMappingRecord> mappingOnPolicy =
+              (entity.getType() == PolarisEntityType.POLICY)
+                  ? ms.loadAllTargetsOnPolicy(
+                      callCtx,
+                      entity.getCatalogId(),
+                      entity.getId(),
+                      PolicyEntity.of(entity).getPolicyTypeCode())
+                  : List.of();
+          final List<PolarisPolicyMappingRecord> mappingOnTarget =
+              (entity.getType() == PolarisEntityType.POLICY)
+                  ? List.of()
+                  : ms.loadAllPoliciesOnTarget(callCtx, entity.getCatalogId(), entity.getId());
+          ms.deleteAllEntityPolicyMappingRecords(callCtx, entity, mappingOnTarget, mappingOnPolicy);
+        } catch (UnsupportedOperationException e) {
+          // Policy mapping persistence not implemented, but we should not block dropping entities
+        }
       }
-      PolarisBaseEntity entityGrantChanged =
-          originalEntity.withGrantRecordsVersion(originalEntity.getGrantRecordsVersion() + 1);
-      ms.writeEntity(callCtx, entityGrantChanged, false, originalEntity);
-    }
 
-    // if it is a principal, we also need to drop the secrets
-    if (entity.getType() == PolarisEntityType.PRINCIPAL) {
-      PrincipalEntity principalEntity = PrincipalEntity.of(entity);
-      String clientId = principalEntity.getClientId();
-      // delete it from the secret slice
-      ((IntegrationPersistence) ms).deletePrincipalSecrets(callCtx, clientId, entity.getId());
+      // Now determine the set of entities on the other side of the grants we just removed. Grants
+      // from/to these entities has been removed, hence we need to update the grant version of
+      // each entity. Collect the id of each.
+      Set<PolarisEntityId> entityIdsGrantChanged = new HashSet<>();
+      grantsOnGrantee.forEach(gr ->
+          entityIdsGrantChanged.add(
+              new PolarisEntityId(gr.getSecurableCatalogId(), gr.getSecurableId())));
+      grantsOnSecurable.forEach(gr ->
+          entityIdsGrantChanged.add(
+              new PolarisEntityId(gr.getGranteeCatalogId(), gr.getGranteeId())));
+
+      // Bump up the grant version of these entities
+      List<PolarisBaseEntity> entities =
+          ms.lookupEntities(callCtx, new ArrayList<>(entityIdsGrantChanged));
+      for (PolarisBaseEntity originalEntity : entities) {
+        if (originalEntity == null) {
+          continue; // entity was concurrently dropped/purged after grants were removed
+        }
+        PolarisBaseEntity entityGrantChanged =
+            originalEntity.withGrantRecordsVersion(originalEntity.getGrantRecordsVersion() + 1);
+        ms.writeEntity(callCtx, entityGrantChanged, false, originalEntity);
+      }
+
+      // if it is a principal, we also need to drop the secrets
+      if (entity.getType() == PolarisEntityType.PRINCIPAL) {
+        PrincipalEntity principalEntity = PrincipalEntity.of(entity);
+        String clientId = principalEntity.getClientId();
+        // delete it from the secret slice
+        ((IntegrationPersistence) ms).deletePrincipalSecrets(callCtx, clientId, entity.getId());
+      }
+    } catch (RuntimeException e) {
+      if (!requireUnchanged) {
+        throw e;
+      }
+      // The deletion has committed. Cleanup must not hide the successful unregister result.
+      LOGGER.warn("Failed to clean up records for deleted entity {}", entity.getId(), e);
     }
+    return true;
   }
 
   /**
@@ -1117,6 +1146,25 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       @NonNull PolarisBaseEntity entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup) {
+    return dropEntityIfExists(
+        callCtx, catalogPath, entityToDrop, cleanupProperties, cleanup, false);
+  }
+
+  @Override
+  public @NonNull DropEntityResult dropEntityIfNotChanged(
+      @NonNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisBaseEntity entityToDrop) {
+    return dropEntityIfExists(callCtx, catalogPath, entityToDrop, null, false, true);
+  }
+
+  private @NonNull DropEntityResult dropEntityIfExists(
+      @NonNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisBaseEntity entityToDrop,
+      @Nullable Map<String, String> cleanupProperties,
+      boolean cleanup,
+      boolean requireUnchanged) {
     // get metastore we should be using
     BasePersistence ms = callCtx.getMetaStore();
 
@@ -1136,6 +1184,12 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // if this entity was not found, return failure
     if (refreshEntityToDrop == null) {
       return new DropEntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+    }
+
+    if (requireUnchanged
+        && refreshEntityToDrop.getEntityVersion() != entityToDrop.getEntityVersion()) {
+      return new DropEntityResult(
+          BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null);
     }
 
     // ensure that this entity is droppable
@@ -1235,7 +1289,10 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // simply delete that entity. Will be removed from entities_active, added to the
     // entities_dropped and its version will be changed.
-    this.dropEntity(callCtx, ms, refreshEntityToDrop);
+    if (!dropEntity(callCtx, ms, refreshEntityToDrop, requireUnchanged, cleanup)) {
+      return new DropEntityResult(
+          BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null);
+    }
 
     // if cleanup, schedule a cleanup task for the entity. do this here, so that drop and scheduling
     // the cleanup task is transactional. Otherwise, we'll be unable to schedule the cleanup task

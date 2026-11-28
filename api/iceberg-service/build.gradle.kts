@@ -97,6 +97,7 @@ openApiGenerate {
       "ListTablesResponse" to "org.apache.iceberg.rest.responses.ListTablesResponse",
       "LoadCredentialsResponse" to "org.apache.iceberg.rest.responses.LoadCredentialsResponse",
       "LoadTableResult" to "org.apache.iceberg.rest.responses.LoadTableResponse",
+      "UnregisterTableResult" to "org.apache.iceberg.rest.responses.LoadTableResponse",
       "LoadViewResult" to "org.apache.iceberg.rest.responses.LoadTableResponse",
       "OAuthTokenResponse" to "org.apache.iceberg.rest.responses.OAuthTokenResponse",
       "OAuthErrorResponse" to "org.apache.iceberg.rest.responses.OAuthErrorResponse",

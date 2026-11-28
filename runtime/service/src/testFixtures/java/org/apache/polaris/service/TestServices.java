@@ -486,7 +486,7 @@ public record TestServices(
             Instance<CatalogConfigEndpointContributor> configEndpointContributors =
                 Mockito.mock(Instance.class);
             CatalogConfigEndpointContributor icebergRestEndpoints =
-                new IcebergRestConfigEndpoints();
+                new IcebergRestConfigEndpoints(idempotencyConfiguration);
             CatalogConfigEndpointContributor icebergViewEndpoints =
                 new IcebergViewConfigEndpoints();
             CatalogConfigEndpointContributor genericTableEndpoints =

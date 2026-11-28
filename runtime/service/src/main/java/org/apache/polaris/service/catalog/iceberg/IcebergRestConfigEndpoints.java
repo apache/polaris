@@ -21,13 +21,18 @@ package org.apache.polaris.service.catalog.iceberg;
 import com.google.common.collect.ImmutableSet;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import java.util.Set;
 import org.apache.iceberg.rest.Endpoint;
 import org.apache.polaris.service.catalog.spi.CatalogConfigEndpointContributor;
+import org.apache.polaris.service.idempotency.IdempotencyConfiguration;
 
 @ApplicationScoped
 @Priority(100)
 public class IcebergRestConfigEndpoints implements CatalogConfigEndpointContributor {
+  public static final Endpoint UNREGISTER_TABLE_ENDPOINT =
+      Endpoint.create("POST", "/v1/{prefix}/namespaces/{namespace}/tables/{table}/unregister");
+
   public static final Set<Endpoint> ICEBERG_REST_ENDPOINTS =
       ImmutableSet.<Endpoint>builder()
           .add(Endpoint.V1_LIST_NAMESPACES)
@@ -44,13 +49,26 @@ public class IcebergRestConfigEndpoints implements CatalogConfigEndpointContribu
           .add(Endpoint.V1_DELETE_TABLE)
           .add(Endpoint.V1_RENAME_TABLE)
           .add(Endpoint.V1_REGISTER_TABLE)
+          .add(UNREGISTER_TABLE_ENDPOINT)
           .add(Endpoint.V1_REPORT_METRICS)
           .add(Endpoint.V1_COMMIT_TRANSACTION)
           .add(Endpoint.V1_TABLE_CREDENTIALS)
           .build();
 
+  private final IdempotencyConfiguration idempotencyConfiguration;
+
+  @Inject
+  public IcebergRestConfigEndpoints(IdempotencyConfiguration idempotencyConfiguration) {
+    this.idempotencyConfiguration = idempotencyConfiguration;
+  }
+
   @Override
   public Set<Endpoint> endpoints() {
+    if (idempotencyConfiguration.enabled()) {
+      return ICEBERG_REST_ENDPOINTS.stream()
+          .filter(endpoint -> !endpoint.equals(UNREGISTER_TABLE_ENDPOINT))
+          .collect(ImmutableSet.toImmutableSet());
+    }
     return ICEBERG_REST_ENDPOINTS;
   }
 }

@@ -23,6 +23,7 @@ import static org.apache.polaris.service.catalog.common.ExceptionUtils.alreadyEx
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.entityNameForSubType;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.noSuchNamespaceException;
 import static org.apache.polaris.service.catalog.common.ExceptionUtils.notFoundExceptionForTableLikeEntity;
+import static org.apache.polaris.service.exception.IcebergExceptionMapper.extractHttpCodeFromCloudException;
 import static org.apache.polaris.service.exception.IcebergExceptionMapper.isStorageProviderRetryableException;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -32,9 +33,11 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableMap;
 import java.io.Closeable;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.NoSuchFileException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -681,6 +684,10 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
               "Table %s cannot be dropped: %s",
               tableIdentifier, dropEntityResult.getExtraInformation());
 
+        case BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED:
+          throw new PolarisServiceUnavailableException(
+              3, "Table %s changed concurrently; retry drop", tableIdentifier);
+
         default:
           throw new ServiceFailureException(
               "Failed to drop table %s, status=%s, extraInfo=%s",
@@ -699,6 +706,81 @@ public class LocalIcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     return true;
+  }
+
+  /** Remove the registry entry only if it still points to the metadata returned to the caller. */
+  public TableMetadata unregisterTable(TableIdentifier identifier) {
+    // Use the request's resolved state; conditional deletion rejects a newer version.
+    PolarisResolvedPathWrapper resolved =
+        resolvedEntityView.getResolvedPath(
+            ResolvedPathKey.ofTableLike(identifier), PolarisEntitySubType.ICEBERG_TABLE);
+    if (resolved == null) {
+      throw notFoundExceptionForTableLikeEntity(identifier, PolarisEntitySubType.ICEBERG_TABLE);
+    }
+    IcebergTableLikeEntity entity = IcebergTableLikeEntity.of(resolved.getRawLeafEntity());
+    String metadataLocation = entity.getMetadataLocation();
+    String metadataDirectory = metadataLocation.substring(0, metadataLocation.lastIndexOf('/'));
+    FileIO fileIO =
+        loadFileIOForTableLike(
+            identifier,
+            Set.of(metadataDirectory),
+            resolved,
+            new HashMap<>(tableDefaultProperties),
+            Set.of(PolarisStorageActions.READ));
+    TableMetadata metadata;
+    try {
+      metadata = TableMetadataParser.read(fileIO, metadataLocation);
+    } catch (RuntimeException e) {
+      boolean metadataMissing =
+          Throwables.getCausalChain(e).stream()
+              .anyMatch(cause ->
+                  cause instanceof NotFoundException
+                      || cause instanceof FileNotFoundException
+                      || cause instanceof NoSuchFileException
+                      || extractHttpCodeFromCloudException(cause) == 404);
+      if (metadataMissing) {
+        // Metadata cleanup can remove a stale request's file before the version check.
+        EntityResult current =
+            getMetaStoreManager()
+                .loadEntity(
+                    getCurrentPolarisContext(),
+                    entity.getCatalogId(),
+                    entity.getId(),
+                    entity.getType());
+        if (current.isSuccess()
+            && current.getEntity().getEntityVersion() != entity.getEntityVersion()) {
+          throw new PolarisServiceUnavailableException(
+              3, "Table %s changed concurrently; retry unregister", identifier);
+        }
+      }
+      throw e;
+    }
+    validateLocationsMatchEntity(identifier, entity, metadata);
+
+    // A load followed by an unconditional drop could return metadata that omits a concurrent
+    // commit. The version check and registry removal must be one atomic operation.
+    DropEntityResult result =
+        getMetaStoreManager()
+            .dropEntityIfNotChanged(
+                getCurrentPolarisContext(),
+                PolarisEntity.toCoreList(resolved.getRawParentPath()),
+                entity);
+    if (!result.isSuccess()) {
+      switch (result.getReturnStatus()) {
+        case ENTITY_NOT_FOUND, CATALOG_PATH_CANNOT_BE_RESOLVED ->
+            throw notFoundExceptionForTableLikeEntity(
+                identifier, PolarisEntitySubType.ICEBERG_TABLE);
+        case ENTITY_UNDROPPABLE ->
+            throw new ForbiddenException("Table %s cannot be unregistered", identifier);
+        case TARGET_ENTITY_CONCURRENTLY_MODIFIED ->
+            throw new PolarisServiceUnavailableException(
+                3, "Table %s changed concurrently; retry unregister", identifier);
+        default ->
+            throw new ServiceFailureException(
+                "Failed to unregister table %s: %s", identifier, result.getReturnStatus());
+      }
+    }
+    return metadata;
   }
 
   @Override

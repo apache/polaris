@@ -298,6 +298,21 @@ public class DynamoDbBasePersistence implements BasePersistence {
     }
   }
 
+  @Override
+  public void deleteEntityIfNotChanged(
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisBaseEntity entity) {
+    try {
+      client.transactWriteItems(b ->
+          b.transactItems(
+              deleteIfVersionsMatch(entity), deleteSentinelIfOwned(entity), deleteChild(entity)));
+    } catch (TransactionCanceledException e) {
+      if (!onlyConflicts(e)) {
+        throw e;
+      }
+      throw concurrentModification(e, entity);
+    }
+  }
+
   // ---- Entity lookups --------------------------------------------------------------------------
 
   @Override

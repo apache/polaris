@@ -421,6 +421,23 @@ public class IcebergCatalogAdapter
   }
 
   @Override
+  public Response unregisterTable(
+      String prefix,
+      String namespace,
+      String table,
+      UUID idempotencyKey,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+    Namespace ns =
+        NamespaceUtils.splitNamespace(namespace, NamespaceUtils.DEFAULT_NAMESPACE_SEPARATOR);
+    TableIdentifier identifier = TableIdentifier.of(ns, table);
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog -> Response.ok(catalog.unregisterTable(identifier)).build());
+  }
+
+  @Override
   public Response registerTable(
       String prefix,
       String namespace,

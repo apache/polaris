@@ -389,6 +389,30 @@ public class JdbcBasePersistenceImpl implements BasePersistence, IntegrationPers
   }
 
   @Override
+  public void deleteEntityIfNotChanged(
+      @NonNull PolarisCallContext callCtx, @NonNull PolarisBaseEntity entity) {
+    Map<String, Object> params =
+        Map.of(
+            "id", entity.getId(),
+            "catalog_id", entity.getCatalogId(),
+            "entity_version", entity.getEntityVersion(),
+            "grant_records_version", entity.getGrantRecordsVersion(),
+            "realm_id", realmId);
+    try {
+      int deleted =
+          datasourceOperations.executeUpdate(
+              QueryGenerator.generateDeleteQuery(
+                  ModelEntity.getAllColumnNames(), ModelEntity.TABLE_NAME, params));
+      if (deleted == 0) {
+        throw new RetryOnConcurrencyException(
+            "Entity '%s' changed before deletion", entity.getId());
+      }
+    } catch (SQLException e) {
+      throw wrapEntityWriteFailure(e, "Failed to conditionally delete entity");
+    }
+  }
+
+  @Override
   public void deleteFromGrantRecords(
       @NonNull PolarisCallContext callCtx, @NonNull PolarisGrantRecord grantRec) {
     ModelGrantRecord modelGrantRecord = ModelGrantRecord.fromGrantRecord(grantRec);

@@ -36,6 +36,8 @@ import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 
 class DynamoDbBasePersistenceIT extends AbstractDynamoDbTest {
@@ -273,6 +275,46 @@ class DynamoDbBasePersistenceIT extends AbstractDynamoDbTest {
   }
 
   @Test
+  void conditionalDeleteRemovesAllRegistryRecords() {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+
+    persistence.deleteEntityIfNotChanged(callCtx, sales);
+
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 10L, TYPE)).isNull();
+    assertThat(persistence.lookupEntityByName(callCtx, CATALOG, PARENT, TYPE, "sales")).isNull();
+    assertThat(nameSentinelExists(PARENT, "sales")).isFalse();
+    assertThat(childRecordExists(PARENT, 10L)).isFalse();
+    assertThatThrownBy(() -> persistence.deleteEntityIfNotChanged(callCtx, sales))
+        .isInstanceOf(RetryOnConcurrencyException.class);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void conditionalDeleteRetainsAllRegistryRecordsWhenVersionChanges(boolean changeGrantVersion) {
+    PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
+    persistence.writeEntity(callCtx, sales, false, null);
+    PolarisBaseEntity updated =
+        withVersion(sales, changeGrantVersion ? 1 : 2, changeGrantVersion ? 2 : 1, Map.of());
+    persistence.writeEntity(callCtx, updated, false, sales);
+
+    assertThatThrownBy(() -> persistence.deleteEntityIfNotChanged(callCtx, sales))
+        .isInstanceOf(RetryOnConcurrencyException.class);
+
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 10L, TYPE)).isEqualTo(updated);
+    assertThat(persistence.lookupEntityByName(callCtx, CATALOG, PARENT, TYPE, "sales"))
+        .isEqualTo(updated);
+    assertThat(childRecordExists(PARENT, 10L)).isTrue();
+
+    persistence.deleteEntityIfNotChanged(callCtx, updated);
+
+    assertThat(persistence.lookupEntity(callCtx, CATALOG, 10L, TYPE)).isNull();
+    assertThat(persistence.lookupEntityByName(callCtx, CATALOG, PARENT, TYPE, "sales")).isNull();
+    assertThat(nameSentinelExists(PARENT, "sales")).isFalse();
+    assertThat(childRecordExists(PARENT, 10L)).isFalse();
+  }
+
+  @Test
   void deleteWithAStaleNameKeepsTheNewOwnersSentinel() {
     PolarisBaseEntity sales = entity(10L, PARENT, "sales", 1);
     persistence.writeEntity(callCtx, sales, false, null);
@@ -325,6 +367,16 @@ class DynamoDbBasePersistenceIT extends AbstractDynamoDbTest {
     persistence.deleteEntity(callCtx, sales);
 
     assertThat(childRecordExists(PARENT, 10L)).isFalse();
+  }
+
+  private boolean nameSentinelExists(long parentId, String name) {
+    Map<String, AttributeValue> key =
+        Map.of(
+            DynamoDbLayout.PK,
+                AttributeValue.fromS(
+                    DynamoDbLayout.sentinelPk("realm1", CATALOG, parentId, TYPE, name)),
+            DynamoDbLayout.SK, AttributeValue.fromS(DynamoDbLayout.SK_NAME));
+    return client.getItem(b -> b.tableName(table).key(key).consistentRead(true)).hasItem();
   }
 
   /** Strongly consistent read of a base-table child record, as a future listing would do. */

@@ -73,15 +73,18 @@ public class IdempotencyRequestContext {
     }
   }
 
+  /** Whether the deployment enables idempotency, regardless of the current request's key. */
+  public boolean isEnabled() {
+    return idempotencyConfiguration != null && idempotencyConfiguration.enabled();
+  }
+
   /**
    * Whether entity-property idempotency applies to the current request: the feature is enabled and
    * a well-formed {@code Idempotency-Key} was supplied (and thus captured by {@code
    * IdempotencyKeyFilter}). When {@code true}, {@link #pendingKey()} is non-null.
    */
   public boolean isActive() {
-    return pending.get() != null
-        && idempotencyConfiguration != null
-        && idempotencyConfiguration.enabled();
+    return pending.get() != null && isEnabled();
   }
 
   public @Nullable UUID pendingKey() {

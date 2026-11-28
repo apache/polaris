@@ -22,7 +22,9 @@ import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RAND
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
@@ -33,6 +35,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -49,9 +52,13 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.entity.PolarisPrivilege;
+import org.apache.polaris.core.persistence.AtomicOperationMetaStoreManager;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.PersistenceCommitStateUnknownException;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.pagination.Page;
 import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
@@ -78,6 +85,185 @@ class JdbcBasePersistenceImplTest {
   private static final long POLICY_TARGET_ID = 12L;
   private static final long POLICY_CATALOG_ID = 13L;
   private static final long POLICY_ID = 14L;
+
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void purgeAndUnregisterAllowOnlyOneDeletion(boolean unregisterWins)
+      throws SQLException, IOException {
+    TestPersistence tp = newTestPersistence(newH2DatasourceOperations("purge_unregister"));
+    JdbcBasePersistenceImpl persistence = Mockito.spy(tp.impl());
+    PolarisCallContext context = new PolarisCallContext(REALM_CONTEXT, persistence);
+    AtomicOperationMetaStoreManager manager =
+        new AtomicOperationMetaStoreManager(Clock.systemUTC(), new PolarisDefaultDiagServiceImpl());
+    PolarisBaseEntity table =
+        new PolarisBaseEntity.Builder(newTestEntity(721L, "table", 1, 1))
+            .typeCode(PolarisEntityType.TABLE_LIKE.getCode())
+            .subTypeCode(PolarisEntitySubType.ICEBERG_TABLE.getCode())
+            .build();
+    persistence.writeEntity(context, table, false, null);
+    Mockito.doAnswer(
+            invocation -> {
+              Object beforeConcurrentDeletion = invocation.callRealMethod();
+              DropEntityResult winner =
+                  unregisterWins
+                      ? manager.dropEntityIfNotChanged(tp.callCtx(), null, table)
+                      : manager.dropEntityIfExists(tp.callCtx(), null, table, Map.of(), true);
+              assertThat(winner.isSuccess()).isTrue();
+              return beforeConcurrentDeletion;
+            })
+        .when(persistence)
+        .lookupEntity(context, table.getCatalogId(), table.getId(), table.getTypeCode());
+
+    DropEntityResult loser =
+        unregisterWins
+            ? manager.dropEntityIfExists(context, null, table, Map.of(), true)
+            : manager.dropEntityIfNotChanged(context, null, table);
+
+    assertThat(loser.getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED);
+    assertThat(loser.getCleanupTaskId()).isNull();
+    assertThat(
+            tp.impl()
+                .lookupEntity(
+                    tp.callCtx(), table.getCatalogId(), table.getId(), table.getTypeCode()))
+        .isNull();
+    assertThat(
+            manager
+                .loadTasks(tp.callCtx(), "testExecutor", PageToken.readEverything())
+                .getEntities())
+        .hasSize(unregisterWins ? 0 : 1);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void conditionalDropRejectsUpdateBetweenReadAndDelete(boolean changeGrantVersion)
+      throws SQLException, IOException {
+    TestPersistence tp = newTestPersistence(newH2DatasourceOperations("conditional_drop"));
+    JdbcBasePersistenceImpl persistence = Mockito.spy(tp.impl());
+    PolarisCallContext context = new PolarisCallContext(REALM_CONTEXT, persistence);
+    AtomicOperationMetaStoreManager manager =
+        new AtomicOperationMetaStoreManager(Clock.systemUTC(), new PolarisDefaultDiagServiceImpl());
+    PolarisBaseEntity original = newTestEntity(701L, "conditional", 1, 1);
+    PolarisBaseEntity updated =
+        newTestEntity(701L, "conditional", changeGrantVersion ? 1 : 2, changeGrantVersion ? 2 : 1);
+    persistence.writeEntity(context, original, false, null);
+    Mockito.doAnswer(
+            invocation -> {
+              persistence.writeEntity(context, updated, false, original);
+              return invocation.callRealMethod();
+            })
+        .when(persistence)
+        .deleteEntityIfNotChanged(any(), any());
+
+    assertThat(manager.dropEntityIfNotChanged(context, null, original).getReturnStatus())
+        .isEqualTo(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED);
+    PolarisBaseEntity retained =
+        persistence.lookupEntity(context, 0L, original.getId(), original.getTypeCode());
+    assertThat(retained.getEntityVersion()).isEqualTo(updated.getEntityVersion());
+    assertThat(retained.getGrantRecordsVersion()).isEqualTo(updated.getGrantRecordsVersion());
+
+    doCallRealMethod().when(persistence).deleteEntityIfNotChanged(any(), any());
+    persistence.deleteEntityIfNotChanged(context, retained);
+    assertThat(persistence.lookupEntity(context, 0L, original.getId(), original.getTypeCode()))
+        .isNull();
+  }
+
+  @Test
+  void conditionalDropSucceedsWhenConcurrentCleanupChangesRoleVersion()
+      throws SQLException, IOException {
+    TestPersistence tp = newTestPersistence(newH2DatasourceOperations("conditional_drop_cleanup"));
+    JdbcBasePersistenceImpl persistence = Mockito.spy(tp.impl());
+    PolarisCallContext context = new PolarisCallContext(REALM_CONTEXT, persistence);
+    AtomicOperationMetaStoreManager manager =
+        new AtomicOperationMetaStoreManager(Clock.systemUTC(), new PolarisDefaultDiagServiceImpl());
+    PolarisBaseEntity first =
+        new PolarisBaseEntity.Builder(newTestEntity(711L, "first", 1, 1))
+            .typeCode(PolarisEntityType.TABLE_LIKE.getCode())
+            .subTypeCode(PolarisEntitySubType.ICEBERG_TABLE.getCode())
+            .build();
+    PolarisBaseEntity second = new PolarisBaseEntity.Builder(first).id(712L).name("second").build();
+    PolarisBaseEntity role =
+        new PolarisBaseEntity.Builder(newTestEntity(713L, "reader", 1, 1))
+            .typeCode(PolarisEntityType.CATALOG_ROLE.getCode())
+            .build();
+    for (PolarisBaseEntity entity : List.of(first, second, role)) {
+      persistence.writeEntity(context, entity, false, null);
+    }
+    for (PolarisBaseEntity table : List.of(first, second)) {
+      persistence.writeToGrantRecords(
+          context,
+          new PolarisGrantRecord(
+              table.getCatalogId(),
+              table.getId(),
+              role.getCatalogId(),
+              role.getId(),
+              PolarisPrivilege.TABLE_READ_PROPERTIES.getCode()));
+    }
+    Mockito.doAnswer(
+            invocation -> {
+              Object rolesBeforeConcurrentDrop = invocation.callRealMethod();
+              assertThat(manager.dropEntityIfNotChanged(tp.callCtx(), null, second).isSuccess())
+                  .isTrue();
+              return rolesBeforeConcurrentDrop;
+            })
+        .when(persistence)
+        .lookupEntities(any(), anyList());
+
+    assertThat(manager.dropEntityIfNotChanged(context, null, first).isSuccess()).isTrue();
+
+    for (PolarisBaseEntity table : List.of(first, second)) {
+      assertThat(
+              persistence.lookupEntity(
+                  context, table.getCatalogId(), table.getId(), table.getTypeCode()))
+          .isNull();
+      assertThat(
+              persistence.loadAllGrantRecordsOnSecurable(
+                  context, table.getCatalogId(), table.getId()))
+          .isEmpty();
+    }
+    assertThat(
+            persistence
+                .lookupEntity(context, role.getCatalogId(), role.getId(), role.getTypeCode())
+                .getGrantRecordsVersion())
+        .isEqualTo(2);
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void dropCleanupFailureDependsOnConditionalDeletion(boolean conditional)
+      throws SQLException, IOException {
+    TestPersistence tp = newTestPersistence(newH2DatasourceOperations("drop_cleanup_failure"));
+    JdbcBasePersistenceImpl persistence = Mockito.spy(tp.impl());
+    PolarisCallContext context = new PolarisCallContext(REALM_CONTEXT, persistence);
+    AtomicOperationMetaStoreManager manager =
+        new AtomicOperationMetaStoreManager(Clock.systemUTC(), new PolarisDefaultDiagServiceImpl());
+    PolarisBaseEntity table =
+        new PolarisBaseEntity.Builder(newTestEntity(731L, "table", 1, 1))
+            .typeCode(PolarisEntityType.TABLE_LIKE.getCode())
+            .subTypeCode(PolarisEntitySubType.ICEBERG_TABLE.getCode())
+            .build();
+    persistence.writeEntity(context, table, false, null);
+    RuntimeException cleanupFailure = new IllegalStateException("Grant cleanup failed");
+    doThrow(cleanupFailure)
+        .when(persistence)
+        .loadAllGrantRecordsOnSecurable(context, table.getCatalogId(), table.getId());
+
+    if (conditional) {
+      assertThat(manager.dropEntityIfNotChanged(context, null, table).isSuccess()).isTrue();
+    } else {
+      assertThatThrownBy(() -> manager.dropEntityIfExists(context, null, table, Map.of(), false))
+          .isSameAs(cleanupFailure);
+    }
+
+    verify(persistence)
+        .loadAllGrantRecordsOnSecurable(context, table.getCatalogId(), table.getId());
+    assertThat(
+            persistence.lookupEntity(
+                context, table.getCatalogId(), table.getId(), table.getTypeCode()))
+        .isNull();
+    assertThat(manager.loadTasks(context, "testExecutor", PageToken.readEverything()).getEntities())
+        .isEmpty();
+  }
 
   @Test
   void writeToGrantRecordsIsIdempotent() throws SQLException {

@@ -1451,6 +1451,38 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     catalogHandlerUtils().dropTable(baseCatalog, tableIdentifier);
   }
 
+  public LoadTableResponse unregisterTable(TableIdentifier tableIdentifier) {
+    ensureResolutionManifestForTable(tableIdentifier);
+    AuthorizationState authorizationState = new AuthorizationState(resolutionManifest);
+    EnumSet<PolarisAuthorizableOperation> operations =
+        EnumSet.of(
+            PolarisAuthorizableOperation.DROP_TABLE_WITHOUT_PURGE,
+            PolarisAuthorizableOperation.LOAD_TABLE);
+    // Unregister returns table metadata, so the caller must also be allowed to read it.
+    authorizer()
+        .resolveAuthorizationInputs(
+            authorizationState,
+            new AuthorizationRequest(
+                polarisPrincipal(),
+                operations.stream()
+                    .<AuthorizationIntent>map(operation ->
+                        new SingleTargetAuthorizationIntent(
+                            operation,
+                            PolarisSecurableMapper.tableLike(catalogName(), tableIdentifier)))
+                    .toList()));
+    authorizeBasicTableLikeOperationsOrThrow(
+        authorizationState, operations, PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier);
+    if (!(baseCatalog instanceof LocalIcebergCatalog localCatalog)) {
+      throw new BadRequestException("Cannot unregister tables in federated catalogs");
+    }
+    if (idempotencyRequestContext().isEnabled()) {
+      // Entity-bound keys cannot replay the final metadata after the entity has been removed.
+      throw new BadRequestException("Cannot unregister tables when idempotency is enabled");
+    }
+    TableMetadata metadata = localCatalog.unregisterTable(tableIdentifier);
+    return LoadTableResponse.builder().withTableMetadata(metadata).build();
+  }
+
   public void dropTableWithPurge(TableIdentifier tableIdentifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_TABLE_WITH_PURGE;
     resolveAndAuthorizeBasicTableLikeOperationOrThrow(

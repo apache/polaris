@@ -80,6 +80,30 @@ Table properties are readable metadata, not a secret store. Do not store passwor
 keys, or other secrets in table properties.
 {{< /alert >}}
 
+### Unregister an Iceberg table
+
+Use `POST /api/catalog/v1/{prefix}/namespaces/{namespace}/tables/{table}/unregister` to
+remove an Iceberg table from the catalog registry. The response contains its last
+`metadata-location` and the corresponding `metadata`. All data files, metadata files,
+manifests, and other table files remain in storage. No file cleanup task is scheduled,
+even when purge is enabled for the catalog. You can use the returned metadata location
+to register the table again or register it in another catalog.
+
+The caller needs `TABLE_DROP` and `TABLE_READ_PROPERTIES`. The operation applies only
+to Iceberg tables. Generic tables and views return
+`404`; federated catalogs are not supported. If a concurrent commit changes the table
+before removal, the operation returns `503` with a `Retry-After` header so the client
+can retry. A successful response includes every commit completed before removal.
+Further commits to the removed registry entry fail.
+
+A concurrent purge must remove the registry entry before it can schedule file cleanup.
+If unregister removes the entry first, the purge fails without scheduling cleanup.
+
+This operation is unavailable when `polaris.idempotency.enabled=true`: catalog
+configuration omits the endpoint, and direct requests return `400` before removal.
+Unregister cannot replay a result after deleting the entity that stores its idempotency
+keys. With idempotency disabled, a repeat request after successful removal returns `404`.
+
 ## View
 
 Polaris views are entities that map to [Apache Iceberg views](https://iceberg.apache.org/view-spec/).

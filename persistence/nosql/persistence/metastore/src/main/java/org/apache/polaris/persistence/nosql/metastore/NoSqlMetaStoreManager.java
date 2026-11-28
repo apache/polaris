@@ -210,6 +210,15 @@ record NoSqlMetaStoreManager(
 
   @NonNull
   @Override
+  public DropEntityResult dropEntityIfNotChanged(
+      @NonNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NonNull PolarisBaseEntity entityToDrop) {
+    return dropEntityIfExists(callCtx, catalogPath, entityToDrop, null, false);
+  }
+
+  @NonNull
+  @Override
   public EntityResult readEntityByName(
       @NonNull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
