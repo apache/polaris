@@ -37,11 +37,6 @@ public class OpaProductionReadinessChecks {
 
       List<Error> errors = new ArrayList<>();
 
-      errors.add(
-          Error.of(
-              "OPA authorization is currently a Beta feature and is not a stable release. Breaking changes may be introduced in future versions. Use with caution in production environments.",
-              "polaris.authorization.type"));
-
       if (!config.http().verifySsl()) {
         errors.add(
             Error.ofSevere(

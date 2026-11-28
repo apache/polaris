@@ -30,13 +30,7 @@ import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.immutables.PolarisImmutable;
 
-/**
- * Configuration for OPA (Open Policy Agent) authorization.
- *
- * <p><strong>Beta Feature:</strong> OPA authorization is currently in Beta and is not a stable
- * release. It may undergo breaking changes in future versions. Use with caution in production
- * environments.
- */
+/** Configuration for OPA (Open Policy Agent) authorization. */
 @PolarisImmutable
 @ConfigMapping(prefix = "polaris.authorization.opa")
 public interface OpaAuthorizationConfig {

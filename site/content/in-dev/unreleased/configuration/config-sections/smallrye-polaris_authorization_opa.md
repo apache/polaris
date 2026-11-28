@@ -23,9 +23,7 @@ build:
   render: never
 ---
 
-Configuration for OPA (Open Policy Agent) authorization. 
-
-Beta Feature: OPA authorization is currently in Beta and is not a stable release. It may undergo breaking changes in future versions. Use with caution in production environments.
+Configuration for OPA (Open Policy Agent) authorization.
 
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|

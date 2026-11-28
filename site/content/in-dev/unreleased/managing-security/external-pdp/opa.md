@@ -23,10 +23,6 @@ type: docs
 weight: 100
 ---
 
-{{< alert warning "Preview Feature" >}}
-**OPA integration is currently a preview feature** and may undergo breaking changes in future versions. Use with caution in production environments.
-{{< /alert >}}
-
 This page describes how to integrate Apache Polaris with [Open Policy Agent (OPA)](https://www.openpolicyagent.org/) for external authorization.
 
 ## Overview
@@ -368,6 +364,21 @@ Each parent object has:
 | `request_id` | string | UUID for correlating requests with logs |
 | `realm` | string | Realm identifier, allowing policies to scope decisions by realm |
 | `properties` | object | Operator-defined static string properties from `polaris.authorization.opa.context-properties.*`; empty object when none are configured |
+
+### Compatibility
+
+The compatibility guarantees for the OPA integration apply to the authorization requests that
+Polaris sends to OPA, that is, the input document described above, with respect to the policies
+deployed in your OPA server. They follow the [Semantic Versioning]({{% relref "../../evolution#semantic-versioning" %}})
+conventions used by Polaris:
+
+* Adding new fields to the input document is not a major change.
+* Renaming or removing an existing field of the input document, or changing its type or meaning,
+  is a major change.
+
+OPA ignores fields that a policy does not reference, so policies keep working when new fields
+are added. Write policies against the fields they need and do not assume that the input document
+contains no other fields.
 
 ### Policy Example
 
