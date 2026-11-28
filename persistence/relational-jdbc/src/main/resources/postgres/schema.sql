@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS version (
     version_value INTEGER NOT NULL
 );
 INSERT INTO version (version_key, version_value)
-VALUES ('version', 6)
+VALUES ('version', 7)
 ON CONFLICT (version_key) DO NOTHING;
 COMMENT ON TABLE version IS 'JDBC schema version; updated manually as part of upgrade procedures.';
 
@@ -263,3 +263,14 @@ CREATE INDEX IF NOT EXISTS idx_commit_report_timestamp ON commit_metrics_report(
 
 -- Index for query lookups by catalog_id and table_id
 CREATE INDEX IF NOT EXISTS idx_commit_report_lookup ON commit_metrics_report(realm_id, catalog_id, table_id, timestamp_ms);
+
+-- Queue of realms whose time-series data (events, metrics reports) is pending asynchronous,
+-- batched deletion by the background purge drainer. One row per realm being purged.
+CREATE TABLE IF NOT EXISTS realm_purge (
+    realm_id TEXT NOT NULL,
+    requested_at BIGINT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    claimed_by TEXT,
+    claimed_at BIGINT,
+    PRIMARY KEY (realm_id)
+);
