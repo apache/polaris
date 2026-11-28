@@ -23,8 +23,6 @@ import changelog.ReleaseChangelogTask
 import java.net.URI
 import org.nosphere.apache.rat.RatTask
 
-buildscript { repositories { maven { url = java.net.URI("https://plugins.gradle.org/m2/") } } }
-
 plugins {
   id("idea")
   id("eclipse")
