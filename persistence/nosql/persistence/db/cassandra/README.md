@@ -38,10 +38,32 @@ Cassandra metastore documentation.
 The driver is configured from `CassandraConfiguration` and its `driver` subsection. Polaris
 builds an in-memory driver configuration, so it neither reads nor requires a driver
 `application.conf` resource. The generic `driver` subsection maps exact Java-driver option paths
-to their typed driver values. Polaris owns the request timeout, metrics, and—when selected—TLS.
+to their typed driver values. Polaris owns the request timeout, consistency levels, metrics,
+and—when selected—TLS.
 Refer to the
 [Apache Cassandra Java Driver configuration manual](https://github.com/apache/cassandra-java-driver/blob/4.x/manual/core/configuration/README.md)
 for the driver option names and semantics.
+
+## Consistency
+
+`polaris.persistence.nosql.cassandra.consistency-level` defaults to `LOCAL_QUORUM` and also
+supports `QUORUM` and `ALL`. It controls object reads, writes, backend scans, and the commit phase
+of conditional mutations.
+
+`polaris.persistence.nosql.cassandra.serial-consistency-level` defaults to `LOCAL_SERIAL` and
+also supports `SERIAL`. It controls reference reads and the Paxos phase of conditional mutations.
+Reference reads resolve unfinished Paxos proposals before returning and are idempotent, allowing
+the driver to retry them. Object reads retain the regular consistency level.
+
+All Polaris instances accessing a realm must use compatible consistency settings. The default
+serial consistency confines Paxos to the local data center; selecting `SERIAL` alone does not
+establish support for writers in multiple data centers.
+
+Reference creation, updates, and deletion all use lightweight transactions. Ordinary object
+writes and deletes are intended for immutable objects whose IDs are not reused. Mutable,
+versioned objects must use the conditional insert, update, and delete operations throughout
+their lifecycle; mixing ordinary deletes with those operations can produce conflicting
+timestamps.
 
 ## Authentication
 
@@ -80,3 +102,9 @@ strategy before using the Admin Tool to bootstrap the metastore. The backend cre
 tables but deliberately does not create a keyspace, because replication strategy and topology are
 deployment decisions. The managed schema requires Cassandra 5.0 or later because it uses UCS;
 the public metastore documentation describes the Cassandra 4.x compatibility path.
+
+The server also calls schema setup during startup and creates missing tables. Run the Admin Tool
+from one administrative process and wait for schema initialization to finish before starting
+server replicas. `CREATE TABLE IF NOT EXISTS` does not make concurrent schema initialization safe
+on Cassandra versions before 6.0. With pre-created tables, server startup only validates the schema
+and does not require table-creation permissions. Realm deletion is not supported by this backend.

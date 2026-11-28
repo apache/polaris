@@ -47,7 +47,7 @@ env:
 
 jobs:
   nightly_build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     if: github.repository == 'apache/polaris'
     steps:
       - name: Checkout
@@ -61,9 +61,9 @@ jobs:
           distribution: 'temurin'
 
       - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
+        uses: $/.github/actions/setup-test-env
       - name: Prepare Gradle build cache
-        uses: ./.github/actions/ci-incr-build-cache-prepare
+        uses: $/.github/actions/ci-incr-build-cache-prepare
       - name: Publish SNAPSHOTs to Apache Nexus Repository
         run: ./gradlew publishToApache
         env:
@@ -74,7 +74,7 @@ jobs:
           DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }} # zizmor: ignore[secrets-outside-env]
 
   nightly_build_python_client:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     if: github.repository == 'apache/polaris'
     permissions:
       # IMPORTANT: this permission is mandatory for Trusted Publishing to PyPI

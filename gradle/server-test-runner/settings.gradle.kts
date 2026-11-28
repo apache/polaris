@@ -17,7 +17,12 @@
  * under the License.
  */
 
-pluginManagement { repositories { gradlePluginPortal() } }
+pluginManagement {
+  repositories {
+    mavenCentral() // prefer Maven Central, in case Gradle's repo has issues
+    gradlePluginPortal()
+  }
+}
 
 dependencyResolutionManagement { repositories { mavenCentral() } }
 

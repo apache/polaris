@@ -23,30 +23,30 @@ build:
   render: never
 ---
 
-Configuration interface containing parameters for clients accessing S3 services from Polaris  servers.  
+Configuration interface containing parameters for clients accessing S3 services from Polaris servers. 
 
-Applies to the STS client pool and to Iceberg S3 clients created for table operations via  `S3FileIO`.
+Applies to the STS client pool and to Iceberg S3 clients created for table operations via `S3FileIO`.
 
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
-| `polaris.storage.aws.access-key` |  | `string` | The AWS access key to use for authentication. If not present, the default credentials  provider chain will be used.  |
-| `polaris.storage.aws.secret-key` |  | `string` | The AWS secret key to use for authentication. If not present, the default credentials  provider chain will be used.  |
+| `polaris.storage.aws.access-key` |  | `string` | The AWS access key to use for authentication. If not present, the default credentials provider chain will be used. |
+| `polaris.storage.aws.secret-key` |  | `string` | The AWS secret key to use for authentication. If not present, the default credentials provider chain will be used. |
 | `polaris.storage.aws.`_`<storage>`_`.access-key` |  | `string` | The AWS access key to use for authentication when using named storages.  |
 | `polaris.storage.aws.`_`<storage>`_`.secret-key` |  | `string` | The AWS secret key to use for authentication when using named storages.  |
-| `polaris.storage.gcp.token` |  | `string` | The GCP access token to use for authentication. If not present, the default credentials  provider chain will be used.  |
-| `polaris.storage.gcp.lifespan` |  | `duration` | How far in the future the configured GCP access token's expiry is stamped. The expiry is  computed once, when the credential is created, and is returned unchanged on every refresh. If  not present, the default token lifespan (null) is used. Ignored  when (`#gcpAccessTokenExpiry()`) is set. This does not extend the token's real validity on  the provider side; it only controls the expiry Polaris reports for the configured token.  |
-| `polaris.storage.gcp.expiry` |  | `instant` | A fixed expiry for the configured GCP access token, as an ISO-8601 instant (for example `2027-01-01T00:00:00Z` ). When present, this exact instant is reported as the token's expiry and  is returned unchanged on every refresh, and (`#gcpAccessTokenLifespan()`) is ignored. When  absent, the expiry is computed from the lifespan. Like the lifespan, this does not extend the  token's real validity on the provider side; it only controls the expiry Polaris reports for the  configured token.  |
-| `polaris.storage.azure.tenant-id` |  | `string` | The Microsoft Entra tenant of the service principal to use for authentication. If the tenant,  client ID and client secret are not present, the `DefaultAzureCredential` chain is  used. It must match the `tenantId` of every storage configuration that uses these  credentials.  |
-| `polaris.storage.azure.client-id` |  | `string` | The application (client) ID of the service principal to use for authentication. If the  tenant, client ID and client secret are not present, the `DefaultAzureCredential` chain  is used.  |
-| `polaris.storage.azure.client-secret` |  | `string` | The client secret of the service principal to use for authentication. If the tenant, client  ID and client secret are not present, the `DefaultAzureCredential` chain is used.  |
-| `polaris.storage.azure.`_`<storage>`_`.tenant-id` |  | `string` | The Microsoft Entra tenant of the service principal when using named storages. It must match  the `tenantId` of every storage configuration that uses this name.  |
+| `polaris.storage.gcp.token` |  | `string` | The GCP access token to use for authentication. If not present, the default credentials provider chain will be used. |
+| `polaris.storage.gcp.lifespan` |  | `duration` | How far in the future the configured GCP access token's expiry is stamped. The expiry is computed once, when the credential is created, and is returned unchanged on every refresh. If not present, the default token lifespan (null) is used. Ignored when (`#gcpAccessTokenExpiry()`) is set. This does not extend the token's real validity on the provider side; it only controls the expiry Polaris reports for the configured token. |
+| `polaris.storage.gcp.expiry` |  | `instant` | A fixed expiry for the configured GCP access token, as an ISO-8601 instant (for example `2027-01-01T00:00:00Z`). When present, this exact instant is reported as the token's expiry and is returned unchanged on every refresh, and (`#gcpAccessTokenLifespan()`) is ignored. When absent, the expiry is computed from the lifespan. Like the lifespan, this does not extend the token's real validity on the provider side; it only controls the expiry Polaris reports for the configured token. |
+| `polaris.storage.azure.tenant-id` |  | `string` | The Microsoft Entra tenant of the service principal to use for authentication. If the tenant, client ID and client secret are not present, the `DefaultAzureCredential` chain is used. It must match the `tenantId` of every storage configuration that uses these credentials. |
+| `polaris.storage.azure.client-id` |  | `string` | The application (client) ID of the service principal to use for authentication. If the tenant, client ID and client secret are not present, the `DefaultAzureCredential` chain is used. |
+| `polaris.storage.azure.client-secret` |  | `string` | The client secret of the service principal to use for authentication. If the tenant, client ID and client secret are not present, the `DefaultAzureCredential` chain is used. |
+| `polaris.storage.azure.`_`<storage>`_`.tenant-id` |  | `string` | The Microsoft Entra tenant of the service principal when using named storages. It must match the `tenantId` of every storage configuration that uses this name. |
 | `polaris.storage.azure.`_`<storage>`_`.client-id` |  | `string` | The application (client) ID of the service principal when using named storages.  |
 | `polaris.storage.azure.`_`<storage>`_`.client-secret` |  | `string` | The client secret of the service principal when using named storages.  |
 | `polaris.storage.clients-cache-max-size` |  | `int` | Maximum number of entries to keep in the STS clients cache.  |
 | `polaris.storage.max-http-connections` |  | `int` | Override the default maximum number of pooled connections.  |
 | `polaris.storage.read-timeout` |  | `duration` | Override the default connection read timeout.  |
 | `polaris.storage.connect-timeout` |  | `duration` | Override the default TCP connect timeout.  |
-| `polaris.storage.connection-acquisition-timeout` |  | `duration` | Override default connection acquisition timeout. This is the time a request will wait for a  connection from the pool.  |
+| `polaris.storage.connection-acquisition-timeout` |  | `duration` | Override default connection acquisition timeout. This is the time a request will wait for a connection from the pool. |
 | `polaris.storage.connection-max-idle-time` |  | `duration` | Override default max idle time of a pooled connection.  |
 | `polaris.storage.connection-time-to-live` |  | `duration` | Override default time-to-live of a pooled connection.  |
 | `polaris.storage.expect-continue-enabled` |  | `boolean` | Override default behavior whether to expect an HTTP/100-Continue.  |

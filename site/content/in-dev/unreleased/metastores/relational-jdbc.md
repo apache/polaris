@@ -89,7 +89,8 @@ The following `polaris.persistence.relational.jdbc.*` properties tune retry beha
 type detection:
 
 ```properties
-# Maximum number of attempts for retryable operations (default: 1, i.e. no retries)
+# Maximum number of attempts for retryable operations (default: 1, i.e. no retries).
+# Values below 1 still run the operation once.
 polaris.persistence.relational.jdbc.max-retries=3
 
 # Maximum total time to spend on retries in milliseconds (default: 5000)

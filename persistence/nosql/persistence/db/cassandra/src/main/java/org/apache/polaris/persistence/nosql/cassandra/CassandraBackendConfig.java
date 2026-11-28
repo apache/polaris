@@ -19,14 +19,38 @@
 package org.apache.polaris.persistence.nosql.cassandra;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.DefaultConsistencyLevel;
 import java.time.Duration;
+import java.util.Set;
 
 public record CassandraBackendConfig(
     CqlSession client,
     String keyspace,
     Duration ddlTimeout,
     Duration dmlTimeout,
+    DefaultConsistencyLevel consistencyLevel,
+    DefaultConsistencyLevel serialConsistencyLevel,
     boolean closeClient) {
+  public CassandraBackendConfig {
+    validateConsistencyLevels(consistencyLevel, serialConsistencyLevel);
+  }
+
+  static void validateConsistencyLevels(
+      DefaultConsistencyLevel consistencyLevel, DefaultConsistencyLevel serialConsistencyLevel) {
+    if (!Set.of(
+            DefaultConsistencyLevel.LOCAL_QUORUM,
+            DefaultConsistencyLevel.QUORUM,
+            DefaultConsistencyLevel.ALL)
+        .contains(consistencyLevel)) {
+      throw new IllegalArgumentException(
+          "Cassandra consistency-level must be LOCAL_QUORUM, QUORUM, or ALL.");
+    }
+    if (!serialConsistencyLevel.isSerial()) {
+      throw new IllegalArgumentException(
+          "Cassandra serial-consistency-level must be LOCAL_SERIAL or SERIAL.");
+    }
+  }
+
   public static final String DEFAULT_KEYSPACE = "polaris";
   public static final String DEFAULT_DDL_TIMEOUT = "PT5S";
   public static final String DEFAULT_DML_TIMEOUT = "PT3S";

@@ -76,6 +76,74 @@ class TestFindCommand(CLITestBase):
         mock_iceberg_api.list_tables.assert_called()
         mock_iceberg_api.list_views.assert_called()
 
+    @patch("apache_polaris.cli.command.find.IcebergCatalogAPI")
+    def test_find_qualified_namespace_with_empty_parent(
+        self, mock_iceberg_api_class: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_iceberg_api = mock_iceberg_api_class.return_value
+        mock_iceberg_api.list_namespaces.return_value = MagicMock(
+            namespaces=[], next_page_token=None
+        )
+
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+            self.mock_execute(
+                mock_client,
+                ["find", "sales.sales", "--catalog", "demo", "--type", "namespace"],
+            )
+
+        output = mock_stdout.getvalue()
+        self.assertNotIn("Namespace:", output)
+        self.assertIn("No identifiers found matching 'sales.sales'.", output)
+
+    @patch("apache_polaris.cli.command.find.IcebergCatalogAPI")
+    def test_find_qualified_namespace_with_missing_parent(
+        self, mock_iceberg_api_class: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+        error = Exception("Not Found")
+        any_error = cast(Any, error)
+        any_error.status = 404
+        mock_iceberg_api_class.return_value.list_namespaces.side_effect = any_error
+
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+            self.mock_execute(
+                mock_client,
+                [
+                    "find",
+                    "missing.missing",
+                    "--catalog",
+                    "demo",
+                    "--type",
+                    "namespace",
+                ],
+            )
+
+        output = mock_stdout.getvalue()
+        self.assertNotIn("Namespace:", output)
+        self.assertIn("No identifiers found matching 'missing.missing'.", output)
+
+    @patch("apache_polaris.cli.command.find.IcebergCatalogAPI")
+    def test_find_qualified_namespace_with_same_named_child(
+        self, mock_iceberg_api_class: MagicMock
+    ) -> None:
+        mock_client = self.build_mock_client()
+        mock_iceberg_api = mock_iceberg_api_class.return_value
+        mock_iceberg_api.list_namespaces.side_effect = [
+            MagicMock(namespaces=[["sales", "sales"]], next_page_token=None),
+            MagicMock(namespaces=[], next_page_token=None),
+        ]
+
+        with patch("sys.stdout", new_callable=io.StringIO) as mock_stdout:
+            self.mock_execute(
+                mock_client,
+                ["find", "sales.sales", "--catalog", "demo", "--type", "namespace"],
+            )
+
+        output = mock_stdout.getvalue()
+        self.assertIn("Namespace:           sales.sales", output)
+        self.assertIn("Found 1 matches (1 Namespace).", output)
+
     def test_find_catalog_nonexistent(self) -> None:
         mock_client = self.build_mock_client()
         error = Exception("Not Found")
@@ -105,7 +173,16 @@ class TestFindCommand(CLITestBase):
         )
         self.mock_execute(
             mock_client,
-            ["--page-size", "10", "find", "my_table", "--catalog", "my-catalog", "--type", "table"],
+            [
+                "--page-size",
+                "10",
+                "find",
+                "my_table",
+                "--catalog",
+                "my-catalog",
+                "--type",
+                "table",
+            ],
         )
         mock_iceberg_api.list_namespaces.assert_called_with(
             prefix="my-catalog", page_size=10, page_token=""

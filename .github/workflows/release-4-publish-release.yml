@@ -35,7 +35,7 @@ on:
 jobs:
   publish-release:
     name: Release - 4 - Publish Release After Vote Success
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
     outputs:
@@ -51,7 +51,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }} # zizmor: ignore[secrets-outside-env]
 
       - name: Setup test environment
-        uses: ./.github/actions/setup-test-env
+        uses: $/.github/actions/setup-test-env
 
       - name: Configure Git
         run: |
@@ -427,7 +427,7 @@ jobs:
 
   publish-python-client:
     name: Publish Python Client to PyPI
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: [publish-release]
     permissions:
       contents: read
@@ -479,6 +479,10 @@ jobs:
 
           exec_process svn export --username "$SVN_USERNAME" --password "$SVN_PASSWORD" --non-interactive \
             "${dev_python_client_url}" dist/
+
+          # The dist dev directory also holds the wheel's .asc signature and .sha512 checksum.
+          # They must not be uploaded: twine rejects them as unknown distribution formats.
+          exec_process rm -f dist/*.asc dist/*.sha512
 
       - name: Publish Python client release to PyPI
         if: env.DRY_RUN == '0'
