@@ -98,6 +98,8 @@ import org.apache.polaris.persistence.nosql.coretypes.realm.PolicyMapping;
 import org.apache.polaris.persistence.nosql.metastore.committers.CatalogChangeCommitterWrapper;
 import org.apache.polaris.persistence.nosql.metastore.committers.ChangeResult;
 import org.apache.polaris.persistence.nosql.metastore.committers.SupportsCatalogChangeCommit;
+import org.apache.polaris.persistence.nosql.realms.api.RealmDefinition;
+import org.apache.polaris.persistence.nosql.realms.api.RealmManagement;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
 import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
@@ -109,6 +111,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @SuppressWarnings("CdiInjectionPointsInspection")
@@ -126,6 +129,7 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
   MetaStoreManagerFactory metaStoreManagerFactory;
 
   @Inject RealmPersistenceFactory realmPersistenceFactory;
+  @Inject RealmManagement realmManagement;
   @Inject RealmConfigurationSource configurationSource;
   @Inject Privileges privileges;
   @Inject MonotonicClock monotonicClock;
@@ -241,6 +245,61 @@ public class TestNoSqlMetaStoreManager extends BasePolarisMetaStoreManagerTest {
     assertThat(rotated.isSuccess()).isTrue();
     assertThat(rotated.getPrincipalSecrets().getPrincipalClientId())
         .isEqualTo(secrets.getPrincipalClientId());
+  }
+
+  @Test
+  public void bootstrapReportsARealmThatWasAlreadyBootstrapped() {
+    String realmId = "bootstrapTwiceRealm";
+
+    var first = metaStoreManagerFactory.bootstrapRealms(List.of(realmId), RootCredentialsSet.EMPTY);
+    assertThat(first).containsOnlyKeys(realmId);
+    assertThat(first.get(realmId).isSuccess()).isTrue();
+
+    // The second run must say so rather than returning nothing, which the admin tool would
+    // otherwise report as a successful bootstrap of no realms at all.
+    var second =
+        metaStoreManagerFactory.bootstrapRealms(List.of(realmId), RootCredentialsSet.EMPTY);
+    assertThat(second).containsOnlyKeys(realmId);
+    assertThat(second.get(realmId).isSuccess()).isFalse();
+    assertThat(second.get(realmId).alreadyExists()).isTrue();
+  }
+
+  /**
+   * Every status for which {@code needsBootstrap()} is false must be reported. A realm that is
+   * already set up is an already-exists result, which the admin tool accepts; one that is purging
+   * or purged can never be bootstrapped and must be a failure, which it does not.
+   */
+  @ParameterizedTest
+  @CsvSource({"ACTIVE,true", "INACTIVE,true", "PURGING,false", "PURGED,false"})
+  public void bootstrapReportsEveryRealmItCannotBootstrap(
+      RealmDefinition.RealmStatus status, boolean alreadyBootstrapped) {
+    String realmId = "bootstrapStatus" + status;
+    driveRealmTo(realmId, status);
+
+    var result =
+        metaStoreManagerFactory.bootstrapRealms(List.of(realmId), RootCredentialsSet.EMPTY);
+
+    assertThat(result).containsOnlyKeys(realmId);
+    assertThat(result.get(realmId).isSuccess()).isFalse();
+    assertThat(result.get(realmId).alreadyExists()).isEqualTo(alreadyBootstrapped);
+  }
+
+  private void driveRealmTo(String realmId, RealmDefinition.RealmStatus target) {
+    var realm = realmManagement.create(realmId);
+    for (var status :
+        List.of(
+            RealmDefinition.RealmStatus.LOADING,
+            RealmDefinition.RealmStatus.ACTIVE,
+            RealmDefinition.RealmStatus.INACTIVE,
+            RealmDefinition.RealmStatus.PURGING,
+            RealmDefinition.RealmStatus.PURGED)) {
+      realm =
+          realmManagement.update(
+              realm, RealmDefinition.builder().from(realm).status(status).build());
+      if (status == target) {
+        return;
+      }
+    }
   }
 
   private static boolean clientIdIndexIsStriped(Persistence persistence) {

@@ -96,7 +96,23 @@ class NoSqlMetaStoreManagerFactory implements MetaStoreManagerFactory {
     for (String realmId : realms) {
       var existing = realmManagement.get(realmId);
       if (existing.isPresent() && !existing.get().needsBootstrap()) {
+        var status = existing.get().status();
+        if (status == PURGING || status == PURGED) {
+          LOGGER.warn("Realm '{}' is {} and cannot be bootstrapped.", realmId, status);
+          results.put(
+              realmId,
+              new PrincipalSecretsResult(
+                  BaseResult.ReturnStatus.UNEXPECTED_ERROR_SIGNALED,
+                  "realm is "
+                      + status
+                      + " and cannot be bootstrapped; its realm id cannot be reused"));
+          continue;
+        }
         LOGGER.debug("Realm '{}' is already fully bootstrapped.", realmId);
+        results.put(
+            realmId,
+            new PrincipalSecretsResult(
+                BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, "realm is already bootstrapped"));
         continue;
       }
 

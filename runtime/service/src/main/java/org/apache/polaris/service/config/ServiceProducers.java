@@ -284,6 +284,21 @@ public class ServiceProducers {
       var result = bootstrapper.bootstrapRealms(realmIds, rootCredentialsSet);
 
       result.forEach((realm, secrets) -> {
+        if (!secrets.isSuccess()) {
+          // A realm that was not bootstrapped by this call carries no credentials to report. One
+          // that was already bootstrapped is covered by the message below; anything else failed.
+          if (!secrets.alreadyExists()) {
+            var reason = secrets.getExtraInformation();
+            LOGGER.error(
+                "Realm '{}' could not be bootstrapped: {}",
+                realm,
+                reason == null
+                    ? secrets.getReturnStatus()
+                    : secrets.getReturnStatus() + ": " + reason);
+          }
+          return;
+        }
+
         var principalSecrets = secrets.getPrincipalSecrets();
 
         var log =
@@ -305,7 +320,10 @@ public class ServiceProducers {
       var unusedRealmSecrets =
           realmIds.stream()
               .filter(rootCredentials::containsKey)
-              .filter(r -> !result.containsKey(r))
+              .filter(r -> {
+                var secrets = result.get(r);
+                return secrets == null || secrets.alreadyExists();
+              })
               .map(r -> "'" + r + "'")
               .collect(Collectors.joining(", "));
       if (!unusedRealmSecrets.isEmpty()) {
