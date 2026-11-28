@@ -24,6 +24,8 @@ plugins {
 
 dependencies {
   implementation(libs.licensee)
+  implementation(libs.cyclonedx.plugin)
+  implementation(libs.cyclonedx.core)
   testImplementation(gradleTestKit())
   testImplementation(platform(libs.junit.bom))
   testImplementation("org.junit.jupiter:junit-jupiter")
