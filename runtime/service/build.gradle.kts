@@ -29,6 +29,7 @@ dependencies {
   implementation(project(":polaris-api-management-model"))
   implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
+  implementation(project(":polaris-api-catalog-common"))
   implementation(project(":polaris-api-catalog-service"))
   implementation(project(":polaris-extensions-metrics-reports-api"))
   implementation(project(":polaris-extensions-metrics-reports-spi"))

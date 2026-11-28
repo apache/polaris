@@ -56,6 +56,7 @@ The repository is organized into the following groups of Gradle modules. Each le
   - `polaris-api-management-model`, `polaris-api-management-service` - Polaris Management API
   - `polaris-api-iceberg-service` - Iceberg REST service
   - `polaris-api-catalog-service` - Polaris Catalog API
+  - `polaris-api-catalog-common` - thin classes shared by the server and clients (not generated)
 - **Runtime**
   - [`polaris-server`](./runtime/server/README.md) - Quarkus-based server
   - [`polaris-admin`](./runtime/admin/README.md) - admin tool, mainly for bootstrapping persistence
