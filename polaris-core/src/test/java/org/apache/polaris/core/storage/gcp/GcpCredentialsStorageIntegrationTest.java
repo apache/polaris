@@ -753,9 +753,40 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
    */
   private static CredentialAccessBoundary vend(
       List<LocationGrant> grants, RealmConfig realmConfig, HttpTransportFactory transportFactory) {
+    AtomicReference<CredentialAccessBoundary> boundary = new AtomicReference<>();
+    StorageAccessConfig accessConfig =
+        new GcpCredentialsStorageIntegration(
+                sourceCredentials(),
+                transportFactory,
+                GCS_CONFIG,
+                realmConfig,
+                credentialOps(boundary, new Date()))
+            .getStorageAccessConfig(grants, Optional.empty(), CredentialVendingContext.empty());
+    assertThat(accessConfig.get(StorageAccessProperty.GCS_ACCESS_TOKEN))
+        .isEqualTo("downscoped-token");
+    return boundary.get();
+  }
+
+  private static final GcpStorageConfigurationInfo GCS_CONFIG =
+      GcpStorageConfigurationInfo.builder()
+          .addAllAllowedLocations(List.of("gs://bucket/"))
+          .gcpServiceAccount("test-sa@project.iam.gserviceaccount.com")
+          .build();
+
+  private static GoogleCredentials sourceCredentials() {
     GoogleCredentials sourceCredentials = Mockito.mock(GoogleCredentials.class);
     Mockito.when(sourceCredentials.createScoped(Mockito.any(String.class)))
         .thenReturn(sourceCredentials);
+    return sourceCredentials;
+  }
+
+  /**
+   * Credential operations that impersonate through a stubbed IAM client and return a {@code
+   * downscoped-token} expiring at {@code tokenExpiry}, recording the access boundary in {@code
+   * boundary}.
+   */
+  private static GcpCredentialOps credentialOps(
+      AtomicReference<CredentialAccessBoundary> boundary, Date tokenExpiry) {
     IamCredentialsClient iamClient = Mockito.mock(IamCredentialsClient.class);
     Mockito.when(iamClient.generateAccessToken(Mockito.any(GenerateAccessTokenRequest.class)))
         .thenReturn(
@@ -766,32 +797,91 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
                         .setSeconds(System.currentTimeMillis() / 1000 + 3600)
                         .build())
                 .build());
-    AtomicReference<CredentialAccessBoundary> boundary = new AtomicReference<>();
-    GcpCredentialOps credentialOps =
-        new GcpCredentialOps() {
-          @Override
-          public IamCredentialsClient createIamCredentialsClient(GoogleCredentials credentials) {
-            return iamClient;
-          }
+    return new GcpCredentialOps() {
+      @Override
+      public IamCredentialsClient createIamCredentialsClient(GoogleCredentials credentials) {
+        return iamClient;
+      }
 
-          @Override
-          public AccessToken refreshAccessToken(DownscopedCredentials credentials) {
-            boundary.set(credentials.getCredentialAccessBoundary());
-            return new AccessToken("downscoped-token", new Date());
-          }
-        };
-    GcpStorageConfigurationInfo config =
-        GcpStorageConfigurationInfo.builder()
-            .addAllAllowedLocations(List.of("gs://bucket/"))
-            .gcpServiceAccount("test-sa@project.iam.gserviceaccount.com")
-            .build();
-    StorageAccessConfig accessConfig =
+      @Override
+      public AccessToken refreshAccessToken(DownscopedCredentials credentials) {
+        boundary.set(credentials.getCredentialAccessBoundary());
+        return new AccessToken("downscoped-token", tokenExpiry);
+      }
+    };
+  }
+
+  private static final String L = "gs://bucket/ns/tbl";
+
+  /** Builds the cache key for a single grant of {@code actions} on {@link #L}. */
+  private static GcpStorageCredentialCacheKey keyFor(
+      boolean folderCreationEnabled, Set<PolarisStorageActions> actions) {
+    return (GcpStorageCredentialCacheKey)
         new GcpCredentialsStorageIntegration(
-                sourceCredentials, transportFactory, config, realmConfig, credentialOps)
-            .getStorageAccessConfig(grants, Optional.empty(), CredentialVendingContext.empty());
-    assertThat(accessConfig.get(StorageAccessProperty.GCS_ACCESS_TOKEN))
-        .isEqualTo("downscoped-token");
-    return boundary.get();
+                sourceCredentials(),
+                folderTransport(new ArrayList<>(), 200),
+                GCS_CONFIG,
+                configWith(
+                    Map.of(
+                        "GCS_HNS_PARENT_FOLDER_CREATION_ENABLED",
+                        String.valueOf(folderCreationEnabled))),
+                credentialOps(new AtomicReference<>(), new Date()))
+            .buildCacheKey(
+                List.of(new LocationGrant(Set.of(L), actions)), CredentialVendingContext.empty());
+  }
+
+  @Test
+  public void testParentFolderLocationsInCacheKeyFollowFlag() {
+    Set<PolarisStorageActions> all = Set.of(PolarisStorageActions.ALL);
+    Set<PolarisStorageActions> writer =
+        Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST, PolarisStorageActions.WRITE);
+    Set<PolarisStorageActions> cleanup =
+        Set.of(
+            PolarisStorageActions.READ, PolarisStorageActions.LIST, PolarisStorageActions.DELETE);
+
+    // Flag off: no folders to create, so staged create, writer and cleanup share one key.
+    GcpStorageCredentialCacheKey offWriter = keyFor(false, writer);
+    for (GcpStorageCredentialCacheKey key : List.of(keyFor(false, all), keyFor(false, cleanup))) {
+      assertThat(key).isEqualTo(offWriter).hasSameHashCodeAs(offWriter);
+      assertThat(key.parentFolderLocations()).isEmpty();
+      assertThat(key.allowedWriteLocations()).containsExactly(L);
+    }
+    assertThat(offWriter.parentFolderLocations()).isEmpty();
+
+    // Flag on: writers create folders, so a cleanup vend must not fill their entry.
+    GcpStorageCredentialCacheKey onWriter = keyFor(true, writer);
+    assertThat(keyFor(true, all)).isEqualTo(onWriter);
+    assertThat(onWriter.parentFolderLocations()).containsExactly(L);
+    GcpStorageCredentialCacheKey onCleanup = keyFor(true, cleanup);
+    assertThat(onCleanup).isNotEqualTo(onWriter);
+    assertThat(onCleanup.parentFolderLocations()).isEmpty();
+
+    // The flag is part of key identity: the writer keys differ across flag values.
+    assertThat(offWriter).isNotEqualTo(onWriter);
+  }
+
+  @Test
+  public void testComputeCreatesFoldersFromKeyWhenFlagIsUnset() {
+    // The flag is unset in EMPTY_REALM_CONFIG; compute() acts on the key's set alone.
+    List<String> requests = new ArrayList<>();
+    GcpCredentialsStorageIntegration.compute(
+        GcpStorageCredentialCacheKey.of(
+            "test-realm",
+            GCS_CONFIG,
+            Set.of(L),
+            Set.of(L),
+            Set.of(L),
+            Set.of(L),
+            Optional.empty(),
+            sourceCredentials(),
+            folderTransport(requests, 200),
+            EMPTY_REALM_CONFIG,
+            credentialOps(new AtomicReference<>(), new Date()),
+            Optional.empty()));
+    assertThat(requests)
+        .containsExactly(
+            "POST https://storage.googleapis.com/storage/v1/b/bucket/folders?recursive=true"
+                + " {\"name\":\"ns/\"} [Bearer impersonated-token]");
   }
 
   @Test

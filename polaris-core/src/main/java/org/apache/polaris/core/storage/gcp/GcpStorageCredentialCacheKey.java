@@ -60,9 +60,10 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
 
   /**
    * The write locations whose missing parent folders are created when this key is loaded: those
-   * granted WRITE or ALL, but not DELETE alone. It is part of cache identity because it changes
-   * what loading the key does, so a cleanup vend cannot fill an entry that a writer would then
-   * reuse.
+   * granted WRITE or ALL, but not DELETE alone. Empty unless {@code
+   * GCS_HNS_PARENT_FOLDER_CREATION_ENABLED} is true; resolved when the key is built, so the
+   * folder-creation decision is part of key identity. It is a data field because it changes what
+   * loading the key does, so a cleanup vend cannot fill an entry that a writer would then reuse.
    */
   @Value.Parameter(order = 6)
   Set<String> parentFolderLocations();
@@ -109,6 +110,10 @@ public interface GcpStorageCredentialCacheKey extends StorageCredentialCacheKey 
     return GcpCredentialsStorageIntegration.compute(this);
   }
 
+  /**
+   * Pass an empty {@code parentFolderLocations} unless folder creation is enabled; loading the key
+   * creates folders for every location in it.
+   */
   static GcpStorageCredentialCacheKey of(
       String realmId,
       GcpStorageConfigurationInfo storageConfig,

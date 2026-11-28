@@ -225,11 +225,16 @@ public class GcpCredentialsStorageIntegration
   @Override
   protected StorageCredentialCacheKey buildCacheKey(
       @NonNull List<LocationGrant> grants, @NonNull CredentialVendingContext context) {
+    // Resolved here so the flag takes part in cache identity and compute() need not read it.
+    Set<String> parentFolderLocations =
+        realmConfig().getConfig(FeatureConfiguration.GCS_HNS_PARENT_FOLDER_CREATION_ENABLED)
+            ? parentFolderLocations(grants)
+            : Set.of();
     return buildCacheKey(
         readLocations(grants),
         listLocations(grants),
         writeLocations(grants),
-        parentFolderLocations(grants),
+        parentFolderLocations,
         context);
   }
 
@@ -360,9 +365,8 @@ public class GcpCredentialsStorageIntegration
       throw new RuntimeException("Unable to fetch access credentials " + e.getMessage());
     }
 
-    if (key.realmConfig().getConfig(FeatureConfiguration.GCS_HNS_PARENT_FOLDER_CREATION_ENABLED)) {
-      createParentFolders(key.parentFolderLocations(), credentialsToDownscope, transportFactory);
-    }
+    // Empty unless GCS_HNS_PARENT_FOLDER_CREATION_ENABLED is true (resolved in buildCacheKey).
+    createParentFolders(key.parentFolderLocations(), credentialsToDownscope, transportFactory);
 
     // If expires_in missing, use source credential's expire time, which require another api call to
     // get.
@@ -465,8 +469,8 @@ public class GcpCredentialsStorageIntegration
    * <p>Failures never fail the vend: they leave the token unchanged, and writes under a
    * still-missing parent fail until it exists. Creation is tried again whenever new credentials are
    * generated. A bucket without HNS rejects the call with 409, or with 403 when the identity lacks
-   * {@code storage.folders.create}. Runs only when {@code GCS_HNS_PARENT_FOLDER_CREATION_ENABLED}
-   * is true, which is not the default.
+   * {@code storage.folders.create}. The caller passes an empty set unless {@code
+   * GCS_HNS_PARENT_FOLDER_CREATION_ENABLED} is true (see {@code buildCacheKey}).
    */
   private static void createParentFolders(
       Set<String> writeLocations,
@@ -599,8 +603,9 @@ public class GcpCredentialsStorageIntegration
    * so folders inside a write location can be created, renamed and deleted, as directories can on
    * buckets without HNS. No folder outside the write locations is covered: the missing parent
    * folders are created by Polaris before the token is vended, when {@code
-   * GCS_HNS_PARENT_FOLDER_CREATION_ENABLED} is true (see {@code compute}). Buckets without HNS have
-   * no folder resources, so the folder conditions grant nothing there.
+   * GCS_HNS_PARENT_FOLDER_CREATION_ENABLED} is true (created in {@code compute}; the flag is
+   * resolved in {@code buildCacheKey}). Buckets without HNS have no folder resources, so the folder
+   * conditions grant nothing there.
    */
   @VisibleForTesting
   public static CredentialAccessBoundary generateAccessBoundaryRules(

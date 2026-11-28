@@ -71,8 +71,9 @@ class GcpStorageCredentialCacheKeyTest {
 
   @Test
   void parentFolderLocationsArePartOfCacheIdentity() {
-    // Loading a key creates the parent folders of these locations. A cleanup vend, which creates
-    // none, must not fill the entry that a later writer of the same locations would use.
+    // Loading a key creates the parent folders of these locations. The set is filled only when
+    // folder creation is enabled, so then a cleanup vend, which creates none, must not fill the
+    // entry that a later writer of the same locations would use.
     assertThat(key(Optional.empty(), Set.of()))
         .isNotEqualTo(key(Optional.empty(), Set.of("gs://bucket/path")));
     assertThat(key(Optional.empty(), Set.of("gs://bucket/path")))
