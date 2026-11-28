@@ -30,6 +30,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.actions.DeleteReachableFiles;
 import org.apache.iceberg.catalog.Catalog;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.spark.SparkUtil;
 import org.apache.iceberg.spark.actions.DeleteReachableFilesSparkAction;
 import org.apache.iceberg.spark.actions.SparkActions;
@@ -499,6 +500,35 @@ public class SparkCatalogTest {
     assertThatThrownBy(() -> catalog.loadTable(identifier))
         .isInstanceOf(NoSuchTableException.class);
     assertThat(catalog.listTables(defaultNS)).isEmpty();
+  }
+
+  @Test
+  void testFailedDeltaCreateClearsDelegatedCreateProperties() throws Exception {
+    Identifier deltaIdent = Identifier.of(defaultNS, "delta-table");
+    createAndValidateGenericTableWithLoad(catalog, deltaIdent, defaultSchema, "delta");
+
+    // Creating the same Delta table again fails inside the delegated Delta create.
+    Map<String, String> deltaProperties = Maps.newHashMap();
+    deltaProperties.put(PolarisCatalogUtils.TABLE_PROVIDER_KEY, "delta");
+    deltaProperties.put(TableCatalog.PROP_LOCATION, "file:///tmp/delta/path/to/table/delta-table/");
+    deltaProperties.put("failed-create-key", "failed-create-value");
+    assertThatThrownBy(
+            () -> catalog.createTable(deltaIdent, defaultSchema, new Transform[0], deltaProperties))
+        .isInstanceOf(TableAlreadyExistsException.class);
+
+    // A later create on the same thread must not pick up the properties of the failed one.
+    Map<String, String> csvProperties = Maps.newHashMap();
+    csvProperties.put(PolarisCatalogUtils.TABLE_PROVIDER_KEY, "csv");
+    csvProperties.put(TableCatalog.PROP_LOCATION, "file:///tmp/csv/path/to/table/csv-table/");
+    try (MockedStatic<PolarisCatalogUtils> ignored =
+        Mockito.mockStatic(PolarisCatalogUtils.class)) {
+      catalog.polarisSparkCatalog.createTable(
+          Identifier.of(defaultNS, "csv-table"), defaultSchema, new Transform[0], csvProperties);
+    }
+    PolarisInMemoryCatalog polarisCatalog =
+        ((InMemoryIcebergSparkCatalog) catalog.icebergsSparkCatalog).getInMemoryCatalog();
+    assertThat(polarisCatalog.loadGenericTable(TableIdentifier.of("ns", "csv-table")).properties())
+        .containsExactlyInAnyOrderEntriesOf(csvProperties);
   }
 
   @Test

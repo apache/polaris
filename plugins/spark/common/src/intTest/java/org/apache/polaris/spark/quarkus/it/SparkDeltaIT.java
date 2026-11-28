@@ -25,9 +25,16 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import org.apache.commons.io.FileUtils;
+import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.rest.auth.AuthConfig;
+import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.spark.PolarisRESTCatalog;
+import org.apache.polaris.spark.rest.GenericTable;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.RowFactory;
@@ -176,6 +183,43 @@ public class SparkDeltaIT extends SparkIntegrationBase {
     }
     assertThat(properties).contains("description=people table,test-owner=test-user");
     sql("DROP TABLE %s", deltatb);
+  }
+
+  @Test
+  public void testCreateTablePropertiesPersistedInPolaris() throws Exception {
+    String deltatb = getTableNameWithRandomSuffix();
+    sql(
+        "CREATE TABLE %s (id INT, name STRING) USING DELTA LOCATION '%s' "
+            + "TBLPROPERTIES ('test-owner' = 'test-user', 'enabled-read-table-formats' = 'ICEBERG')",
+        deltatb, getTableLocation(deltatb));
+
+    // Read the generic table directly from the Polaris server. DESCRIBE TABLE EXTENDED reads the
+    // properties from the Delta log and would not reveal whether Polaris stored them.
+    OAuth2Util.AuthSession authSession =
+        new OAuth2Util.AuthSession(
+            Map.of("Authorization", "Bearer " + sparkToken),
+            AuthConfig.builder()
+                .token(sparkToken)
+                .oauth2ServerUri(endpoints.catalogApiEndpoint() + "/v1/oauth/tokens")
+                .build());
+    try (PolarisRESTCatalog polarisCatalog = new PolarisRESTCatalog()) {
+      polarisCatalog.initialize(
+          Map.of(
+              CatalogProperties.URI,
+              endpoints.catalogApiEndpoint().toString(),
+              CatalogProperties.WAREHOUSE_LOCATION,
+              catalogName),
+          authSession);
+      GenericTable table =
+          polarisCatalog.loadGenericTable(TableIdentifier.of(defaultNs, deltatb));
+
+      assertThat(table.format()).isEqualTo("delta");
+      assertThat(table.properties())
+          .containsEntry("test-owner", "test-user")
+          .containsEntry("enabled-read-table-formats", "ICEBERG");
+    } finally {
+      sql("DROP TABLE %s", deltatb);
+    }
   }
 
   @Test
