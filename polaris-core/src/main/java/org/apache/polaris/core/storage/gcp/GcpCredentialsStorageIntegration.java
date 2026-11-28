@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.storage.gcp;
 
+import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
 import static org.apache.polaris.core.storage.StorageLocation.ensureTrailingSlash;
 import static org.apache.polaris.core.storage.StorageLocation.trimLeadingSlash;
 
@@ -79,6 +80,8 @@ public class GcpCredentialsStorageIntegration
       "https://www.googleapis.com/auth/devstorage.read_write";
 
   private static final ObjectMapper OBJECT_MAPPER = JsonMapper.shared();
+  // Google IAM allows one hour without an organization policy extending the service account limit.
+  private static final int MAX_IMPERSONATION_LIFETIME_SECONDS = 3600;
 
   private final GoogleCredentials sourceCredentials;
   private final HttpTransportFactory transportFactory;
@@ -297,7 +300,6 @@ public class GcpCredentialsStorageIntegration
 
   /** Mint a fresh {@link StorageAccessConfig} for the given GCP cache key. */
   static StorageAccessConfig compute(GcpStorageCredentialCacheKey key) {
-    GcpStorageConfigurationInfo gcpStorageConfig = key.storageConfig();
     GoogleCredentials sourceCredentials = key.sourceCredentials();
     HttpTransportFactory transportFactory = key.transportFactory();
     GcpCredentialOps credentialOps = key.credentialOps();
@@ -311,8 +313,7 @@ public class GcpCredentialsStorageIntegration
       throw new RuntimeException("Unable to refresh GCP credentials", e);
     }
 
-    GoogleCredentials credentialsToDownscope =
-        resolveSourceCredentials(key, gcpStorageConfig, sourceCredentials, credentialOps);
+    GoogleCredentials credentialsToDownscope = resolveSourceCredentials(key);
 
     CredentialAccessBoundary accessBoundary =
         generateAccessBoundaryRules(readLocations, listLocations, writeLocations);
@@ -357,11 +358,13 @@ public class GcpCredentialsStorageIntegration
    * path: impersonate the configured service account from the ambient source credentials, or use
    * those credentials directly.
    */
-  private static GoogleCredentials resolveSourceCredentials(
-      GcpStorageCredentialCacheKey key,
-      GcpStorageConfigurationInfo storageConfig,
-      GoogleCredentials sourceCredentials,
-      GcpCredentialOps credentialOps) {
+  private static GoogleCredentials resolveSourceCredentials(GcpStorageCredentialCacheKey key) {
+    String serviceAccount = key.storageConfig().getGcpServiceAccount();
+    if (serviceAccount == null) {
+      return key.sourceCredentials();
+    }
+
+    GoogleCredentials source = key.sourceCredentials();
     Optional<GcpAttributionParams> attributionParams = key.attributionParams();
     if (attributionParams.isPresent()) {
       GcpAttributionParams params = attributionParams.get();
@@ -374,30 +377,21 @@ public class GcpCredentialsStorageIntegration
               params.signingKeyPath(),
               params.signingKeyId(),
               key.transportFactory());
-      GoogleCredentials federated = exchanger.federatedCredentials(subject, key.realmId());
-      return createImpersonatedCredentials(
-          federated, storageConfig.getGcpServiceAccount(), credentialOps);
+      source = exchanger.federatedCredentials(subject, key.realmId());
     }
-    return getBaseCredentials(storageConfig, sourceCredentials, credentialOps);
-  }
-
-  /**
-   * Returns the credential to be used as the source for downscoping. If a specific service account
-   * is configured, it impersonates that account first.
-   */
-  private static GoogleCredentials getBaseCredentials(
-      GcpStorageConfigurationInfo storageConfig,
-      GoogleCredentials sourceCredentials,
-      GcpCredentialOps credentialOps) {
-    if (storageConfig.getGcpServiceAccount() != null) {
-      return createImpersonatedCredentials(
-          sourceCredentials, storageConfig.getGcpServiceAccount(), credentialOps);
-    }
-    return sourceCredentials;
+    int lifetimeSeconds =
+        Math.min(
+            key.realmConfig().getConfig(STORAGE_CREDENTIAL_DURATION_SECONDS),
+            MAX_IMPERSONATION_LIFETIME_SECONDS);
+    return createImpersonatedCredentials(
+        source, serviceAccount, key.credentialOps(), lifetimeSeconds);
   }
 
   private static GoogleCredentials createImpersonatedCredentials(
-      GoogleCredentials source, String targetServiceAccount, GcpCredentialOps credentialOps) {
+      GoogleCredentials source,
+      String targetServiceAccount,
+      GcpCredentialOps credentialOps,
+      int lifetimeSeconds) {
     try (IamCredentialsClient iamCredentialsClient =
         credentialOps.createIamCredentialsClient(source)) {
       GenerateAccessTokenRequest request =
@@ -408,7 +402,7 @@ public class GcpCredentialsStorageIntegration
               // but devstorage.read_write is sufficient for GCS specific operations.
               // See https://docs.cloud.google.com/storage/docs/oauth-scopes
               .addScope(IMPERSONATION_SCOPE)
-              .setLifetime(Duration.newBuilder().setSeconds(3600).build())
+              .setLifetime(Duration.newBuilder().setSeconds(lifetimeSeconds))
               .build();
 
       GenerateAccessTokenResponse response = iamCredentialsClient.generateAccessToken(request);

@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.storage.gcp;
 
+import static com.google.auth.Credentials.GOOGLE_DEFAULT_UNIVERSE;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -48,6 +49,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -77,6 +79,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -445,8 +448,14 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
         .isEqualTo(REFRESH_ENDPOINT);
   }
 
-  @Test
-  public void testImpersonation() throws IOException {
+  @ParameterizedTest
+  @CsvSource({",3600", "900,900", "3600,3600", "7200,3600"})
+  public void testImpersonation(String configuredSeconds, int expectedSeconds) throws IOException {
+    RealmConfig realmConfig =
+        configuredSeconds == null
+            ? EMPTY_REALM_CONFIG
+            : configWith(Map.of("STORAGE_CREDENTIAL_DURATION_SECONDS", configuredSeconds));
+    Date downscopedExpiration = Date.from(Instant.now().plusSeconds(300));
     String serviceAccount = "test-sa@project.iam.gserviceaccount.com";
     GcpStorageConfigurationInfo config =
         GcpStorageConfigurationInfo.builder()
@@ -466,45 +475,62 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
 
     GoogleCredentials mockCreds = Mockito.mock(GoogleCredentials.class);
     Mockito.when(mockCreds.createScoped(Mockito.any(String.class))).thenReturn(mockCreds);
-
-    GcpCredentialOps testOps =
-        new GcpCredentialOps() {
-          @Override
-          public IamCredentialsClient createIamCredentialsClient(GoogleCredentials credentials) {
-            return mockIamClient;
-          }
-
-          @Override
-          public AccessToken refreshAccessToken(DownscopedCredentials credentials) {
-            return new AccessToken("downscoped-token", new Date());
-          }
-        };
+    GcpCredentialOps testOps = Mockito.mock(GcpCredentialOps.class);
+    Mockito.when(testOps.createIamCredentialsClient(mockCreds)).thenReturn(mockIamClient);
+    Mockito.when(testOps.refreshAccessToken(Mockito.any()))
+        .thenReturn(new AccessToken("downscoped-token", downscopedExpiration));
     GcpCredentialsStorageIntegration integration =
         new GcpCredentialsStorageIntegration(
             mockCreds,
             ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new),
             config,
-            EMPTY_REALM_CONFIG,
+            realmConfig,
             testOps);
 
-    integration.getStorageAccessConfig(
-        toGrants(
-            Set.of("gs://bucket/path"), Set.of("gs://bucket/path"), Set.of("gs://bucket/path")),
-        Optional.empty(),
-        org.apache.polaris.core.storage.CredentialVendingContext.empty());
+    StorageAccessConfig accessConfig =
+        integration.getStorageAccessConfig(
+            toGrants(
+                Set.of("gs://bucket/path"), Set.of("gs://bucket/path"), Set.of("gs://bucket/path")),
+            Optional.empty(),
+            CredentialVendingContext.empty());
 
-    Mockito.verify(mockIamClient)
-        .generateAccessToken(
-            Mockito.argThat(request ->
-                request
-                        .getName()
-                        .equals(
-                            GcpCredentialsStorageIntegration.SERVICE_ACCOUNT_PREFIX
-                                + serviceAccount)
-                    && request.getScopeCount() > 0
-                    && request
-                        .getScope(0)
-                        .equals(GcpCredentialsStorageIntegration.IMPERSONATION_SCOPE)));
+    ArgumentCaptor<GenerateAccessTokenRequest> request =
+        ArgumentCaptor.forClass(GenerateAccessTokenRequest.class);
+    Mockito.verify(mockIamClient).generateAccessToken(request.capture());
+    assertThat(request.getValue().getName())
+        .isEqualTo(GcpCredentialsStorageIntegration.SERVICE_ACCOUNT_PREFIX + serviceAccount);
+    assertThat(request.getValue().getScopeList())
+        .contains(GcpCredentialsStorageIntegration.IMPERSONATION_SCOPE);
+    assertThat(request.getValue().getLifetime().getSeconds()).isEqualTo(expectedSeconds);
+    assertThat(accessConfig.get(StorageAccessProperty.GCS_ACCESS_TOKEN_EXPIRES_AT_MS))
+        .isEqualTo(Long.toString(downscopedExpiration.getTime()));
+  }
+
+  @Test
+  void testCredentialDurationWithoutServiceAccount() throws IOException {
+    GoogleCredentials source = Mockito.mock(GoogleCredentials.class);
+    Mockito.when(source.createScoped(Mockito.any(String.class))).thenReturn(source);
+    Mockito.when(source.getUniverseDomain()).thenReturn(GOOGLE_DEFAULT_UNIVERSE);
+    GcpCredentialOps ops = Mockito.mock(GcpCredentialOps.class);
+    Mockito.when(ops.refreshAccessToken(Mockito.any()))
+        .thenReturn(new AccessToken("downscoped-token", Date.from(Instant.now().plusSeconds(600))));
+    GcpCredentialsStorageIntegration integration =
+        new GcpCredentialsStorageIntegration(
+            source,
+            NetHttpTransport::new,
+            GcpStorageConfigurationInfo.builder().addAllowedLocations("gs://bucket/path").build(),
+            configWith(Map.of("STORAGE_CREDENTIAL_DURATION_SECONDS", "900")),
+            ops);
+
+    StorageAccessConfig accessConfig =
+        integration.getStorageAccessConfig(
+            toGrants(Set.of("gs://bucket/path"), Set.of(), Set.of()),
+            Optional.empty(),
+            CredentialVendingContext.empty());
+
+    Mockito.verify(ops, Mockito.never()).createIamCredentialsClient(Mockito.any());
+    assertThat(accessConfig.get(StorageAccessProperty.GCS_ACCESS_TOKEN))
+        .isEqualTo("downscoped-token");
   }
 
   @Test
@@ -682,7 +708,7 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new),
             null,
             config,
-            EMPTY_REALM_CONFIG,
+            configWith(Map.of("STORAGE_CREDENTIAL_DURATION_SECONDS", "1800")),
             testOps,
             Optional.of(params));
 
@@ -695,13 +721,12 @@ class GcpCredentialsStorageIntegrationTest extends BaseStorageIntegrationTest {
             .principalName(Optional.of("principal1"))
             .build());
 
-    Mockito.verify(mockIamClient)
-        .generateAccessToken(
-            Mockito.argThat(request ->
-                request
-                    .getName()
-                    .equals(
-                        GcpCredentialsStorageIntegration.SERVICE_ACCOUNT_PREFIX + serviceAccount)));
+    ArgumentCaptor<GenerateAccessTokenRequest> request =
+        ArgumentCaptor.forClass(GenerateAccessTokenRequest.class);
+    Mockito.verify(mockIamClient).generateAccessToken(request.capture());
+    assertThat(request.getValue().getName())
+        .isEqualTo(GcpCredentialsStorageIntegration.SERVICE_ACCOUNT_PREFIX + serviceAccount);
+    assertThat(request.getValue().getLifetime().getSeconds()).isEqualTo(1800);
 
     // The source credential used for impersonation must be a federated identity, not the raw
     // source credential. This ensures the attribution JWT (not the ambient SA key) is what
