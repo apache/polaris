@@ -24,6 +24,7 @@ import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithName;
 import io.smallrye.config.WithParentName;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -121,6 +122,52 @@ public interface StorageConfiguration extends S3AccessConfig {
    */
   @WithName("gcp.expiry")
   Optional<Instant> gcpAccessTokenExpiry();
+
+  @WithName("gcp")
+  GcpStorageConfig gcp();
+
+  interface GcpStorageConfig {
+    /**
+     * Path to the GCP credentials file to use for authentication, in the format the {@code
+     * GOOGLE_APPLICATION_CREDENTIALS} environment variable points to. Service account key files and
+     * Workload Identity Federation configuration files are accepted. Set this or {@code
+     * polaris.storage.gcp.credentials}, not both. If neither is present, the GCP access token or
+     * the default credentials provider chain is used. Cannot be combined with the GCP access token.
+     */
+    @WithName("credentials-file")
+    Optional<Path> credentialsFile();
+
+    /**
+     * The content of a GCP credentials file to use for authentication, for example from an
+     * environment variable or a secret. The same formats as {@code
+     * polaris.storage.gcp.credentials-file} are accepted, and only one of the two can be set.
+     */
+    @WithName("credentials")
+    Optional<String> credentials();
+
+    @WithParentName
+    @ConfigDocs.ConfigPropertyName("storage")
+    Map<String, GcpNamedStorageConfig> storages();
+  }
+
+  interface GcpNamedStorageConfig {
+    /**
+     * Path to the GCP credentials file to use for authentication when using named storages, in the
+     * format the {@code GOOGLE_APPLICATION_CREDENTIALS} environment variable points to. Service
+     * account key files and Workload Identity Federation configuration files are accepted. Set this
+     * or {@code credentials}, not both.
+     */
+    @WithName("credentials-file")
+    Optional<Path> credentialsFile();
+
+    /**
+     * The content of a GCP credentials file to use for authentication when using named storages,
+     * for example from an environment variable or a secret. The same formats as {@code
+     * credentials-file} are accepted, and only one of the two can be set.
+     */
+    @WithName("credentials")
+    Optional<String> credentials();
+  }
 
   @WithName("azure")
   AzureStorageConfig azure();

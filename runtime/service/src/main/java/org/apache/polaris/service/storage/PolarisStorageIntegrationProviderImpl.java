@@ -24,7 +24,6 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.ServiceOptions;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
@@ -50,8 +49,8 @@ import org.jspecify.annotations.Nullable;
 /**
  * Provider that returns a {@link PolarisStorageIntegration} for a resolved entity path. A fresh
  * integration is constructed per call; the per-config state inside each integration is a thin
- * wrapper over shared, application-scoped resources (the credential vending mechanism registry, GCP
- * credentials supplier, Google HTTP transport factory, request-scope realm config).
+ * wrapper over shared, application-scoped resources (the credential vending mechanism registry, the
+ * Azure and GCP credentials factories, Google HTTP transport factory, request-scope realm config).
  */
 @ApplicationScoped
 public class PolarisStorageIntegrationProviderImpl implements PolarisStorageIntegrationProvider {
@@ -65,22 +64,23 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
   @SuppressWarnings("CdiInjectionPointsInspection")
   @Inject
   public PolarisStorageIntegrationProviderImpl(
-      StorageConfiguration storageConfiguration,
       S3CredentialVendingMechanisms mechanisms,
       RealmConfig realmConfig,
-      Clock clock,
       StorageCredentialCache cache,
-      AzureCredentialsFactory azureCredentials) {
+      AzureCredentialsFactory azureCredentials,
+      GcpCredentialsFactory gcpCredentials) {
     this.realmConfig = realmConfig;
     this.mechanisms = mechanisms;
-    Supplier<GoogleCredentials> gcpCredsProvider =
-        storageConfiguration.gcpCredentialsSupplier(clock);
     HttpTransportFactory gcpTransportFactory =
         ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new);
     this.gcpFactory =
         storageConfig ->
             new GcpCredentialsStorageIntegration(
-                gcpCredsProvider.get(), gcpTransportFactory, cache, storageConfig, realmConfig);
+                gcpCredentials.credentials(storageConfig),
+                gcpTransportFactory,
+                cache,
+                storageConfig,
+                realmConfig);
     this.azureFactory =
         storageConfig ->
             new AzureCredentialsStorageIntegration(
