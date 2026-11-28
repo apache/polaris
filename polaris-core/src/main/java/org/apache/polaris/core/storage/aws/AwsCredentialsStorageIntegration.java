@@ -36,6 +36,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.iceberg.aws.AwsClientProperties;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.storage.CachingStorageIntegration;
@@ -262,6 +263,13 @@ public class AwsCredentialsStorageIntegration
               accessConfig.put(
                   StorageAccessProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
                   String.valueOf(i.toEpochMilli())));
+    } else {
+      // Nothing is vended, so Polaris's own S3FileIO has no keys and Iceberg would create a new
+      // DefaultCredentialsProvider per S3 client, fetching the credentials again each time.
+      // Internal properties are never returned to clients.
+      accessConfig.putInternalProperty(
+          AwsClientProperties.CLIENT_CREDENTIALS_PROVIDER,
+          SharedDefaultCredentialsProvider.class.getName());
     }
 
     if (region != null) {
