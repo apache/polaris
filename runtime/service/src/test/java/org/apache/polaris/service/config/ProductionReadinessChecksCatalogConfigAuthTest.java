@@ -19,13 +19,17 @@
 package org.apache.polaris.service.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
+import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -51,7 +55,8 @@ class ProductionReadinessChecksCatalogConfigAuthTest {
     FeaturesConfiguration config = mockConfig(Map.of(), Map.of());
 
     ProductionReadinessCheck result =
-        checks.checkCatalogConfigAuthorization(config, authorizationConfig("internal"));
+        checks.checkCatalogConfigAuthorization(
+            config, configurationSource(config), authorizationConfig("internal"));
 
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors())
@@ -67,7 +72,21 @@ class ProductionReadinessChecksCatalogConfigAuthTest {
     FeaturesConfiguration config = mockConfig(Map.of(FLAG_KEY, "true"), Map.of());
 
     ProductionReadinessCheck result =
-        checks.checkCatalogConfigAuthorization(config, authorizationConfig("internal"));
+        checks.checkCatalogConfigAuthorization(
+            config, configurationSource(config), authorizationConfig("internal"));
+
+    assertThat(result.ready()).isTrue();
+  }
+
+  @Test
+  void flagEnabledInConfigurationSourceReturnsOk() {
+    // The check asks the configuration source the runtime uses, not the raw feature configuration.
+    FeaturesConfiguration config = mock(FeaturesConfiguration.class);
+    when(config.realmOverrides()).thenReturn(Map.of());
+    RealmConfigurationSource source = (realmContext, name) -> FLAG_KEY.equals(name) ? true : null;
+
+    ProductionReadinessCheck result =
+        checks.checkCatalogConfigAuthorization(config, source, authorizationConfig("internal"));
 
     assertThat(result.ready()).isTrue();
   }
@@ -77,7 +96,8 @@ class ProductionReadinessChecksCatalogConfigAuthTest {
     FeaturesConfiguration config = mockConfig(Map.of(FLAG_KEY, "false"), Map.of());
 
     ProductionReadinessCheck result =
-        checks.checkCatalogConfigAuthorization(config, authorizationConfig("internal"));
+        checks.checkCatalogConfigAuthorization(
+            config, configurationSource(config), authorizationConfig("internal"));
 
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors()).hasSize(1);
@@ -91,7 +111,8 @@ class ProductionReadinessChecksCatalogConfigAuthTest {
             Map.of("test-realm", mockRealmOverrides(Map.of(FLAG_KEY, "false"))));
 
     ProductionReadinessCheck result =
-        checks.checkCatalogConfigAuthorization(config, authorizationConfig("internal"));
+        checks.checkCatalogConfigAuthorization(
+            config, configurationSource(config), authorizationConfig("internal"));
 
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors())
@@ -104,12 +125,13 @@ class ProductionReadinessChecksCatalogConfigAuthTest {
   @ValueSource(strings = {"opa", "ranger", "custom"})
   void nonInternalAuthorizerReturnsOk(String type) {
     FeaturesConfiguration config = mock(FeaturesConfiguration.class);
+    RealmConfigurationSource source = mock(RealmConfigurationSource.class);
 
     ProductionReadinessCheck result =
-        checks.checkCatalogConfigAuthorization(config, authorizationConfig(type));
+        checks.checkCatalogConfigAuthorization(config, source, authorizationConfig(type));
 
     assertThat(result.ready()).isTrue();
-    verifyNoInteractions(config);
+    verifyNoInteractions(config, source);
   }
 
   private static AuthorizationConfiguration authorizationConfig(String type) {
@@ -118,9 +140,16 @@ class ProductionReadinessChecksCatalogConfigAuthTest {
     return config;
   }
 
+  /** The configuration source the server builds from the same feature configuration. */
+  private static RealmConfigurationSource configurationSource(FeaturesConfiguration config) {
+    return new DefaultConfigurationStore(new ObjectMapper(), config);
+  }
+
   private static FeaturesConfiguration mockConfig(
       Map<String, String> defaults, Map<String, RealmOverridable.RealmOverrides> realmOverrides) {
-    FeaturesConfiguration config = mock(FeaturesConfiguration.class);
+    // CALLS_REAL_METHODS keeps the interface's default parseDefaults/parseRealmOverrides working.
+    FeaturesConfiguration config =
+        mock(FeaturesConfiguration.class, withSettings().defaultAnswer(CALLS_REAL_METHODS));
     when(config.defaults()).thenReturn(defaults);
     when(config.realmOverrides()).thenReturn(realmOverrides);
     return config;

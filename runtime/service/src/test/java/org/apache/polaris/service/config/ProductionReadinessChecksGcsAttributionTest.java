@@ -19,12 +19,16 @@
 package org.apache.polaris.service.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
+import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -53,7 +57,8 @@ class ProductionReadinessChecksGcsAttributionTest {
   void attributionDisabledReturnsOk() {
     FeaturesConfiguration config = mockConfig(Map.of(ENABLED_KEY, "false"), Map.of());
 
-    ProductionReadinessCheck result = checks.checkGcsPrincipalAttribution(config);
+    ProductionReadinessCheck result =
+        checks.checkGcsPrincipalAttribution(config, configurationSource(config));
 
     assertThat(result.ready()).isTrue();
   }
@@ -64,12 +69,13 @@ class ProductionReadinessChecksGcsAttributionTest {
         mockConfig(
             Map.of(
                 ENABLED_KEY, "true",
-                AUDIENCE_KEY, "//iam.googleapis.com/projects/123/...",
-                ISSUER_KEY, "https://polaris.example.com",
-                KEY_FILE_KEY, "/etc/polaris/signing-key.pem"),
+                AUDIENCE_KEY, "\"//iam.googleapis.com/projects/123/...\"",
+                ISSUER_KEY, "\"https://polaris.example.com\"",
+                KEY_FILE_KEY, "\"/etc/polaris/signing-key.pem\""),
             Map.of());
 
-    ProductionReadinessCheck result = checks.checkGcsPrincipalAttribution(config);
+    ProductionReadinessCheck result =
+        checks.checkGcsPrincipalAttribution(config, configurationSource(config));
 
     assertThat(result.ready()).isTrue();
   }
@@ -80,11 +86,32 @@ class ProductionReadinessChecksGcsAttributionTest {
         mockConfig(
             Map.of(
                 ENABLED_KEY, "true",
-                ISSUER_KEY, "https://polaris.example.com",
-                KEY_FILE_KEY, "/etc/polaris/signing-key.pem"),
+                ISSUER_KEY, "\"https://polaris.example.com\"",
+                KEY_FILE_KEY, "\"/etc/polaris/signing-key.pem\""),
             Map.of());
 
-    ProductionReadinessCheck result = checks.checkGcsPrincipalAttribution(config);
+    ProductionReadinessCheck result =
+        checks.checkGcsPrincipalAttribution(config, configurationSource(config));
+
+    assertThat(result.ready()).isFalse();
+    assertThat(result.getErrors()).hasSize(1);
+    assertThat(result.getErrors().get(0).offendingProperty()).contains(AUDIENCE_KEY);
+  }
+
+  @Test
+  void attributionEnabledWithEmptyAudienceReturnsError() {
+    // The configured value is the JSON string "", which the runtime reads as an empty audience.
+    FeaturesConfiguration config =
+        mockConfig(
+            Map.of(
+                ENABLED_KEY, "true",
+                AUDIENCE_KEY, "\"\"",
+                ISSUER_KEY, "\"https://polaris.example.com\"",
+                KEY_FILE_KEY, "\"/etc/polaris/signing-key.pem\""),
+            Map.of());
+
+    ProductionReadinessCheck result =
+        checks.checkGcsPrincipalAttribution(config, configurationSource(config));
 
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors()).hasSize(1);
@@ -95,7 +122,8 @@ class ProductionReadinessChecksGcsAttributionTest {
   void attributionEnabledWithAllRequiredFieldsMissingReturnsThreeErrors() {
     FeaturesConfiguration config = mockConfig(Map.of(ENABLED_KEY, "true"), Map.of());
 
-    ProductionReadinessCheck result = checks.checkGcsPrincipalAttribution(config);
+    ProductionReadinessCheck result =
+        checks.checkGcsPrincipalAttribution(config, configurationSource(config));
 
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors()).hasSize(3);
@@ -111,10 +139,11 @@ class ProductionReadinessChecksGcsAttributionTest {
                 mockRealmOverrides(
                     Map.of(
                         ENABLED_KEY, "true",
-                        ISSUER_KEY, "https://polaris.example.com",
-                        KEY_FILE_KEY, "/etc/polaris/signing-key.pem"))));
+                        ISSUER_KEY, "\"https://polaris.example.com\"",
+                        KEY_FILE_KEY, "\"/etc/polaris/signing-key.pem\""))));
 
-    ProductionReadinessCheck result = checks.checkGcsPrincipalAttribution(config);
+    ProductionReadinessCheck result =
+        checks.checkGcsPrincipalAttribution(config, configurationSource(config));
 
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors()).hasSize(1);
@@ -128,12 +157,13 @@ class ProductionReadinessChecksGcsAttributionTest {
     FeaturesConfiguration config =
         mockConfig(
             Map.of(
-                AUDIENCE_KEY, "//iam.googleapis.com/projects/123/...",
-                ISSUER_KEY, "https://polaris.example.com",
-                KEY_FILE_KEY, "/etc/polaris/signing-key.pem"),
+                AUDIENCE_KEY, "\"//iam.googleapis.com/projects/123/...\"",
+                ISSUER_KEY, "\"https://polaris.example.com\"",
+                KEY_FILE_KEY, "\"/etc/polaris/signing-key.pem\""),
             Map.of("test-realm", mockRealmOverrides(Map.of(ENABLED_KEY, "true"))));
 
-    ProductionReadinessCheck result = checks.checkGcsPrincipalAttribution(config);
+    ProductionReadinessCheck result =
+        checks.checkGcsPrincipalAttribution(config, configurationSource(config));
 
     assertThat(result.ready()).isTrue();
   }
@@ -145,15 +175,23 @@ class ProductionReadinessChecksGcsAttributionTest {
             Map.of(ENABLED_KEY, "true"),
             Map.of("test-realm", mockRealmOverrides(Map.of(ENABLED_KEY, "false"))));
 
-    ProductionReadinessCheck result = checks.checkGcsPrincipalAttribution(config);
+    ProductionReadinessCheck result =
+        checks.checkGcsPrincipalAttribution(config, configurationSource(config));
 
     // default-level errors still reported, but realm override is clean
     assertThat(result.getErrors()).noneMatch(e -> e.offendingProperty().contains("test-realm"));
   }
 
+  /** The configuration source the server builds from the same feature configuration. */
+  private static RealmConfigurationSource configurationSource(FeaturesConfiguration config) {
+    return new DefaultConfigurationStore(new ObjectMapper(), config);
+  }
+
   private static FeaturesConfiguration mockConfig(
       Map<String, String> defaults, Map<String, RealmOverridable.RealmOverrides> realmOverrides) {
-    FeaturesConfiguration config = mock(FeaturesConfiguration.class);
+    // CALLS_REAL_METHODS keeps the interface's default parseDefaults/parseRealmOverrides working.
+    FeaturesConfiguration config =
+        mock(FeaturesConfiguration.class, withSettings().defaultAnswer(CALLS_REAL_METHODS));
     when(config.defaults()).thenReturn(defaults);
     when(config.realmOverrides()).thenReturn(realmOverrides);
     return config;

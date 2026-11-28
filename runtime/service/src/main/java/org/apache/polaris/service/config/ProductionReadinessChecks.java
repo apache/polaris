@@ -20,7 +20,6 @@ package org.apache.polaris.service.config;
 
 import static java.lang.String.format;
 
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.event.Startup;
@@ -31,9 +30,13 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
 import org.apache.polaris.core.config.ProductionReadinessCheck.Error;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.RealmConfigImpl;
+import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.credentials.connection.ConnectionCredentialVendor;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.storage.aws.S3CredentialVendingMechanism;
@@ -369,13 +372,29 @@ public class ProductionReadinessChecks {
     return realm.equals(AuthenticationConfiguration.DEFAULT_REALM_KEY) ? "" : realm + ".";
   }
 
+  /**
+   * The feature flags as a realm without overrides sees them: the configured defaults, and the
+   * flags' code defaults for everything that is not configured.
+   */
+  private static RealmConfig defaultsConfig(RealmConfigurationSource configurationSource) {
+    // An ID that no realm with overrides can have.
+    return realmConfig(configurationSource, UUID.randomUUID().toString());
+  }
+
+  /** The feature flags as requests in the given realm see them. */
+  private static RealmConfig realmConfig(
+      RealmConfigurationSource configurationSource, String realmId) {
+    return new RealmConfigImpl(configurationSource, () -> realmId);
+  }
+
   @Produces
   public ProductionReadinessCheck checkInsecureStorageSettings(
-      FeaturesConfiguration featureConfiguration) {
+      FeaturesConfiguration featureConfiguration, RealmConfigurationSource configurationSource) {
     var insecure = FeatureConfiguration.ALLOW_INSECURE_STORAGE_TYPES;
+    var defaults = defaultsConfig(configurationSource);
 
     var errors = new ArrayList<Error>();
-    if (Boolean.parseBoolean(featureConfiguration.defaults().get(insecure.key()))) {
+    if (defaults.getConfig(insecure)) {
       errors.add(
           Error.ofSevere(
               "Must not enable a configuration that exposes known and severe security risks: "
@@ -386,7 +405,8 @@ public class ProductionReadinessChecks {
     featureConfiguration
         .realmOverrides()
         .forEach((realmId, overrides) -> {
-          if (Boolean.parseBoolean(overrides.overrides().get(insecure.key()))) {
+          if (overrides.overrides().containsKey(insecure.key())
+              && realmConfig(configurationSource, realmId).getConfig(insecure)) {
             errors.add(
                 Error.ofSevere(
                     "Must not enable a configuration that exposes known and severe security risks: "
@@ -398,12 +418,7 @@ public class ProductionReadinessChecks {
         });
 
     var storageTypes = FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES;
-    var mapper = JsonMapper.builder().build();
-    var defaults = featureConfiguration.parseDefaults(mapper);
-    var realmOverrides = featureConfiguration.parseRealmOverrides(mapper);
-    @SuppressWarnings("unchecked")
-    var supported = (List<String>) defaults.getOrDefault(storageTypes.key(), List.of());
-    supported.stream()
+    defaults.getConfig(storageTypes).stream()
         .filter(n -> !IcebergPropertiesValidation.safeStorageType(n))
         .forEach(t ->
             errors.add(
@@ -412,21 +427,24 @@ public class ProductionReadinessChecks {
                         "The storage type '%s' is considered insecure and exposes the service to severe security risks!",
                         t),
                     format("polaris.features.\"%s\"", storageTypes.key()))));
-    realmOverrides.forEach((realmId, overrides) -> {
-      @SuppressWarnings("unchecked")
-      var s = (List<String>) overrides.getOrDefault(storageTypes.key(), List.of());
-      s.stream()
-          .filter(n -> !IcebergPropertiesValidation.safeStorageType(n))
-          .forEach(t ->
-              errors.add(
-                  Error.ofSevere(
-                      format(
-                          "The storage type '%s' is considered insecure and exposes the service to severe security risks!",
-                          t),
-                      format(
-                          "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
-                          realmId, storageTypes.key()))));
-    });
+    featureConfiguration
+        .realmOverrides()
+        .forEach((realmId, overrides) -> {
+          if (!overrides.overrides().containsKey(storageTypes.key())) {
+            return;
+          }
+          realmConfig(configurationSource, realmId).getConfig(storageTypes).stream()
+              .filter(n -> !IcebergPropertiesValidation.safeStorageType(n))
+              .forEach(t ->
+                  errors.add(
+                      Error.ofSevere(
+                          format(
+                              "The storage type '%s' is considered insecure and exposes the service to severe security risks!",
+                              t),
+                          format(
+                              "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                              realmId, storageTypes.key()))));
+        });
     return errors.isEmpty()
         ? ProductionReadinessCheck.OK
         : ProductionReadinessCheck.of(errors.toArray(new Error[0]));
@@ -444,9 +462,10 @@ public class ProductionReadinessChecks {
    */
   @Produces
   public ProductionReadinessCheck checkS3CredentialVendingMechanisms(
-      FeaturesConfiguration featureConfiguration, S3CredentialVendingMechanisms mechanisms) {
+      FeaturesConfiguration featureConfiguration,
+      RealmConfigurationSource configurationSource,
+      S3CredentialVendingMechanisms mechanisms) {
     var flag = FeatureConfiguration.SUPPORTED_S3_CREDENTIAL_VENDING_MECHANISMS;
-    var mapper = JsonMapper.builder().build();
     var errors = new ArrayList<Error>();
     if (!mechanisms.isAvailable(S3CredentialVendingMechanism.STS)) {
       errors.add(
@@ -458,28 +477,27 @@ public class ProductionReadinessChecks {
                   mechanisms.availableIds()),
               "S3CredentialVendingMechanism @Identifier(\"STS\")"));
     }
-    @SuppressWarnings("unchecked")
-    var defaults =
-        (List<String>)
-            featureConfiguration
-                .parseDefaults(mapper)
-                .getOrDefault(flag.key(), flag.defaultValue());
-    defaults.forEach(name ->
-        checkMechanismAvailable(
-            name, format("polaris.features.\"%s\"", flag.key()), mechanisms, errors));
+    defaultsConfig(configurationSource)
+        .getConfig(flag)
+        .forEach(name ->
+            checkMechanismAvailable(
+                name, format("polaris.features.\"%s\"", flag.key()), mechanisms, errors));
     featureConfiguration
-        .parseRealmOverrides(mapper)
+        .realmOverrides()
         .forEach((realmId, overrides) -> {
-          @SuppressWarnings("unchecked")
-          var names = (List<String>) overrides.getOrDefault(flag.key(), List.of());
-          names.forEach(name ->
-              checkMechanismAvailable(
-                  name,
-                  format(
-                      "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
-                      realmId, flag.key()),
-                  mechanisms,
-                  errors));
+          if (!overrides.overrides().containsKey(flag.key())) {
+            return;
+          }
+          realmConfig(configurationSource, realmId)
+              .getConfig(flag)
+              .forEach(name ->
+                  checkMechanismAvailable(
+                      name,
+                      format(
+                          "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
+                          realmId, flag.key()),
+                      mechanisms,
+                      errors));
         });
     return errors.isEmpty()
         ? ProductionReadinessCheck.OK
@@ -506,6 +524,7 @@ public class ProductionReadinessChecks {
   @Produces
   public ProductionReadinessCheck checkCatalogConfigAuthorization(
       FeaturesConfiguration featureConfiguration,
+      RealmConfigurationSource configurationSource,
       AuthorizationConfiguration authorizationConfiguration) {
     if (!authorizationConfiguration.type().equals("internal")) {
       return ProductionReadinessCheck.OK;
@@ -517,15 +536,14 @@ public class ProductionReadinessChecks {
             + "need access to catalogs and then enabling this flag. CATALOG_READ_CONFIG is "
             + "subsumed by many stronger permissions at the catalog level, but not at entity levels.";
     var errors = new ArrayList<Error>();
-    // Absent or false → warn (default is false). Explicit true → no warning for defaults.
-    if (!Boolean.parseBoolean(featureConfiguration.defaults().get(flag.key()))) {
+    if (!defaultsConfig(configurationSource).getConfig(flag)) {
       errors.add(Error.of(message, format("polaris.features.\"%s\"", flag.key())));
     }
     featureConfiguration
         .realmOverrides()
         .forEach((realmId, overrides) -> {
-          String value = overrides.overrides().get(flag.key());
-          if (value != null && !Boolean.parseBoolean(value)) {
+          if (overrides.overrides().containsKey(flag.key())
+              && !realmConfig(configurationSource, realmId).getConfig(flag)) {
             errors.add(
                 Error.of(
                     message,
@@ -541,7 +559,7 @@ public class ProductionReadinessChecks {
 
   @Produces
   public ProductionReadinessCheck checkSkipCredentialSubscopingIndirection(
-      FeaturesConfiguration featureConfiguration) {
+      FeaturesConfiguration featureConfiguration, RealmConfigurationSource configurationSource) {
     var flag = FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION;
     var message =
         "SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION is enabled. This flag is test/dev-only and returns "
@@ -549,13 +567,14 @@ public class ProductionReadinessChecks {
             + "For S3-compatible storage without STS, set stsUnavailable: true on the storage "
             + "config instead.";
     var errors = new ArrayList<Error>();
-    if (Boolean.parseBoolean(featureConfiguration.defaults().get(flag.key()))) {
+    if (defaultsConfig(configurationSource).getConfig(flag)) {
       errors.add(Error.of(message, format("polaris.features.\"%s\"", flag.key())));
     }
     featureConfiguration
         .realmOverrides()
         .forEach((realmId, overrides) -> {
-          if (Boolean.parseBoolean(overrides.overrides().get(flag.key()))) {
+          if (overrides.overrides().containsKey(flag.key())
+              && realmConfig(configurationSource, realmId).getConfig(flag)) {
             errors.add(
                 Error.of(
                     message,
@@ -571,22 +590,19 @@ public class ProductionReadinessChecks {
 
   @Produces
   public ProductionReadinessCheck checkOverlappingSiblingCheckSettings(
-      FeaturesConfiguration featureConfiguration) {
+      FeaturesConfiguration featureConfiguration, RealmConfigurationSource configurationSource) {
     var optimizedSiblingCheck = FeatureConfiguration.OPTIMIZED_SIBLING_CHECK;
     var allowOverlap = FeatureConfiguration.ALLOW_OPTIMIZED_SIBLING_CHECK;
-    var defaults = featureConfiguration.defaults();
+    var defaults = defaultsConfig(configurationSource);
     var errors = new ArrayList<Error>();
-    if (Boolean.parseBoolean(defaults.get(optimizedSiblingCheck.key()))
-        && !Boolean.parseBoolean(defaults.get(allowOverlap.key()))) {
+    if (defaults.getConfig(optimizedSiblingCheck) && !defaults.getConfig(allowOverlap)) {
       errors.add(
           Error.ofSevere(
               "This setting should be used with care and only enabled in new realms. Enabling it in previously used realms and may lead to incorrect behavior, due to missing data for location_without_scheme column. Set the ALLOW_OPTIMIZED_SIBLING_CHECK flag to acknowledge this warning and enable Polaris to start.",
               format("polaris.features.\"%s\"", optimizedSiblingCheck.key())));
     }
 
-    // A realm runs with the override when it has one and with the default otherwise, so judge
-    // each realm by its effective values rather than by the override map alone. A realm that
-    // overrides neither flag runs with the defaults, which are already checked above.
+    // A realm that overrides neither flag runs with the defaults, which are already checked above.
     featureConfiguration
         .realmOverrides()
         .forEach((realmId, realmOverrides) -> {
@@ -595,14 +611,8 @@ public class ProductionReadinessChecks {
               && !overrides.containsKey(allowOverlap.key())) {
             return;
           }
-          boolean realmOptimized =
-              Boolean.parseBoolean(
-                  overrides.getOrDefault(
-                      optimizedSiblingCheck.key(), defaults.get(optimizedSiblingCheck.key())));
-          boolean realmAllowed =
-              Boolean.parseBoolean(
-                  overrides.getOrDefault(allowOverlap.key(), defaults.get(allowOverlap.key())));
-          if (realmOptimized && !realmAllowed) {
+          var realm = realmConfig(configurationSource, realmId);
+          if (realm.getConfig(optimizedSiblingCheck) && !realm.getConfig(allowOverlap)) {
             errors.add(
                 Error.ofSevere(
                     "This setting should be used with care and only enabled in new realms. Enabling it in previously used realms and may lead to incorrect behavior, due to missing data for location_without_scheme column. Set the ALLOW_OPTIMIZED_SIBLING_CHECK flag to acknowledge this warning and enable Polaris to start.",
@@ -649,34 +659,29 @@ public class ProductionReadinessChecks {
 
   @Produces
   public ProductionReadinessCheck checkGcsPrincipalAttribution(
-      FeaturesConfiguration featureConfiguration) {
+      FeaturesConfiguration featureConfiguration, RealmConfigurationSource configurationSource) {
     var enabled = FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_ENABLED;
     var audience = FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE;
     var issuer = FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER;
     var keyFile = FeatureConfiguration.GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE;
 
-    var defaults = featureConfiguration.defaults();
+    var defaults = defaultsConfig(configurationSource);
     var errors = new ArrayList<Error>();
 
-    boolean defaultEnabled = Boolean.parseBoolean(defaults.get(enabled.key()));
-    String defaultAudience = defaults.getOrDefault(audience.key(), "");
-    String defaultIssuer = defaults.getOrDefault(issuer.key(), "");
-    String defaultKeyFile = defaults.getOrDefault(keyFile.key(), "");
-
-    if (defaultEnabled) {
-      if (defaultAudience.isEmpty()) {
+    if (defaults.getConfig(enabled)) {
+      if (defaults.getConfig(audience).isEmpty()) {
         errors.add(
             Error.of(
                 "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE is not set.",
                 format("polaris.features.\"%s\"", audience.key())));
       }
-      if (defaultIssuer.isEmpty()) {
+      if (defaults.getConfig(issuer).isEmpty()) {
         errors.add(
             Error.of(
                 "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER is not set.",
                 format("polaris.features.\"%s\"", issuer.key())));
       }
-      if (defaultKeyFile.isEmpty()) {
+      if (defaults.getConfig(keyFile).isEmpty()) {
         errors.add(
             Error.of(
                 "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE is not set.",
@@ -687,24 +692,11 @@ public class ProductionReadinessChecks {
     featureConfiguration
         .realmOverrides()
         .forEach((realmId, realmOverrides) -> {
-          var overrides = realmOverrides.overrides();
-          boolean realmEnabled =
-              Boolean.parseBoolean(
-                  overrides.containsKey(enabled.key())
-                      ? overrides.get(enabled.key())
-                      : defaults.get(enabled.key()));
-          if (!realmEnabled) {
+          var realm = realmConfig(configurationSource, realmId);
+          if (!realm.getConfig(enabled)) {
             return;
           }
-          String effectiveAudience =
-              overrides.containsKey(audience.key())
-                  ? overrides.get(audience.key())
-                  : defaultAudience;
-          String effectiveIssuer =
-              overrides.containsKey(issuer.key()) ? overrides.get(issuer.key()) : defaultIssuer;
-          String effectiveKeyFile =
-              overrides.containsKey(keyFile.key()) ? overrides.get(keyFile.key()) : defaultKeyFile;
-          if (effectiveAudience.isEmpty()) {
+          if (realm.getConfig(audience).isEmpty()) {
             errors.add(
                 Error.of(
                     "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but GCS_PRINCIPAL_ATTRIBUTION_WIF_AUDIENCE is not set.",
@@ -712,7 +704,7 @@ public class ProductionReadinessChecks {
                         "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
                         realmId, audience.key())));
           }
-          if (effectiveIssuer.isEmpty()) {
+          if (realm.getConfig(issuer).isEmpty()) {
             errors.add(
                 Error.of(
                     "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but GCS_PRINCIPAL_ATTRIBUTION_TOKEN_ISSUER is not set.",
@@ -720,7 +712,7 @@ public class ProductionReadinessChecks {
                         "polaris.features.realm-overrides.\"%s\".overrides.\"%s\"",
                         realmId, issuer.key())));
           }
-          if (effectiveKeyFile.isEmpty()) {
+          if (realm.getConfig(keyFile).isEmpty()) {
             errors.add(
                 Error.of(
                     "GCS_PRINCIPAL_ATTRIBUTION_ENABLED is true but GCS_PRINCIPAL_ATTRIBUTION_SIGNING_KEY_FILE is not set.",
@@ -736,33 +728,34 @@ public class ProductionReadinessChecks {
   }
 
   @Produces
-  @SuppressWarnings("unchecked")
   public ProductionReadinessCheck checkConnectionCredentialVendors(
       @Any Instance<ConnectionCredentialVendor> credentialVendors,
-      FeaturesConfiguration featureConfiguration) {
-    var mapper = JsonMapper.builder().build();
-    var defaults = featureConfiguration.parseDefaults(mapper);
-    var realmOverrides = featureConfiguration.parseRealmOverrides(mapper);
-
-    var federationKey = FeatureConfiguration.ENABLE_CATALOG_FEDERATION.key();
-    var authTypesKey = FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES.key();
-    var federationEnabled =
-        Boolean.parseBoolean(defaults.getOrDefault(federationKey, false).toString());
-    var defaultAuthTypes = (List<String>) defaults.getOrDefault(authTypesKey, List.of());
+      FeaturesConfiguration featureConfiguration,
+      RealmConfigurationSource configurationSource) {
+    var federation = FeatureConfiguration.ENABLE_CATALOG_FEDERATION;
+    var authTypes = FeatureConfiguration.SUPPORTED_EXTERNAL_CATALOG_AUTHENTICATION_TYPES;
+    var authTypesKey = authTypes.key();
+    // Only authentication types that are configured explicitly are checked. The flag's code
+    // default includes GCP, for which there is no ConnectionCredentialVendor.
+    boolean authTypesInDefaults = featureConfiguration.defaults().containsKey(authTypesKey);
 
     var allAuthTypes = new java.util.HashSet<String>();
-    if (federationEnabled) allAuthTypes.addAll(defaultAuthTypes);
+    var defaults = defaultsConfig(configurationSource);
+    if (authTypesInDefaults && defaults.getConfig(federation)) {
+      allAuthTypes.addAll(defaults.getConfig(authTypes));
+    }
 
-    realmOverrides.forEach((id, overrides) -> {
-      if (Boolean.parseBoolean(
-          overrides.getOrDefault(federationKey, federationEnabled).toString())) {
-        allAuthTypes.addAll(
-            (List<String>)
-                (overrides.containsKey(authTypesKey)
-                    ? overrides.get(authTypesKey)
-                    : defaultAuthTypes));
-      }
-    });
+    featureConfiguration
+        .realmOverrides()
+        .forEach((realmId, overrides) -> {
+          if (!authTypesInDefaults && !overrides.overrides().containsKey(authTypesKey)) {
+            return;
+          }
+          var realm = realmConfig(configurationSource, realmId);
+          if (realm.getConfig(federation)) {
+            allAuthTypes.addAll(realm.getConfig(authTypes));
+          }
+        });
 
     var errors = new ArrayList<Error>();
     for (var name : allAuthTypes) {
