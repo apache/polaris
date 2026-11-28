@@ -19,14 +19,7 @@
 package org.apache.polaris.spark.utils;
 
 import com.google.common.collect.Maps;
-import java.lang.reflect.Field;
 import java.util.Map;
-import org.apache.iceberg.CachingCatalog;
-import org.apache.iceberg.catalog.Catalog;
-import org.apache.iceberg.rest.RESTCatalog;
-import org.apache.iceberg.rest.RESTSessionCatalog;
-import org.apache.iceberg.rest.auth.OAuth2Util;
-import org.apache.iceberg.spark.SparkCatalog;
 import org.apache.polaris.spark.rest.GenericTable;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.connector.catalog.Identifier;
@@ -121,37 +114,4 @@ public abstract class PolarisCatalogUtils {
    */
   public abstract Table loadV1SparkTable(
       GenericTable genericTable, Identifier identifier, String catalogName);
-
-  /**
-   * Get the catalogAuth field inside the RESTSessionCatalog used by Iceberg Spark Catalog use
-   * reflection. TODO: Deprecate this function once the iceberg client is updated to 1.9.0 to use
-   * AuthManager and the capability of injecting an AuthManger is available. Related iceberg PR:
-   * https://github.com/apache/iceberg/pull/12655
-   */
-  public static OAuth2Util.AuthSession getAuthSession(SparkCatalog sparkCatalog) {
-    try {
-      Field icebergCatalogField = sparkCatalog.getClass().getDeclaredField("icebergCatalog");
-      icebergCatalogField.setAccessible(true);
-      Catalog icebergCatalog = (Catalog) icebergCatalogField.get(sparkCatalog);
-      RESTCatalog icebergRestCatalog;
-      if (icebergCatalog instanceof CachingCatalog) {
-        Field catalogField = icebergCatalog.getClass().getDeclaredField("catalog");
-        catalogField.setAccessible(true);
-        icebergRestCatalog = (RESTCatalog) catalogField.get(icebergCatalog);
-      } else {
-        icebergRestCatalog = (RESTCatalog) icebergCatalog;
-      }
-
-      Field sessionCatalogField = icebergRestCatalog.getClass().getDeclaredField("sessionCatalog");
-      sessionCatalogField.setAccessible(true);
-      RESTSessionCatalog sessionCatalog =
-          (RESTSessionCatalog) sessionCatalogField.get(icebergRestCatalog);
-
-      Field authField = sessionCatalog.getClass().getDeclaredField("catalogAuth");
-      authField.setAccessible(true);
-      return (OAuth2Util.AuthSession) authField.get(sessionCatalog);
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to get the catalogAuth from the Iceberg SparkCatalog", e);
-    }
-  }
 }
