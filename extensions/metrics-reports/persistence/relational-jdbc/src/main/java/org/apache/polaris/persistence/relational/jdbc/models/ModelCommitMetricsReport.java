@@ -163,8 +163,8 @@ public interface ModelCommitMetricsReport extends Converter<ModelCommitMetricsRe
 
   /**
    * Known compatibility limitation: legacy rows written before {@code NULL} was used for an unknown
-   * duration stored {@code 0} for both a genuine zero-duration commit and an unknown duration. Those
-   * rows are indistinguishable here and are read back as a real {@code 0L} rather than {@link
+   * duration stored {@code 0} for both a genuine zero-duration commit and an unknown duration.
+   * Those rows are indistinguishable here and are read back as a real {@code 0L} rather than {@link
    * Optional#empty()} in {@link #toRecord()}. Only rows written since then (which persist {@code
    * NULL} for "unknown") round-trip unambiguously.
    */
