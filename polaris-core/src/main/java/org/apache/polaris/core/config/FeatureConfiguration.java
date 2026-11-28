@@ -306,8 +306,23 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description(
               "If set to true (default), Polaris will permit S3 storage configurations to have custom endpoints, "
                   + "and SigV4 connection configurations to set a custom STS endpoint used for credential vending.\n"
-                  + "If set to false, Polaris will not accept catalog create and update requests that contain \n"
-                  + "S3 endpoint properties, or catalog create requests that set a SigV4 connection STS endpoint.")
+                  + "If set to false, Polaris will reject catalog create and update requests for catalogs that "
+                  + "have S3 endpoint properties (endpoint, endpointInternal or stsEndpoint), a SigV4 connection "
+                  + "STS endpoint, or STS disabled (stsUnavailable). This also applies to updates that do not "
+                  + "change those settings.")
+          .defaultValue(true)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Boolean> VALIDATE_AWS_ENDPOINT_URIS =
+      PolarisConfiguration.<Boolean>builder()
+          .key("VALIDATE_AWS_ENDPOINT_URIS")
+          .description(
+              "If set to true (default), Polaris validates the endpoint, endpointInternal and stsEndpoint "
+                  + "of AWS storage configurations, and the stsEndpoint of SigV4 connection configurations, "
+                  + "on catalog create and update. Each must be an absolute http or https URI with a host. "
+                  + "Plain http endpoints log a warning on every validation.\n"
+                  + "If set to false, these URI checks are skipped. Use this to keep updating existing catalogs "
+                  + "whose endpoints do not pass the checks.")
           .defaultValue(true)
           .buildFeatureConfiguration();
 
