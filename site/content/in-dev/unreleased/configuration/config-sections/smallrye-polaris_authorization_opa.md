@@ -25,7 +25,9 @@ build:
 
 Configuration for OPA (Open Policy Agent) authorization. 
 
-Beta Feature: OPA authorization is currently in Beta and is not a stable release. It may undergo breaking changes in future versions. Use with caution in production environments.
+Beta Feature: OPA authorization is currently in Beta and is not a stable release. It may undergo breaking changes in future versions. Use with caution in production environments. 
+
+Multiple OPA connections ("tenants") can be configured. The unnamed tenant is configured directly under `polaris.authorization.opa.*` and is used by default. Named tenants are configured under `polaris.authorization.opa.<tenant-key>.*` and are selected per realm via `polaris.authorization.authorizer.<realm>.tenant-key`.
 
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
@@ -43,3 +45,17 @@ Beta Feature: OPA authorization is currently in Beta and is not a stable release
 | `polaris.authorization.opa.http.verify-ssl` | `true` | `boolean` |  |
 | `polaris.authorization.opa.http.trust-store-path` |  | `path` |  |
 | `polaris.authorization.opa.http.trust-store-password` |  | `string` |  |
+| `polaris.authorization.opa.`_`<tenant-key>`_`.policy-uri` |  | `uri` |  |
+| `polaris.authorization.opa.`_`<tenant-key>`_`.context-properties.`_`<name>`_ |  | `string` | Operator-defined static properties emitted verbatim in the OPA input under `context.properties`. Intended for values that identify the deployment, such as an environment or tier name. These values are visible to OPA and appear in its decision logs; do not use them for credentials. |
+| `polaris.authorization.opa.`_`<tenant-key>`_`.auth.type` | `none` | `enum (NONE, BEARER)` | Type of authentication  |
+| `polaris.authorization.opa.`_`<tenant-key>`_`.auth.bearer.static-token.value` |  | `string` | Static bearer token value  |
+| `polaris.authorization.opa.`_`<tenant-key>`_`.auth.bearer.file-based.path` |  | `path` | Path to file containing bearer token  |
+| `polaris.authorization.opa.`_`<tenant-key>`_`.auth.bearer.file-based.refresh-interval` |  | `duration` | How often to refresh file-based bearer tokens (defaults to 5 minutes if not specified)  |
+| `polaris.authorization.opa.`_`<tenant-key>`_`.auth.bearer.file-based.jwt-expiration-refresh` |  | `boolean` | Whether to automatically detect JWT tokens and use their 'exp' field for refresh timing. If true and the token is a valid JWT with an 'exp' claim, the token will be refreshed based on the expiration time minus the buffer, rather than the fixed refresh interval. Defaults to true if not specified. |
+| `polaris.authorization.opa.`_`<tenant-key>`_`.auth.bearer.file-based.jwt-expiration-buffer` |  | `duration` | Buffer time before JWT expiration to refresh the token. Only used when jwtExpirationRefresh is true and the token is a valid JWT. Defaults to 1 minute if not specified. |
+| `polaris.authorization.opa.`_`<tenant-key>`_`.auth.bearer.file-based.initial-token-wait` |  | `duration` | How long to wait for the first token load before failing a request. Defaults to 5 seconds. |
+| `polaris.authorization.opa.`_`<tenant-key>`_`.auth.bearer.file-based.refresh-retry-interval` |  | `duration` | How long to wait before retrying after a failed token refresh. Defaults to 1 second. |
+| `polaris.authorization.opa.`_`<tenant-key>`_`.http.timeout` | `PT2S` | `duration` |  |
+| `polaris.authorization.opa.`_`<tenant-key>`_`.http.verify-ssl` | `true` | `boolean` |  |
+| `polaris.authorization.opa.`_`<tenant-key>`_`.http.trust-store-path` |  | `path` |  |
+| `polaris.authorization.opa.`_`<tenant-key>`_`.http.trust-store-password` |  | `string` |  |

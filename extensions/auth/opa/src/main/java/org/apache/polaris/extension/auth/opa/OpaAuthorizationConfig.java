@@ -23,11 +23,16 @@ import static com.google.common.base.Preconditions.checkArgument;
 import com.google.common.base.Strings;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithDefault;
+import io.smallrye.config.WithDefaults;
+import io.smallrye.config.WithParentName;
+import io.smallrye.config.WithUnnamedKey;
 import java.net.URI;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import org.apache.polaris.docs.ConfigDocs;
 import org.apache.polaris.immutables.PolarisImmutable;
 
 /**
@@ -36,6 +41,11 @@ import org.apache.polaris.immutables.PolarisImmutable;
  * <p><strong>Beta Feature:</strong> OPA authorization is currently in Beta and is not a stable
  * release. It may undergo breaking changes in future versions. Use with caution in production
  * environments.
+ *
+ * <p>Multiple OPA connections ("tenants") can be configured. The unnamed tenant is configured
+ * directly under {@code polaris.authorization.opa.*} and is used by default. Named tenants are
+ * configured under {@code polaris.authorization.opa.<tenant-key>.*} and are selected per realm via
+ * {@code polaris.authorization.authorizer.<realm>.tenant-key}.
  */
 @PolarisImmutable
 @ConfigMapping(prefix = "polaris.authorization.opa")
@@ -57,32 +67,54 @@ public interface OpaAuthorizationConfig {
     }
   }
 
-  Optional<URI> policyUri();
+  String DEFAULT_TENANT_KEY = "<default>";
 
   /**
-   * Operator-defined static properties emitted verbatim in the OPA input under {@code
-   * context.properties}. Intended for values that identify the deployment, such as an environment
-   * or tier name. These values are visible to OPA and appear in its decision logs; do not use them
-   * for credentials.
+   * Names that cannot be used as tenant keys, as they collide with the properties of the default
+   * tenant.
    */
-  Map<String, String> contextProperties();
+  Set<String> RESERVED_TENANT_KEYS = Set.of("policy-uri", "context-properties", "auth", "http");
 
-  AuthenticationConfig auth();
+  @WithParentName
+  @WithUnnamedKey(DEFAULT_TENANT_KEY)
+  @WithDefaults
+  @ConfigDocs.ConfigPropertyName("tenant-key")
+  Map<String, OpaAuthorizationTenantConfig> tenants();
 
-  HttpConfig http();
+  /** Per-tenant OPA connection configuration. */
+  @PolarisImmutable
+  interface OpaAuthorizationTenantConfig {
 
-  /** Validates the complete OPA configuration */
-  default void validate() {
-    checkArgument(
-        policyUri().isPresent(), "polaris.authorization.opa.policy-uri must be configured");
+    Optional<URI> policyUri();
 
-    URI uri = policyUri().get();
-    String scheme = uri.getScheme();
-    checkArgument(
-        "http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme),
-        "polaris.authorization.opa.policy-uri must use http or https scheme, but got: " + scheme);
+    /**
+     * Operator-defined static properties emitted verbatim in the OPA input under {@code
+     * context.properties}. Intended for values that identify the deployment, such as an environment
+     * or tier name. These values are visible to OPA and appear in its decision logs; do not use
+     * them for credentials.
+     */
+    Map<String, String> contextProperties();
 
-    auth().validate();
+    AuthenticationConfig auth();
+
+    HttpConfig http();
+
+    /** Validates this tenant's configuration. */
+    default void validate(String tenantKey) {
+      String prefix =
+          DEFAULT_TENANT_KEY.equals(tenantKey)
+              ? "polaris.authorization.opa"
+              : "polaris.authorization.opa." + tenantKey;
+      checkArgument(policyUri().isPresent(), prefix + ".policy-uri must be configured");
+
+      URI uri = policyUri().get();
+      String scheme = uri.getScheme();
+      checkArgument(
+          "http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme),
+          prefix + ".policy-uri must use http or https scheme, but got: " + scheme);
+
+      auth().validate();
+    }
   }
 
   /** HTTP client configuration for OPA communication. */

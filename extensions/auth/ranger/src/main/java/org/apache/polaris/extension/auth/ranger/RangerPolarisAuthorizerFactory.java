@@ -21,13 +21,14 @@ package org.apache.polaris.extension.auth.ranger;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.util.Optional;
 import java.util.Properties;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
-import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.ranger.authz.api.RangerAuthzException;
 import org.apache.ranger.authz.embedded.RangerEmbeddedAuthorizer;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,13 +40,14 @@ public class RangerPolarisAuthorizerFactory implements PolarisAuthorizerFactory 
   private static final String ERR_AUTHORIZER_FACTORY_NOT_INITIALIZED =
       "Ranger authorizer factory was not initialized successfully";
 
+  private final RangerPolarisAuthorizerConfig config;
   private final RangerEmbeddedAuthorizer authorizer;
-  private final String serviceName;
 
   @Inject private RealmContext realmContext;
 
   @Inject
   RangerPolarisAuthorizerFactory(RangerPolarisAuthorizerConfig config) {
+    this.config = config;
     config.validate();
     LOG.info("Initializing RangerAuthorizer");
     try {
@@ -53,7 +55,6 @@ public class RangerPolarisAuthorizerFactory implements PolarisAuthorizerFactory 
       RangerEmbeddedAuthorizer authorizer = new RangerEmbeddedAuthorizer(properties);
       authorizer.init();
       this.authorizer = authorizer;
-      this.serviceName = config.serviceName().get();
     } catch (RangerAuthzException t) {
       throw new RuntimeException("Failed to initialize RangerPolarisAuthorizer", t);
     }
@@ -62,10 +63,27 @@ public class RangerPolarisAuthorizerFactory implements PolarisAuthorizerFactory 
   }
 
   @Override
-  public RangerPolarisAuthorizer create(RealmConfig realmConfig) {
+  public RangerPolarisAuthorizer create(@Nullable String tenantKey) {
     LOG.debug("Creating RangerPolarisAuthorizer");
 
-    if (authorizer == null || StringUtils.isBlank(serviceName)) {
+    if (authorizer == null) {
+      throw new IllegalStateException(ERR_AUTHORIZER_FACTORY_NOT_INITIALIZED);
+    }
+
+    if (tenantKey != null
+        && RangerPolarisAuthorizerConfig.RESERVED_TENANT_KEYS.contains(tenantKey)) {
+      throw new IllegalStateException(
+          "'" + tenantKey + "' is a reserved name and cannot be used as a Ranger tenant key");
+    }
+    String key = tenantKey != null ? tenantKey : RangerPolarisAuthorizerConfig.DEFAULT_TENANT_KEY;
+    String serviceName =
+        Optional.ofNullable(config.tenants().get(key))
+            .flatMap(RangerPolarisAuthorizerConfig.RangerTenantConfig::serviceName)
+            .orElseThrow(() ->
+                new IllegalStateException(
+                    "No Ranger service name configured for tenant key: " + key));
+
+    if (StringUtils.isBlank(serviceName)) {
       throw new IllegalStateException(ERR_AUTHORIZER_FACTORY_NOT_INITIALIZED);
     }
 

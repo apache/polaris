@@ -25,4 +25,8 @@ build:
 
 | Property | Default Value | Type | Description |
 |----------|---------------|------|-------------|
-| `polaris.authorization.type` | `internal` | `string` |  |
+| `polaris.authorization.type` |  | `string` | <br><br>_Deprecated_ Use `polaris.authorization.authorizer.type` instead. |
+| `polaris.authorization.authorizer.type` |  | `string` | The type of the authorizer. Must be a registered (`org.apache.polaris.core.auth.PolarisAuthorizerFactory`) identifier. Defaults to `internal`. <br><br>For the default realm, falls back to the legacy `polaris.authorization.type` property if this property is not set. A realm that sets a `tenant-key` must also set its `type` explicitly. |
+| `polaris.authorization.authorizer.tenant-key` |  | `string` | The authorizer tenant key identifying which authorizer configuration to use. When present, refers to a named entry in the authorizer-specific tenant configuration (e.g. `polaris.authorization.opa.<tenant-key>.*`). When absent, the default (unnamed) configuration is used. |
+| `polaris.authorization.authorizer.`_`<realm>`_`.type` |  | `string` | The type of the authorizer. Must be a registered (`org.apache.polaris.core.auth.PolarisAuthorizerFactory`) identifier. Defaults to `internal`. <br><br>For the default realm, falls back to the legacy `polaris.authorization.type` property if this property is not set. A realm that sets a `tenant-key` must also set its `type` explicitly. |
+| `polaris.authorization.authorizer.`_`<realm>`_`.tenant-key` |  | `string` | The authorizer tenant key identifying which authorizer configuration to use. When present, refers to a named entry in the authorizer-specific tenant configuration (e.g. `polaris.authorization.opa.<tenant-key>.*`). When absent, the default (unnamed) configuration is used. |

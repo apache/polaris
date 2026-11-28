@@ -24,21 +24,26 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Observes;
+import jakarta.enterprise.event.Startup;
 import jakarta.inject.Inject;
+import java.io.Closeable;
 import java.io.IOException;
 import java.net.URI;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
-import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.context.RequestIdSupplier;
 import org.apache.polaris.extension.auth.opa.token.BearerTokenProvider;
 import org.apache.polaris.extension.auth.opa.token.FileBearerTokenProvider;
 import org.apache.polaris.extension.auth.opa.token.StaticBearerTokenProvider;
 import org.apache.polaris.nosql.async.AsyncExec;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,10 +60,11 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
   private final AsyncExec asyncExec;
   private final RequestIdSupplier requestIdSupplier;
   private final RealmContext realmContext;
-  private CloseableHttpClient httpClient;
-  private BearerTokenProvider bearerTokenProvider;
+
+  private final Map<String, TenantResources> perTenantResources = new HashMap<>();
 
   @Inject
+  @SuppressWarnings("CdiInjectionPointsInspection")
   public OpaPolarisAuthorizerFactory(
       OpaAuthorizationConfig opaConfig,
       Clock clock,
@@ -73,108 +79,77 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
     this.objectMapper = JsonMapper.builder().build();
   }
 
-  /**
-   * Gets the OPA authorization configuration. Used by OpaProductionReadinessCheck
-   *
-   * @return the OPA configuration
-   */
-  OpaAuthorizationConfig getConfig() {
-    return opaConfig;
-  }
-
   @PostConstruct
   public void initialize() {
-    // Validate configuration once during startup
-    opaConfig.validate();
-
-    // Create HTTP client once during startup
-    httpClient = createHttpClient();
-
-    // Setup authentication once during startup
-    setupAuthentication(opaConfig.auth());
+    // Validate all configured tenants and create their resources at startup, so that
+    // misconfigurations (e.g. an invalid truststore) fail fast.
+    for (Map.Entry<String, OpaAuthorizationConfig.OpaAuthorizationTenantConfig> entry :
+        opaConfig.tenants().entrySet()) {
+      OpaAuthorizationConfig.OpaAuthorizationTenantConfig tenantConfig = entry.getValue();
+      if (tenantConfig.policyUri().isPresent()) {
+        tenantConfig.validate(entry.getKey());
+        perTenantResources.put(entry.getKey(), new TenantResources(tenantConfig));
+      }
+    }
   }
 
-  @Override
-  public PolarisAuthorizer create(RealmConfig realmConfig) {
-    // All components are now pre-initialized, just create the authorizer
-    URI policyUri =
-        opaConfig
-            .policyUri()
-            .orElseThrow(() ->
-                new IllegalStateException(
-                    "OPA policy URI must be configured via polaris.authorization.opa.policy-uri"));
+  /** Forces eager instantiation, and thus {@link #initialize()}, at startup. */
+  void onStartup(@Observes Startup event) {}
 
+  @Override
+  public PolarisAuthorizer create(@Nullable String tenantKey) {
+    if (tenantKey != null && OpaAuthorizationConfig.RESERVED_TENANT_KEYS.contains(tenantKey)) {
+      throw new IllegalStateException(
+          "'" + tenantKey + "' is a reserved name and cannot be used as an OPA tenant key");
+    }
+    String key = tenantKey != null ? tenantKey : OpaAuthorizationConfig.DEFAULT_TENANT_KEY;
+    TenantResources resources = perTenantResources.get(key);
+    if (resources == null) {
+      throw new IllegalStateException("No OPA configuration found for tenant key: " + key);
+    }
     return new OpaPolarisAuthorizer(
-        policyUri,
-        httpClient,
+        resources.policyUri,
+        resources.httpClient,
         objectMapper,
-        bearerTokenProvider,
+        resources.bearerTokenProvider,
         requestIdSupplier.getRequestId(),
         realmContext.getRealmIdentifier(),
-        opaConfig.contextProperties());
+        resources.contextProperties);
   }
 
   @PreDestroy
   public void cleanup() {
-    // Clean up bearer token provider resources
-    if (bearerTokenProvider != null) {
-      try {
-        bearerTokenProvider.close();
-        LOGGER.debug("Bearer token provider closed successfully");
-      } catch (Exception e) {
-        // Log but don't throw - we're shutting down anyway
-        LOGGER.warn("Error closing bearer token provider: {}", e.getMessage(), e);
-      }
+    for (TenantResources resources : perTenantResources.values()) {
+      resources.close();
     }
-
-    // Clean up HTTP client resources
-    if (httpClient != null) {
-      try {
-        httpClient.close();
-        LOGGER.debug("HTTP client closed successfully");
-      } catch (IOException e) {
-        // Log but don't throw - we're shutting down anyway
-        LOGGER.warn("Error closing HTTP client: {}", e.getMessage(), e);
-      }
-    }
+    perTenantResources.clear();
   }
 
-  private CloseableHttpClient createHttpClient() {
+  private CloseableHttpClient createHttpClient(OpaAuthorizationConfig.HttpConfig httpConfig) {
     try {
-      return OpaHttpClientFactory.createHttpClient(opaConfig.http());
+      return OpaHttpClientFactory.createHttpClient(httpConfig);
     } catch (RuntimeException e) {
-      // Misconfigured truststore/timeout/SSL must fail startup rather than silently falling back
+      // Misconfigured truststore/timeout/SSL must fail rather than silently falling back
       // to a default client (system trust, no response timeout).
       throw new IllegalStateException("Failed to create HTTP client for OPA communication", e);
     }
   }
 
-  /**
-   * Sets up authentication based on the configuration.
-   *
-   * <p>This method handles different authentication types and configures the appropriate
-   * authentication mechanism. Future authentication types (e.g., TLS mutual authentication) can be
-   * added as additional cases.
-   */
-  private void setupAuthentication(OpaAuthorizationConfig.AuthenticationConfig authConfig) {
-    switch (authConfig.type()) {
-      case BEARER:
+  private @Nullable BearerTokenProvider setupAuthentication(
+      OpaAuthorizationConfig.AuthenticationConfig authConfig) {
+    return switch (authConfig.type()) {
+      case BEARER -> {
         if (authConfig.bearer().isEmpty()) {
           throw new IllegalStateException("Bearer configuration is required when type is 'bearer'");
         }
-        this.bearerTokenProvider = createBearerTokenProvider(authConfig.bearer().get());
-        break;
-      case NONE:
-        this.bearerTokenProvider = null; // No authentication
-        break;
-      default:
-        throw new IllegalStateException("Unsupported authentication type: " + authConfig.type());
-    }
+        yield createBearerTokenProvider(authConfig.bearer().get());
+      }
+      case NONE -> null;
+    };
   }
 
   private BearerTokenProvider createBearerTokenProvider(
       OpaAuthorizationConfig.BearerTokenConfig bearerToken) {
-    // Check which configuration is present
     if (bearerToken.staticToken().isPresent()) {
       OpaAuthorizationConfig.BearerTokenConfig.StaticTokenConfig staticConfig =
           bearerToken.staticToken().get();
@@ -202,6 +177,37 @@ class OpaPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
     } else {
       throw new IllegalStateException(
           "No bearer token configuration found. Must specify either 'static-token' or 'file-based'");
+    }
+  }
+
+  /** Per-tenant resources: one HTTP client and bearer token provider per OPA tenant. */
+  private final class TenantResources implements Closeable {
+    final URI policyUri;
+    final CloseableHttpClient httpClient;
+    final @Nullable BearerTokenProvider bearerTokenProvider;
+    final Map<String, String> contextProperties;
+
+    TenantResources(OpaAuthorizationConfig.OpaAuthorizationTenantConfig tenantConfig) {
+      this.policyUri = tenantConfig.policyUri().orElseThrow();
+      this.contextProperties = tenantConfig.contextProperties();
+      this.httpClient = createHttpClient(tenantConfig.http());
+      this.bearerTokenProvider = setupAuthentication(tenantConfig.auth());
+    }
+
+    @Override
+    public void close() {
+      if (bearerTokenProvider != null) {
+        try {
+          bearerTokenProvider.close();
+        } catch (Exception e) {
+          LOGGER.warn("Error closing bearer token provider: {}", e.getMessage(), e);
+        }
+      }
+      try {
+        httpClient.close();
+      } catch (IOException e) {
+        LOGGER.warn("Error closing HTTP client: {}", e.getMessage(), e);
+      }
     }
   }
 }

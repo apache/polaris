@@ -21,7 +21,6 @@ package org.apache.polaris.extension.auth.ranger;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.polaris.extension.auth.ranger.RangerTestUtils.createConfig;
-import static org.apache.polaris.extension.auth.ranger.RangerTestUtils.createRealmConfig;
 import static org.apache.polaris.extension.auth.ranger.RangerTestUtils.createRealmContext;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -102,7 +101,7 @@ public class RangerPolarisAuthorizerTest {
   public RangerPolarisAuthorizerTest(@TempDir Path tempDir) {
     RangerPolarisAuthorizerFactory factory =
         new RangerPolarisAuthorizerFactory(createConfig(tempDir));
-    RangerPolarisAuthorizer rangerPolarisAuthorizer = factory.create(createRealmConfig());
+    RangerPolarisAuthorizer rangerPolarisAuthorizer = factory.create(null);
     rangerPolarisAuthorizer.setRealmContext(createRealmContext());
     this.authorizer = rangerPolarisAuthorizer;
 

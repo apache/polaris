@@ -16,14 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
+package org.apache.polaris.service.authz;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
-import org.apache.polaris.core.config.RealmConfig;
+import org.jspecify.annotations.Nullable;
 
 /** Factory for creating the default Polaris authorizer implementation. */
 @ApplicationScoped
@@ -31,7 +31,11 @@ import org.apache.polaris.core.config.RealmConfig;
 class DefaultPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
 
   @Override
-  public PolarisAuthorizer create(RealmConfig realmConfig) {
+  public PolarisAuthorizer create(@Nullable String tenantKey) {
+    if (tenantKey != null) {
+      throw new IllegalStateException(
+          "The internal authorizer does not support tenant keys, but got: " + tenantKey);
+    }
     return new PolarisAuthorizerImpl();
   }
 }

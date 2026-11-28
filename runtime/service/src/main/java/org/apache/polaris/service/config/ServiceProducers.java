@@ -69,6 +69,8 @@ import org.apache.polaris.service.auth.external.OidcConfiguration;
 import org.apache.polaris.service.auth.external.tenant.OidcTenantResolver;
 import org.apache.polaris.service.auth.internal.broker.TokenBroker;
 import org.apache.polaris.service.auth.internal.broker.TokenBrokerFactory;
+import org.apache.polaris.service.authz.AuthorizationConfiguration;
+import org.apache.polaris.service.authz.AuthorizationRealmConfiguration;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.catalog.io.FileIOConfiguration;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
@@ -150,20 +152,20 @@ public class ServiceProducers {
   }
 
   @Produces
-  @ApplicationScoped
-  public PolarisAuthorizerFactory polarisAuthorizerFactory(
-      AuthorizationConfiguration authorizationConfig,
-      @Any Instance<PolarisAuthorizerFactory> authorizerFactories) {
-    PolarisAuthorizerFactory factory =
-        authorizerFactories.select(Identifier.Literal.of(authorizationConfig.type())).get();
-    return factory;
+  @RequestScoped
+  public AuthorizationRealmConfiguration realmAuthzConfig(
+      AuthorizationConfiguration config, RealmContext realmContext) {
+    return config.authorizer().forRealm(realmContext);
   }
 
   @Produces
   @RequestScoped
   public PolarisAuthorizer polarisAuthorizer(
-      PolarisAuthorizerFactory factory, RealmConfig realmConfig) {
-    return factory.create(realmConfig);
+      AuthorizationRealmConfiguration authorizationConfig,
+      @Any Instance<PolarisAuthorizerFactory> factories) {
+    PolarisAuthorizerFactory factory =
+        factories.select(Identifier.Literal.of(authorizationConfig.effectiveType())).get();
+    return factory.create(authorizationConfig.tenantKey().orElse(null));
   }
 
   @Produces
