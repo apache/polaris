@@ -31,6 +31,7 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.junit.jupiter.api.AfterEach;
@@ -497,6 +498,80 @@ class DynamoDbBasePersistenceIT extends AbstractDynamoDbTest {
         .isInstanceOf(EntityAlreadyExistsException.class);
     // The new entity did not land.
     assertThat(persistence.lookupEntity(callCtx, CATALOG, 20L, TYPE)).isNull();
+  }
+
+  @Test
+  void grantIsReadableFromSecurableAndGranteeSides() {
+    PolarisGrantRecord g = grant(10L, 20L, 5);
+    persistence.writeToGrantRecords(callCtx, g);
+
+    assertThat(persistence.lookupGrantRecord(callCtx, CATALOG, 10L, CATALOG, 20L, 5)).isEqualTo(g);
+    assertThat(persistence.loadAllGrantRecordsOnSecurable(callCtx, CATALOG, 10L))
+        .containsExactly(g);
+    assertThat(persistence.loadAllGrantRecordsOnGrantee(callCtx, CATALOG, 20L)).containsExactly(g);
+  }
+
+  @Test
+  void lookupGrantRecordReturnsNullWhenAbsent() {
+    assertThat(persistence.lookupGrantRecord(callCtx, CATALOG, 10L, CATALOG, 20L, 5)).isNull();
+  }
+
+  @Test
+  void writeGrantIsIdempotent() {
+    PolarisGrantRecord g = grant(10L, 20L, 5);
+    persistence.writeToGrantRecords(callCtx, g);
+    persistence.writeToGrantRecords(callCtx, g);
+
+    assertThat(persistence.loadAllGrantRecordsOnSecurable(callCtx, CATALOG, 10L))
+        .containsExactly(g);
+    assertThat(persistence.loadAllGrantRecordsOnGrantee(callCtx, CATALOG, 20L)).containsExactly(g);
+  }
+
+  @Test
+  void deleteGrantRemovesBothSides() {
+    PolarisGrantRecord g = grant(10L, 20L, 5);
+    persistence.writeToGrantRecords(callCtx, g);
+
+    persistence.deleteFromGrantRecords(callCtx, g);
+
+    assertThat(persistence.lookupGrantRecord(callCtx, CATALOG, 10L, CATALOG, 20L, 5)).isNull();
+    assertThat(persistence.loadAllGrantRecordsOnSecurable(callCtx, CATALOG, 10L)).isEmpty();
+    assertThat(persistence.loadAllGrantRecordsOnGrantee(callCtx, CATALOG, 20L)).isEmpty();
+  }
+
+  @Test
+  void deleteAllEntityGrantRecordsClearsBothSides() {
+    // Role 20 is the grantee of grants on tables 10 and 11.
+    PolarisGrantRecord g1 = grant(10L, 20L, 5);
+    PolarisGrantRecord g2 = grant(11L, 20L, 6);
+    persistence.writeToGrantRecords(callCtx, g1);
+    persistence.writeToGrantRecords(callCtx, g2);
+
+    // Drop role 20: it is the grantee of both grants, the securable of none.
+    persistence.deleteAllEntityGrantRecords(
+        callCtx, entity(20L, PARENT, "role20", 1), List.of(g1, g2), List.of());
+
+    assertThat(persistence.loadAllGrantRecordsOnGrantee(callCtx, CATALOG, 20L)).isEmpty();
+    // The grantee-side mirror in each securable's partition is gone too.
+    assertThat(persistence.loadAllGrantRecordsOnSecurable(callCtx, CATALOG, 10L)).isEmpty();
+    assertThat(persistence.loadAllGrantRecordsOnSecurable(callCtx, CATALOG, 11L)).isEmpty();
+  }
+
+  @Test
+  void selfGrantWritesAndDeletesWithoutActingOnOneItemTwice() {
+    PolarisGrantRecord self = grant(30L, 30L, 5);
+
+    assertThatCode(() -> persistence.writeToGrantRecords(callCtx, self)).doesNotThrowAnyException();
+    assertThat(persistence.lookupGrantRecord(callCtx, CATALOG, 30L, CATALOG, 30L, 5))
+        .isEqualTo(self);
+
+    assertThatCode(() -> persistence.deleteFromGrantRecords(callCtx, self))
+        .doesNotThrowAnyException();
+    assertThat(persistence.loadAllGrantRecordsOnSecurable(callCtx, CATALOG, 30L)).isEmpty();
+  }
+
+  private static PolarisGrantRecord grant(long securableId, long granteeId, int privilegeCode) {
+    return new PolarisGrantRecord(CATALOG, securableId, CATALOG, granteeId, privilegeCode);
   }
 
   private static PolarisBaseEntity entity(long id, long parentId, String name, int version) {
