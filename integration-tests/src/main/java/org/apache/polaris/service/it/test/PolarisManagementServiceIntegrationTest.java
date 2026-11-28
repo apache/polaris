@@ -40,9 +40,12 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -89,6 +92,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * @implSpec @implSpec This test expects the server to be configured with the following features
@@ -466,6 +472,68 @@ public class PolarisManagementServiceIntegrationTest {
           .isEqualTo(Map.of("default-base-location", "s3://bucket/path/to/data", "foo", "bar"));
       assertThat(updatedCatalog.getEntityVersion()).isGreaterThan(0);
     }
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("updateCatalogPropertiesCases")
+  public void testUpdateCatalogProperties(
+      String description,
+      Map<String, Object> propertiesField,
+      Map<String, String> expectedProperties) {
+    String baseLocation = "s3://bucket/path/to/data";
+    String otherLocation = "s3://bucket/path/to/other";
+    String roleArn = "arn:aws:iam::123456789012:role/my-role";
+    String catalogName = client.newEntityName("testUpdateCatalogProperties");
+    managementApi.createCatalog(
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setProperties(
+                CatalogProperties.builder(baseLocation).addProperty("foo", "bar").build())
+            .setStorageConfigInfo(
+                AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+                    .setRoleArn(roleArn)
+                    .setAllowedLocations(List.of(baseLocation))
+                    .build())
+            .build());
+
+    // Build the request body by hand so the properties field is exactly as the case gives it:
+    // absent, null, or a map.
+    Map<String, Object> body = new HashMap<>(propertiesField);
+    body.put("currentEntityVersion", managementApi.getCatalog(catalogName).getEntityVersion());
+    body.put(
+        "storageConfigInfo",
+        AwsStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.S3)
+            .setRoleArn(roleArn)
+            .setAllowedLocations(List.of(baseLocation, otherLocation))
+            .build());
+    try (Response response =
+        managementApi.request("v1/catalogs/" + catalogName).put(Entity.json(body))) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+    }
+
+    Catalog updatedCatalog = managementApi.getCatalog(catalogName);
+    assertThat(updatedCatalog.getStorageConfigInfo().getAllowedLocations())
+        .containsExactlyInAnyOrder(baseLocation, otherLocation);
+    // default-base-location is always kept, so the cases list only the other properties.
+    Map<String, String> expected = new HashMap<>(expectedProperties);
+    expected.put("default-base-location", baseLocation);
+    assertThat(updatedCatalog.getProperties().toMap()).isEqualTo(expected);
+  }
+
+  private static Stream<Arguments> updateCatalogPropertiesCases() {
+    return Stream.of(
+        Arguments.of("omitted properties are kept", Map.of(), Map.of("foo", "bar")),
+        Arguments.of(
+            "null properties are kept",
+            Collections.singletonMap("properties", null),
+            Map.of("foo", "bar")),
+        Arguments.of(
+            "a non-empty map replaces the properties",
+            Map.of("properties", Map.of("baz", "qux")),
+            Map.of("baz", "qux")),
+        Arguments.of(
+            "an empty map clears the properties", Map.of("properties", Map.of()), Map.of()));
   }
 
   @Test

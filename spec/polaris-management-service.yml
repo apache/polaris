@@ -1344,7 +1344,10 @@ components:
           type: integer
           description: The version of the object onto which this update is applied; if the object changed, the update will fail and the caller should retry after fetching the latest version.
         properties:
-          type: object
+          type: [object, "null"]
+          description: >-
+            If omitted or null, the catalog properties remain unchanged. Otherwise this map replaces
+            the current catalog properties, so an empty map clears them.
           additionalProperties:
             type: string
         storageConfigInfo:
