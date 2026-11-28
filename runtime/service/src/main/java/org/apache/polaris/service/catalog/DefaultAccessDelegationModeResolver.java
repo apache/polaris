@@ -25,7 +25,6 @@ import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CRE
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.EnumSet;
-import java.util.Optional;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.RealmConfig;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -43,10 +42,10 @@ import org.slf4j.LoggerFactory;
  * <p>The resolution logic:
  *
  * <ol>
- *   <li>If no delegation mode is requested, returns empty.
+ *   <li>If no delegation mode is requested, returns {@link AccessDelegationMode#NONE}.
  *   <li>If {@link AccessDelegationMode#NONE} is requested, alone or together with other modes,
- *       returns empty: the client has said that it can operate without delegated access, so no
- *       credentials are vended.
+ *       returns {@link AccessDelegationMode#NONE}: the client has said that it can operate without
+ *       delegated access, so no credentials are vended.
  *   <li>If exactly one delegation mode is requested:
  *       <ul>
  *         <li>If {@link AccessDelegationMode#VENDED_CREDENTIALS} is requested on an external
@@ -87,7 +86,7 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
   }
 
   @Override
-  public @NonNull Optional<AccessDelegationMode> resolve(
+  public @NonNull AccessDelegationMode resolve(
       @NonNull EnumSet<AccessDelegationMode> requestedModes,
       @Nullable CatalogEntity catalogEntity) {
 
@@ -97,12 +96,12 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
       LOGGER.debug(
           "Client accepts no access delegation. This request will not use any client-side "
               + "delegation mechanisms.");
-      return Optional.empty();
+      return NONE;
     }
 
     // Case 1: No valid delegation mode found, or none requested
     if (requestedModes.isEmpty()) {
-      return Optional.empty();
+      return NONE;
     }
 
     // Case 2: Exactly one delegation mode requested
@@ -130,7 +129,7 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
         }
       }
       LOGGER.debug("Single delegation mode requested: {}", mode);
-      return Optional.of(mode);
+      return mode;
     }
 
     // Case 3: Both VENDED_CREDENTIALS and REMOTE_SIGNING requested
@@ -139,7 +138,7 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
     if (catalogEntity == null) {
       LOGGER.debug(
           "No catalog entity available for mode resolution, defaulting to VENDED_CREDENTIALS");
-      return Optional.of(VENDED_CREDENTIALS);
+      return VENDED_CREDENTIALS;
     }
 
     // Check ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING first — this is the broader gate that
@@ -151,7 +150,7 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
       LOGGER.debug(
           "Credential vending not allowed for external catalog {}, selecting REMOTE_SIGNING",
           catalogEntity.getName());
-      return Optional.of(REMOTE_SIGNING);
+      return REMOTE_SIGNING;
     }
 
     // Check if credential vending is enabled for this catalog.
@@ -167,7 +166,7 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
       LOGGER.debug(
           "Credential vending is not enabled for external catalog {}, selecting REMOTE_SIGNING",
           catalogEntity.getName());
-      return Optional.of(REMOTE_SIGNING);
+      return REMOTE_SIGNING;
     }
 
     // Check if credential subscoping is skipped - if so, VENDED_CREDENTIALS won't work properly
@@ -178,7 +177,7 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
 
     if (skipCredentialSubscoping) {
       LOGGER.debug("Credential subscoping is skipped for this realm, selecting REMOTE_SIGNING");
-      return Optional.of(REMOTE_SIGNING);
+      return REMOTE_SIGNING;
     }
 
     // Check credential vending availability from storage configuration
@@ -188,12 +187,12 @@ public class DefaultAccessDelegationModeResolver implements AccessDelegationMode
       LOGGER.debug(
           "Credential vending is available for catalog {}, selecting VENDED_CREDENTIALS",
           catalogEntity.getName());
-      return Optional.of(VENDED_CREDENTIALS);
+      return VENDED_CREDENTIALS;
     } else {
       LOGGER.debug(
           "Credential vending is not available for catalog {}, selecting REMOTE_SIGNING",
           catalogEntity.getName());
-      return Optional.of(REMOTE_SIGNING);
+      return REMOTE_SIGNING;
     }
   }
 

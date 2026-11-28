@@ -479,7 +479,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     authorizeCreateTableDirect(
         namespace, request, AccessDelegationMode.requiresDelegation(delegationModes));
-    Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
+    AccessDelegationMode resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     TableIdentifier tableIdentifier = TableIdentifier.of(namespace, request.name());
 
@@ -751,7 +751,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       polarisCatalog.validateStagedTableCreate(ident, metadata);
     }
 
-    Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
+    AccessDelegationMode resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     return buildLoadTableResponseWithDelegationCredentials(
             ident,
@@ -796,7 +796,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
 
     // Resolve the mode before registering the table to avoid registering a table and then failing
     // to return credentials if the mode is invalid
-    Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
+    AccessDelegationMode resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     Table table = baseCatalog.registerTable(identifier, request.metadataLocation(), overwrite);
 
@@ -1173,7 +1173,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
     Set<PolarisStorageActions> actionsRequested =
         authorizeLoadTable(
             tableIdentifier, AccessDelegationMode.requiresDelegation(delegationModes));
-    Optional<AccessDelegationMode> resolvedMode = resolveAccessDelegationModes(delegationModes);
+    AccessDelegationMode resolvedMode = resolveAccessDelegationModes(delegationModes);
 
     return loadTableWithResolvedAuthorization(
         tableIdentifier,
@@ -1189,7 +1189,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       String snapshots,
       IfNoneMatch ifNoneMatch,
       Set<PolarisStorageActions> actionsRequested,
-      Optional<AccessDelegationMode> resolvedMode,
+      AccessDelegationMode resolvedMode,
       Optional<String> refreshCredentialsEndpoint) {
     if (ifNoneMatch != null) {
       // Perform freshness-aware table loading if caller specified ifNoneMatch.
@@ -1238,7 +1238,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
   private LoadTableResponse.Builder buildLoadTableResponseWithDelegationCredentials(
       TableIdentifier tableIdentifier,
       TableMetadata tableMetadata,
-      Optional<AccessDelegationMode> delegationMode,
+      AccessDelegationMode delegationMode,
       Set<PolarisStorageActions> actions,
       Optional<String> refreshCredentialsEndpoint) {
     LoadTableResponse.Builder responseBuilder =
@@ -1262,7 +1262,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       // allowedLocations before vending credentials. This protects against cases where
       // allowedLocations were tightened after the table was created.
       validateTableLocations(tableIdentifier, tableLocations, resolvedStoragePath);
-      boolean vendingCredentials = VENDED_CREDENTIALS.equals(delegationMode.orElse(null));
+      boolean vendingCredentials = delegationMode == VENDED_CREDENTIALS;
       if (vendingCredentials && baseCatalog instanceof LocalIcebergCatalog localCatalog) {
         localCatalog.validateNoLocationOverlapForCredentialVending(
             tableIdentifier, tableMetadata.location(), tableLocations, resolvedStoragePath);
@@ -1896,17 +1896,18 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
    * matches how a vended-credentials-only request behaves when no credentials can be vended.
    *
    * @param requestedModes The non-empty set of delegation modes requested by the client
-   * @return The resolved access delegation mode, or empty if no delegation mode was resolved
+   * @return The resolved access delegation mode, or {@link AccessDelegationMode#NONE} if no
+   *     delegation mode was resolved
    */
-  protected Optional<AccessDelegationMode> resolveAccessDelegationModes(
+  protected AccessDelegationMode resolveAccessDelegationModes(
       EnumSet<AccessDelegationMode> requestedModes) {
 
     CatalogEntity catalogEntity = getResolvedCatalogEntity();
-    Optional<AccessDelegationMode> resolvedMode =
+    AccessDelegationMode resolvedMode =
         accessDelegationModeResolver().resolve(requestedModes, catalogEntity);
 
     // TODO remove when remote signing is implemented
-    if (resolvedMode.orElse(null) == AccessDelegationMode.REMOTE_SIGNING) {
+    if (resolvedMode == AccessDelegationMode.REMOTE_SIGNING) {
       throw new IllegalArgumentException(
           "This catalog cannot vend credentials or sign requests; request without "
               + "X-Iceberg-Access-Delegation and configure storage credentials on the client");
@@ -1957,7 +1958,7 @@ public abstract class IcebergCatalogHandler extends CatalogHandler implements Au
       TableIdentifier tableIdentifier,
       Optional<String> refreshCredentialsEndpoint,
       Set<PolarisStorageActions> actionsRequested) {
-    Optional<AccessDelegationMode> resolvedMode =
+    AccessDelegationMode resolvedMode =
         resolveAccessDelegationModes(EnumSet.of(VENDED_CREDENTIALS));
     LoadTableResponse loadTableResponse =
         loadTableWithResolvedAuthorization(
