@@ -75,8 +75,12 @@ deployment uses.
 
 * **Authorization denials.** There is no event type for a denial. A denied
   operation emits its `BEFORE_*` event and no matching `AFTER_*` event. With the
-  built-in authorizer, the server logs the denial at `INFO`, including the
-  principal and the missing privileges.
+  built-in authorizer, a denial for missing privileges is logged at `INFO`,
+  including the principal and the missing privileges. A non-root principal denied
+  `RESET_CREDENTIALS` is logged only at `DEBUG`. When
+  `ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING` is enabled (it is off
+  by default), a principal that must rotate its credentials is rejected before
+  the operation starts, so no event is emitted for that request.
 * **Authentication failures.** Requests rejected during authentication are not
   dispatched as events.
 * **Decisions made by external authorizers.** If an
@@ -172,9 +176,9 @@ For example, to investigate a denied request:
 
 1. Get the request ID from the client's response or logs.
 2. Search the Polaris server log for that request ID. With the built-in
-   authorizer, the log line for the denial names the principal, the operation,
-   and the missing privileges. With an external authorizer, check that system's
-   decision logs.
+   authorizer, the log line for a missing-privilege denial names the principal,
+   the operation, and the missing privileges. With an external authorizer, check
+   that system's decision logs.
 3. In the event sink, find events with the same request ID. A denied operation
    shows a `BEFORE_*` event without a matching `AFTER_*` event. Any failed
    request shows the same pattern, for example a missing table or a commit
