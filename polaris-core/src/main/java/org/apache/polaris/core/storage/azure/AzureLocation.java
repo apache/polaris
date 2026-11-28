@@ -121,7 +121,8 @@ public class AzureLocation extends StorageLocation {
   public boolean isChildOf(@NonNull StorageLocation potentialParent) {
     if (potentialParent instanceof AzureLocation potentialAzureParent) {
       if (this.container.equals(potentialAzureParent.container)) {
-        if (this.storageAccount.equals(potentialAzureParent.storageAccount)) {
+        if (this.storageAccount.equals(potentialAzureParent.storageAccount)
+            && this.endpoint.equals(potentialAzureParent.endpoint)) {
           // filePath has its separator slash removed, so always add it back (only adding it when
           // missing would make "container@host//a" and "container@host/a" equivalent).
           String formattedFilePath = ensureTrailingSlash("/" + this.filePath);
