@@ -19,12 +19,16 @@
 package org.apache.polaris.service.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.withSettings;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Map;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.ProductionReadinessCheck;
+import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,17 +49,18 @@ class ProductionReadinessChecksOptimizedSiblingCheckTest {
 
   @Test
   void disabledByDefaultReturnsOk() {
+    FeaturesConfiguration config = mockConfig(Map.of(), Map.of());
     ProductionReadinessCheck result =
-        checks.checkOverlappingSiblingCheckSettings(mockConfig(Map.of(), Map.of()));
+        checks.checkOverlappingSiblingCheckSettings(config, configurationSource(config));
 
     assertThat(result.ready()).isTrue();
   }
 
   @Test
   void enabledWithoutAcknowledgementReturnsSevereError() {
+    FeaturesConfiguration config = mockConfig(Map.of(OPTIMIZED_KEY, "true"), Map.of());
     ProductionReadinessCheck result =
-        checks.checkOverlappingSiblingCheckSettings(
-            mockConfig(Map.of(OPTIMIZED_KEY, "true"), Map.of()));
+        checks.checkOverlappingSiblingCheckSettings(config, configurationSource(config));
 
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors()).hasSize(1);
@@ -65,19 +70,21 @@ class ProductionReadinessChecksOptimizedSiblingCheckTest {
 
   @Test
   void enabledAndAcknowledgedReturnsOk() {
+    FeaturesConfiguration config =
+        mockConfig(Map.of(OPTIMIZED_KEY, "true", ALLOW_KEY, "true"), Map.of());
     ProductionReadinessCheck result =
-        checks.checkOverlappingSiblingCheckSettings(
-            mockConfig(Map.of(OPTIMIZED_KEY, "true", ALLOW_KEY, "true"), Map.of()));
+        checks.checkOverlappingSiblingCheckSettings(config, configurationSource(config));
 
     assertThat(result.ready()).isTrue();
   }
 
   @Test
   void realmOverrideEnablesWithoutAcknowledgementReturnsSevereError() {
+    FeaturesConfiguration config =
+        mockConfig(
+            Map.of(), Map.of("test-realm", mockRealmOverrides(Map.of(OPTIMIZED_KEY, "true"))));
     ProductionReadinessCheck result =
-        checks.checkOverlappingSiblingCheckSettings(
-            mockConfig(
-                Map.of(), Map.of("test-realm", mockRealmOverrides(Map.of(OPTIMIZED_KEY, "true")))));
+        checks.checkOverlappingSiblingCheckSettings(config, configurationSource(config));
 
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors()).hasSize(1);
@@ -90,11 +97,12 @@ class ProductionReadinessChecksOptimizedSiblingCheckTest {
   void realmOverrideInheritsAcknowledgementFromDefaultsReturnsOk() {
     // The realm only turns the check on; the acknowledgement comes from the defaults, which is
     // what the realm effectively runs with.
+    FeaturesConfiguration config =
+        mockConfig(
+            Map.of(ALLOW_KEY, "true"),
+            Map.of("test-realm", mockRealmOverrides(Map.of(OPTIMIZED_KEY, "true"))));
     ProductionReadinessCheck result =
-        checks.checkOverlappingSiblingCheckSettings(
-            mockConfig(
-                Map.of(ALLOW_KEY, "true"),
-                Map.of("test-realm", mockRealmOverrides(Map.of(OPTIMIZED_KEY, "true")))));
+        checks.checkOverlappingSiblingCheckSettings(config, configurationSource(config));
 
     assertThat(result.ready()).isTrue();
   }
@@ -103,11 +111,12 @@ class ProductionReadinessChecksOptimizedSiblingCheckTest {
   void realmOverrideInheritsEnabledCheckAndWithdrawsAcknowledgementReturnsSevereError() {
     // The defaults are acknowledged, but the realm withdraws the acknowledgement while still
     // inheriting the enabled check.
+    FeaturesConfiguration config =
+        mockConfig(
+            Map.of(OPTIMIZED_KEY, "true", ALLOW_KEY, "true"),
+            Map.of("test-realm", mockRealmOverrides(Map.of(ALLOW_KEY, "false"))));
     ProductionReadinessCheck result =
-        checks.checkOverlappingSiblingCheckSettings(
-            mockConfig(
-                Map.of(OPTIMIZED_KEY, "true", ALLOW_KEY, "true"),
-                Map.of("test-realm", mockRealmOverrides(Map.of(ALLOW_KEY, "false")))));
+        checks.checkOverlappingSiblingCheckSettings(config, configurationSource(config));
 
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors()).hasSize(1);
@@ -120,13 +129,14 @@ class ProductionReadinessChecksOptimizedSiblingCheckTest {
   void realmOverrideDisablesInheritedCheckReturnsOk() {
     // The realm also withdraws the acknowledgement, so the result is only OK if the realm's
     // OPTIMIZED_SIBLING_CHECK=false override is honored.
+    FeaturesConfiguration config =
+        mockConfig(
+            Map.of(OPTIMIZED_KEY, "true", ALLOW_KEY, "true"),
+            Map.of(
+                "test-realm",
+                mockRealmOverrides(Map.of(OPTIMIZED_KEY, "false", ALLOW_KEY, "false"))));
     ProductionReadinessCheck result =
-        checks.checkOverlappingSiblingCheckSettings(
-            mockConfig(
-                Map.of(OPTIMIZED_KEY, "true", ALLOW_KEY, "true"),
-                Map.of(
-                    "test-realm",
-                    mockRealmOverrides(Map.of(OPTIMIZED_KEY, "false", ALLOW_KEY, "false")))));
+        checks.checkOverlappingSiblingCheckSettings(config, configurationSource(config));
 
     assertThat(result.ready()).isTrue();
   }
@@ -134,23 +144,31 @@ class ProductionReadinessChecksOptimizedSiblingCheckTest {
   @Test
   void realmOverridingUnrelatedFlagsIsNotReportedAgain() {
     // The realm runs with the default values for both flags, which are already reported once.
+    FeaturesConfiguration config =
+        mockConfig(
+            Map.of(OPTIMIZED_KEY, "true"),
+            Map.of(
+                "test-realm",
+                mockRealmOverrides(
+                    Map.of(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.key(), "true"))));
     ProductionReadinessCheck result =
-        checks.checkOverlappingSiblingCheckSettings(
-            mockConfig(
-                Map.of(OPTIMIZED_KEY, "true"),
-                Map.of(
-                    "test-realm",
-                    mockRealmOverrides(
-                        Map.of(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.key(), "true")))));
+        checks.checkOverlappingSiblingCheckSettings(config, configurationSource(config));
 
     assertThat(result.ready()).isFalse();
     assertThat(result.getErrors()).hasSize(1);
     assertThat(result.getErrors()).noneMatch(e -> e.offendingProperty().contains("test-realm"));
   }
 
+  /** The configuration source the server builds from the same feature configuration. */
+  private static RealmConfigurationSource configurationSource(FeaturesConfiguration config) {
+    return new DefaultConfigurationStore(new ObjectMapper(), config);
+  }
+
   private static FeaturesConfiguration mockConfig(
       Map<String, String> defaults, Map<String, RealmOverridable.RealmOverrides> realmOverrides) {
-    FeaturesConfiguration config = mock(FeaturesConfiguration.class);
+    // CALLS_REAL_METHODS keeps the interface's default parseDefaults/parseRealmOverrides working.
+    FeaturesConfiguration config =
+        mock(FeaturesConfiguration.class, withSettings().defaultAnswer(CALLS_REAL_METHODS));
     when(config.defaults()).thenReturn(defaults);
     when(config.realmOverrides()).thenReturn(realmOverrides);
     return config;
