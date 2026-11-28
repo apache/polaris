@@ -25,7 +25,11 @@ import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import java.util.Map;
+import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.RealmConfig;
+import org.apache.polaris.core.config.RealmConfigImpl;
+import org.apache.polaris.core.config.RealmConfigurationSource;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.assertj.core.api.Assertions;
@@ -40,6 +44,9 @@ public class DefaultConfigurationStoreTest {
   private static final String falseByDefaultKey = "ALLOW_SPECIFYING_FILE_IO_IMPL";
   // the key whose value is set to `true` for all realms
   private static final String trueByDefaultKey = "ENABLE_GENERIC_TABLES";
+  // the behavior change whose value is set under polaris.behavior-changes
+  private static final String behaviorChangeKey =
+      BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS.key();
   private static final String realmOne = "realm1";
   private static final String realmTwo = "realm2";
   private static final RealmContext realmOneContext = () -> realmOne;
@@ -61,7 +68,13 @@ public class DefaultConfigurationStoreTest {
           "true",
           String.format(
               "polaris.features.realm-overrides.\"%s\".\"%s\"", realmTwo, trueByDefaultKey),
-          "false");
+          "false",
+          String.format("polaris.behavior-changes.\"%s\"", behaviorChangeKey),
+          "5",
+          String.format(
+              "polaris.behavior-changes.realm-overrides.\"%s\".\"%s\"",
+              realmTwo, behaviorChangeKey),
+          "2");
     }
   }
 
@@ -72,6 +85,8 @@ public class DefaultConfigurationStoreTest {
   org.apache.polaris.core.config.PolarisConfigurationStore configurationStore;
 
   @Inject FeaturesConfiguration featuresConfiguration;
+
+  @Inject RealmConfigurationSource configurationSource;
 
   @BeforeEach
   public void before(TestInfo testInfo) {
@@ -198,5 +213,22 @@ public class DefaultConfigurationStoreTest {
 
     Assertions.assertThat(configurationStore.getConfiguration(realmContext, catalog, safeConfig))
         .isTrue();
+  }
+
+  @Test
+  public void testBehaviorChangeConfiguration() {
+    // the behavior change is set to 5 for all realms under polaris.behavior-changes, and
+    // overridden with value 2 for realmTwo
+    RealmConfig realmOneConfig = new RealmConfigImpl(configurationSource, realmOneContext);
+    assertThat(
+            realmOneConfig.getConfig(
+                BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS))
+        .isEqualTo(5);
+
+    RealmConfig realmTwoConfig = new RealmConfigImpl(configurationSource, realmTwoContext);
+    assertThat(
+            realmTwoConfig.getConfig(
+                BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS))
+        .isEqualTo(2);
   }
 }

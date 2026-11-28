@@ -19,8 +19,6 @@
 package org.apache.polaris.service.config;
 
 /**
- * FIXME: this seems unused.
- *
  * @see RawBehaviorChangesConfiguration
  * @see ResolvedBehaviorChangesConfiguration
  */
